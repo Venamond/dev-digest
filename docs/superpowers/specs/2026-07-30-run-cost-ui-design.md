@@ -1,47 +1,47 @@
-# Feature: показывать стоимость (cost) запусков ревьюверов на трёх экранах
+# Feature: показ вартості (cost) запусків рев'юверів на трьох екранах
 
 Дата: 2026-07-30
-Статус: approved (design), реализация не начата
+Статус: approved (design), реалізація не розпочата
 
-## Проблема / цель
+## Проблема / мета
 
-В `agent-runs`/review-запусках уже считается стоимость LLM-вызова (`ReviewOutcome.costUsd` в `reviewer-core/src/review/run.ts`), но она нигде не персистится и не показывается пользователю. Нужно вывести cost на трёх экранах:
+У `agent-runs`/review-запусках вже рахується вартість LLM-виклику (`ReviewOutcome.costUsd` у `reviewer-core/src/review/run.ts`), але вона ніде не персистується і не показується користувачу. Потрібно вивести cost на трьох екранах:
 
 1. Список Pull Requests — колонка COST.
-2. Таймлайн запусков агентов внутри PR detail (рядом со временем запуска).
-3. Run Trace drawer (сайдбар) — рядом с Duration / Tokens / Findings.
+2. Таймлайн запусків агентів всередині PR detail (поруч із часом запуску).
+3. Run Trace drawer (сайдбар) — поруч із Duration / Tokens / Findings.
 
-## Контекст (что уже есть в коде)
+## Контекст (що вже є в коді)
 
-Инфраструктура cost построена частично и обрывается перед персистом:
+Інфраструктура cost побудована частково і обривається перед персистом:
 
-- `server/src/adapters/llm/pricing.ts` — статическая таблица `estimateCost(model, tokensIn, tokensOut): number | null` (USD/1M токенов), используется в `openai.ts` и `anthropic.ts`.
-- `server/src/platform/price-book.ts` — `PriceBook`: живые цены OpenRouter (`/models`), с fallback на статическую таблицу. Уже инжектируется в `OpenRouterProvider` через `container.ts:181-187`.
-- `reviewer-core/src/review/run.ts` — `reviewPullRequest()` считает и возвращает `ReviewOutcome.costUsd`, суммируя по чанкам, `null`-пропагируя при неизвестной модели.
-- `server/src/modules/reviews/run-executor.ts:213` — `const { tokensIn, tokensOut, grounding } = outcome;` — **`costUsd` молча выбрасывается**, не попадает ни в `agent_runs`, ни в `trace.stats`.
-- `agent_runs.cost_usd` — колонка существовала в `0000_init.sql` и была осознанно удалена миграцией `0009_complex_runaways.sql` (единственная строка в файле: `DROP COLUMN "cost_usd"`). Соседние таблицы `eval_runs.cost_usd` и `ci_runs.cost_usd` остались нетронуты.
-- Контракты `RunStats`/`RunSummary` (`vendor/shared/contracts/trace.ts`) и `PrMeta` (`vendor/shared/contracts/platform.ts`) не содержат cost-поля.
-- В дизайн-файле (`DevDigest Design (standalone).html`) найден переиспользуемый JSX-компонент `CostBadge` с канонической логикой форматирования (см. раздел 5).
+- `server/src/adapters/llm/pricing.ts` — статична таблиця `estimateCost(model, tokensIn, tokensOut): number | null` (USD/1M токенів), використовується в `openai.ts` і `anthropic.ts`.
+- `server/src/platform/price-book.ts` — `PriceBook`: живі ціни OpenRouter (`/models`), з fallback на статичну таблицю. Вже інжектується в `OpenRouterProvider` через `container.ts:181-187`.
+- `reviewer-core/src/review/run.ts` — `reviewPullRequest()` рахує і повертає `ReviewOutcome.costUsd`, підсумовуючи по чанках, `null`-пропагуючи при невідомій моделі.
+- `server/src/modules/reviews/run-executor.ts:213` — `const { tokensIn, tokensOut, grounding } = outcome;` — **`costUsd` мовчки викидається**, не потрапляє ні в `agent_runs`, ні в `trace.stats`.
+- `agent_runs.cost_usd` — колонка існувала в `0000_init.sql` і була свідомо видалена міграцією `0009_complex_runaways.sql` (єдиний рядок у файлі: `DROP COLUMN "cost_usd"`). Сусідні таблиці `eval_runs.cost_usd` і `ci_runs.cost_usd` лишились незачепленими.
+- Контракти `RunStats`/`RunSummary` (`vendor/shared/contracts/trace.ts`) і `PrMeta` (`vendor/shared/contracts/platform.ts`) не містять cost-поля.
+- У дизайн-файлі (`DevDigest Design (standalone).html`) знайдено перевикористовуваний JSX-компонент `CostBadge` із канонічною логікою форматування (див. розділ 5).
 
-## Дизайн, подтверждённый скриншотами из `DevDigest Design (standalone).html`
+## Дизайн, підтверджений скриншотами з `DevDigest Design (standalone).html`
 
-### Экран 1 — Pull Requests list (artboard `dashboard`)
+### Екран 1 — Pull Requests list (artboard `dashboard`)
 
-Колонка **COST** между STATUS и UPDATED. Значения маленькие ($0.003–$0.041), у Stale-строки без findings стоит "—". Формат совпадает с `CostBadge` (`<$1` → 3 знака).
+Колонка **COST** між STATUS і UPDATED. Значення невеликі ($0.003–$0.041), у Stale-рядка без findings стоїть "—". Формат збігається з `CostBadge` (`<$1` → 3 знаки).
 
-**Решение: cost = cost последнего запуска ревью на этом PR** (тот же семантический паттерн, что уже используется для `score` — "latest, не сумма"), не сумма всех исторических запусков.
+**Рішення: cost = cost останнього запуску ревью на цьому PR** (той самий семантичний патерн, що вже використовується для `score` — "latest, не сума"), не сума всіх історичних запусків.
 
-### Экран 2 — Agent runs timeline в PR detail (artboard `pr-runs`, компонент `TimelineRun`)
+### Екран 2 — Agent runs timeline у PR detail (artboard `pr-runs`, компонент `TimelineRun`)
 
-Под таймстампом справа в каждой строке таймлайна: `tokens.toLocaleString() + " tok · $" + cost` рядом со временем запуска. В самом дизайне cost отформатирован вручную (`.toFixed(4)`), но по решению из брейнштормa — стандартизируем на общий `CostBadge` (3/2 знака), а не копируем этот edge case дизайна дословно.
+Під таймстампом справа в кожному рядку таймлайну: `tokens.toLocaleString() + " tok · $" + cost` поруч із часом запуску. У самому дизайні cost відформатований вручну (`.toFixed(4)`), але за рішенням із брейнштормінгу — стандартизуємо на загальний `CostBadge` (3/2 знаки), а не копіюємо цей edge case дизайну дослівно.
 
-### Экран 3 — Run Trace drawer, Stats-блок (artboard `trace-hist`, компонент `TraceBody`)
+### Екран 3 — Run Trace drawer, Stats-блок (artboard `trace-hist`, компонент `TraceBody`)
 
-4 колонки в ряд: **DURATION | TOKENS | COST | FINDINGS** (было 3: Duration/Tokens/Findings). Пример из дизайна: `8.2s | 15k→1.2k | $0.06 | 3`.
+4 колонки в ряд: **DURATION | TOKENS | COST | FINDINGS** (було 3: Duration/Tokens/Findings). Приклад із дизайну: `8.2s | 15k→1.2k | $0.06 | 3`.
 
-### Общий компонент форматирования — `CostBadge`
+### Спільний компонент форматування — `CostBadge`
 
-Портируется из дизайн-файла в реальный код, используется на всех трёх экранах (единая точка форматирования):
+Портується з дизайн-файлу в реальний код, використовується на всіх трьох екранах (єдина точка форматування):
 
 ```js
 function formatCost(usd) {
@@ -50,9 +50,9 @@ function formatCost(usd) {
 }
 ```
 
-## Backend изменения
+## Backend зміни
 
-### 1. Миграция (новый файл, не редактируем 0009)
+### 1. Міграція (новий файл, не редагуємо 0009)
 
 ```sql
 ALTER TABLE "agent_runs" ADD COLUMN "cost_usd" double precision;
@@ -62,57 +62,57 @@ ALTER TABLE "agent_runs" ADD COLUMN "cost_usd" double precision;
 
 `server/src/db/schema/runs.ts` → `agentRuns.costUsd = doublePrecision('cost_usd')`.
 
-### 3. Перестать выбрасывать `costUsd` в `run-executor.ts`
+### 3. Перестати викидати `costUsd` у `run-executor.ts`
 
-- Строка ~213: деструктурировать `costUsd` вместе с `tokensIn`/`tokensOut`/`grounding`.
-- Передать `costUsd` в `completeAgentRun(...)` (персист в `agent_runs.cost_usd`).
-- Добавить `cost_usd: costUsd` в `trace.stats` при построении `RunTrace`.
+- Рядок ~213: деструктурувати `costUsd` разом з `tokensIn`/`tokensOut`/`grounding`.
+- Передати `costUsd` у `completeAgentRun(...)` (персист у `agent_runs.cost_usd`).
+- Додати `cost_usd: costUsd` у `trace.stats` при побудові `RunTrace`.
 
-### 4. Источник цены — PriceBook везде
+### 4. Джерело ціни — PriceBook усюди
 
-- `server/src/adapters/llm/openai.ts` и `anthropic.ts`: заменить прямой вызов статического `estimateCost()` из `pricing.ts` на инжектируемый `container.priceBook.estimate(...)`, по аналогии с уже существующей интеграцией в `OpenRouterProvider` (`container.ts:181-187`).
-- `PriceBook.estimate()` уже грациозно фолбэчится на ту же статическую таблицу при отсутствии живой цены — поведение не ухудшается ни для одного провайдера, только выигрывает там, где у OpenRouter есть live-цена на соответствующую модель.
-- `pricing.ts`/`estimateCost` не удаляются — остаются как fallback-реализация внутри `PriceBook`.
+- `server/src/adapters/llm/openai.ts` і `anthropic.ts`: замінити прямий виклик статичного `estimateCost()` з `pricing.ts` на інжектований `container.priceBook.estimate(...)`, за аналогією з вже наявною інтеграцією в `OpenRouterProvider` (`container.ts:181-187`).
+- `PriceBook.estimate()` вже грайливо (graceful) фолбечиться на ту саму статичну таблицю при відсутності живої ціни — поведінка не погіршується для жодного провайдера, тільки виграє там, де в OpenRouter є live-ціна на відповідну модель.
+- `pricing.ts`/`estimateCost` не видаляються — лишаються як fallback-реалізація всередині `PriceBook`.
 
-### 5. Контракты (`vendor/shared/contracts`, server и client копии должны остаться побайтово идентичны)
+### 5. Контракти (`vendor/shared/contracts`, server і client копії мають лишитись побайтово ідентичними)
 
 - `trace.ts`: `RunStats.cost_usd: number | null`, `RunSummary.cost_usd: number | null`.
-- `platform.ts`: `PrMeta.cost_usd: number | null` (комментарий по аналогии с существующим `score`: "Latest agent-run cost per PR, list endpoint only").
+- `platform.ts`: `PrMeta.cost_usd: number | null` (коментар за аналогією з наявним `score`: "Latest agent-run cost per PR, list endpoint only").
 
-### 6. Агрегация cost для списка PR
+### 6. Агрегація cost для списку PR
 
-`server/src/modules/pulls/routes.ts` — по аналогии с существующим latest-score блоком (строки ~114–155, комментарий "Latest-review SCORE per PR..."): аналогичный IN-запрос, но по `agent_runs` (не `reviews`), сортировка по `ranAt desc`, берём `cost_usd` первой (самой свежей) строки на `prId`.
+`server/src/modules/pulls/routes.ts` — за аналогією з наявним latest-score блоком (рядки ~114–155, коментар "Latest-review SCORE per PR..."): аналогічний IN-запит, але по `agent_runs` (не `reviews`), сортування за `ranAt desc`, беремо `cost_usd` першого (найсвіжішого) рядка на `prId`.
 
-## Frontend изменения
+## Frontend зміни
 
-### Экран 1 — `client/src/app/repos/[repoId]/pulls/`
+### Екран 1 — `client/src/app/repos/[repoId]/pulls/`
 
-- `constants.ts`: добавить `"cost"` в `COLUMN_KEYS`, слот ширины в `GRID` (между `status` и `updated`).
+- `constants.ts`: додати `"cost"` у `COLUMN_KEYS`, слот ширини в `GRID` (між `status` і `updated`).
 - i18n: `prReview.json` → `list.columns.cost`.
-- `_components/PRRow/PRRow.tsx`: рендер `<CostBadge usd={pr.cost_usd} />` с тем же null-guard паттерном, что у `score`.
+- `_components/PRRow/PRRow.tsx`: рендер `<CostBadge usd={pr.cost_usd} />` з тим самим null-guard патерном, що й у `score`.
 
-### Экран 2 — `_components/RunHistory/RunHistory.tsx`
+### Екран 2 — `_components/RunHistory/RunHistory.tsx`
 
-Рядом с существующим `{r.ran_at && <span>{...}</span>}` добавить `<CostBadge usd={r.cost_usd} />`.
+Поруч із наявним `{r.ran_at && <span>{...}</span>}` додати `<CostBadge usd={r.cost_usd} />`.
 
-### Экран 3 — `_components/RunTraceDrawer/`
+### Екран 3 — `_components/RunTraceDrawer/`
 
-- `_components/TraceBody/TraceBody.tsx`: четвёртый `<Stat label={t("trace.stat.cost")} val={<CostBadge usd={stats.cost_usd} />} />` в `s.statsRow`, порядок: Duration → Tokens → Cost → Findings.
+- `_components/TraceBody/TraceBody.tsx`: четвертий `<Stat label={t("trace.stat.cost")} val={<CostBadge usd={stats.cost_usd} />} />` у `s.statsRow`, порядок: Duration → Tokens → Cost → Findings.
 - i18n: `runs.json` → `stat.cost: "COST"`.
 
-### Общий компонент
+### Спільний компонент
 
-Новый файл (например `client/src/components/CostBadge.tsx`) с логикой форматирования из раздела «Общий компонент форматирования» выше. Используется во всех трёх местах.
+Новий файл (наприклад `client/src/components/CostBadge.tsx`) з логікою форматування з розділу «Спільний компонент форматування» вище. Використовується у всіх трьох місцях.
 
-## Из явных не-целей
+## Явні не-цілі
 
-- Никакая колонка/показатель не суммирует cost по нескольким запускам — везде "последний запуск" (см. Экран 1).
-- Не трогаем `reviewer-core/src/llm/openrouter.ts` (уже правильно передаёт `usage.cost` из API, приоритет над инжектированным estimator'ом) — изменения только в `openai.ts`/`anthropic.ts`.
-- Не трогаем `server/src/vendor/shared/contracts/observability.ts` (`AgentColumn.cost_usd`, `MultiAgentRun.total_cost_usd` и т.п.) — это scaffolding для будущего урока (multi-agent review), вне рамок этой фичи.
-- Не удаляем и не меняем `pricing.ts`/`estimateCost` — остаётся как fallback внутри `PriceBook`.
+- Жодна колонка/показник не сумує cost по декількох запусках — всюди "останній запуск" (див. Екран 1).
+- Не чіпаємо `reviewer-core/src/llm/openrouter.ts` (вже коректно передає `usage.cost` з API, пріоритет над інжектованим estimator'ом) — зміни лише в `openai.ts`/`anthropic.ts`.
+- Не чіпаємо `server/src/vendor/shared/contracts/observability.ts` (`AgentColumn.cost_usd`, `MultiAgentRun.total_cost_usd` тощо) — це scaffolding для майбутнього уроку (multi-agent review), поза межами цієї фічі.
+- Не видаляємо і не змінюємо `pricing.ts`/`estimateCost` — лишається як fallback всередині `PriceBook`.
 
-## Тестирование
+## Тестування
 
-- Сервер (unit): `run-executor.ts` пишет `costUsd` в `agent_runs` и в `trace.stats`; агрегирующий запрос в `pulls/routes.ts` берёт cost самого свежего `agent_runs` по `ranAt`; `null`-модель → `cost_usd: null` не ломает сериализацию ответа.
-- Клиент (RTL): `CostBadge` — 3 ветки форматирования (`null`, `<$1`, `>=$1`); `PRRow` рендерит cost либо em-dash; `TraceBody` показывает 4 стата в правильном порядке.
-- `server/test/price-book.test.ts` уже покрывает `PriceBook` напрямую — не трогаем.
+- Сервер (unit): `run-executor.ts` пише `costUsd` в `agent_runs` і в `trace.stats`; агрегувальний запит у `pulls/routes.ts` бере cost найсвіжішого `agent_runs` за `ranAt`; `null`-модель → `cost_usd: null` не ламає серіалізацію відповіді.
+- Клієнт (RTL): `CostBadge` — 3 гілки форматування (`null`, `<$1`, `>=$1`); `PRRow` рендерить cost або em-dash; `TraceBody` показує 4 стати в правильному порядку.
+- `server/test/price-book.test.ts` вже покриває `PriceBook` напряму — не чіпаємо.
