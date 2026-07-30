@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useCallback } from "react";
-import { Icon, Badge, Button, SectionLabel, EmptyState } from "@devdigest/ui";
+import { Icon, Badge, Button, SectionLabel, EmptyState, type Severity } from "@devdigest/ui";
 import { RunStatus } from "../RunStatus";
 import { RunHistory } from "../RunHistory/RunHistory";
 import { ReviewRunAccordion } from "../ReviewRunAccordion";
+import { SeverityCounters } from "../SeverityCounters";
 import { s } from "./styles";
 import type { FindingRecord, ReviewRecord, RunSummary, PrCommit } from "@devdigest/shared";
 import type { UseMutationResult } from "@tanstack/react-query";
@@ -14,6 +15,8 @@ interface FindingsTabProps {
   liveRunIds: string[];
   reviewRunning: boolean;
   lethalTrifecta: FindingRecord[];
+  /** Every finding across all runs of this PR — feeds the severity counters. */
+  allFindings: FindingRecord[];
   runs: ReviewRecord[];
   prRuns: RunSummary[] | undefined;
   prCommits: PrCommit[];
@@ -31,6 +34,7 @@ export function FindingsTab({
   liveRunIds,
   reviewRunning,
   lethalTrifecta,
+  allFindings,
   runs,
   prRuns,
   prCommits,
@@ -70,6 +74,10 @@ export function FindingsTab({
   const handleGoToReview = useCallback((runId: string) => {
     setTarget((p) => ({ runId, n: (p?.n ?? 0) + 1 }));
   }, []);
+
+  // Severity counters filter — click a level to show only that level's
+  // findings across every run below; click the active level again to clear.
+  const [severityFilter, setSeverityFilter] = React.useState<Severity | null>(null);
 
   return (
     <section>
@@ -138,6 +146,10 @@ export function FindingsTab({
         </div>
       )}
 
+      {allFindings.length > 0 && (
+        <SeverityCounters findings={allFindings} active={severityFilter} onSelect={setSeverityFilter} />
+      )}
+
       <SectionLabel
         icon="AlertOctagon"
         right={<span style={{ fontSize: 12, color: "var(--text-muted)" }}>grouped by run · newest first</span>}
@@ -164,6 +176,7 @@ export function FindingsTab({
             headSha={headSha}
             targetRunId={target?.runId ?? null}
             targetNonce={target?.n ?? 0}
+            severityFilter={severityFilter}
           />
         ))
       )}
