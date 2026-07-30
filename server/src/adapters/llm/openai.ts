@@ -44,12 +44,20 @@ function tuningParams(
  * - completeStructured: response_format json_schema + Zod validate + reprompt.
  * - embed: text-embedding-3-small (1536 dims).
  */
+
+export interface OpenAIProviderOptions {
+  /** Injected cost estimator (e.g. PriceBook.estimate); falls back to the static table. */
+  estimateCost?: (model: string, tokensIn: number, tokensOut: number) => number | null;
+}
+
 export class OpenAIProvider implements LLMProvider {
   readonly id = 'openai' as const;
   private client: OpenAI;
+  private estimateCost: (model: string, tokensIn: number, tokensOut: number) => number | null;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, opts: OpenAIProviderOptions = {}) {
     this.client = new OpenAI({ apiKey });
+    this.estimateCost = opts.estimateCost ?? estimateCost;
   }
 
   async listModels(): Promise<ModelInfo[]> {
@@ -81,7 +89,7 @@ export class OpenAIProvider implements LLMProvider {
       model: req.model,
       tokensIn,
       tokensOut,
-      costUsd: estimateCost(req.model, tokensIn, tokensOut),
+      costUsd: this.estimateCost(req.model, tokensIn, tokensOut),
     };
   }
 
@@ -119,7 +127,7 @@ export class OpenAIProvider implements LLMProvider {
           model: req.model,
           tokensIn,
           tokensOut,
-          costUsd: estimateCost(req.model, tokensIn, tokensOut),
+          costUsd: this.estimateCost(req.model, tokensIn, tokensOut),
           raw: lastRaw,
           attempts: attempt,
         };
