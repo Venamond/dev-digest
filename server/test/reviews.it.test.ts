@@ -208,6 +208,15 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
     expect(run!.status).toBe('done');
     expect(run!.findingsCount).toBe(1);
     expect(run!.grounding).toBe('1/2 passed');
+    // cost: a single-chunk diff makes exactly ONE completeStructured call, so
+    // MockLLMProvider's fixed costUsd (0.001) is the run's total — persisted
+    // on agent_runs, in the trace stats, and surfaced on the PR list.
+    expect(run!.costUsd).toBeCloseTo(0.001, 6);
+    expect(trace.stats.cost_usd).toBeCloseTo(0.001, 6);
+
+    const list = (await app.inject({ method: 'GET', url: `/repos/${pr.repoId}/pulls` })).json();
+    const listedPr = list.find((p: { id: string }) => p.id === pr.id);
+    expect(listedPr.cost_usd).toBeCloseTo(0.001, 6);
 
     await app.close();
   });
