@@ -73,4 +73,9 @@ describe("RunHistory — outcome badge", () => {
     renderRuns([run({ status: "running", score: null, blockers: null })]);
     expect(screen.getByText("running")).toBeInTheDocument();
   });
+
+  it("shows the run's cost next to its timestamp", () => {
+    renderRuns([run({ status: "done", cost_usd: 0.0013 })]);
+    expect(screen.getByText("$0.001")).toBeInTheDocument();
+  });
 });
