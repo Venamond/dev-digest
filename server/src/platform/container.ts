@@ -171,8 +171,15 @@ export class Container {
   }
 
   private async buildLlm(id: 'openai' | 'anthropic' | 'openrouter'): Promise<LLMProvider> {
-    // All three providers share ONE cost source: PriceBook (live OpenRouter
-    // prices, static-table fallback) — not just the OpenRouter path.
+    // All three providers share ONE injection point: PriceBook. In practice,
+    // only the openrouter path currently gets LIVE prices from it — its model
+    // IDs match PriceBook's OpenRouter-sourced price map exactly. openai/
+    // anthropic pass bare model IDs (e.g. "gpt-4.1", not "openai/gpt-4.1"),
+    // which never match that map, so those two always fall through to
+    // PriceBook's static-table fallback (the same estimateCost table used
+    // before this wiring existed) — a known limitation, not a bug. Fixing it
+    // would mean normalizing model IDs (e.g. trying "<provider>/<model>") in
+    // PriceBook.estimate(); deliberately out of scope for now.
     const estimateCost = (model: string, tokensIn: number, tokensOut: number) =>
       this.priceBook.estimate(model, tokensIn, tokensOut);
     if (id === 'openai') {
