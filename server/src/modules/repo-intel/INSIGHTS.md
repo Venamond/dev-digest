@@ -1,8 +1,8 @@
-# `repo-intel` — learnings
+# `repo-intel` — insights
 
 Append-only. `repo-intel` is a semi-independent subsystem inside `server`
-(its own README, its own pipeline) — it gets its own learnings file at this
-finer granularity instead of sharing `server/LEARNINGS.md`. Same rules apply:
+(its own README, its own pipeline) — it gets its own insights file at this
+finer granularity instead of sharing `server/INSIGHTS.md`. Same rules apply:
 cold-test every entry, append-only, treat as a draft to spot-check.
 
 ## What Works

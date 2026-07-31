@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\" 2>/dev/null; recent=$(git log --since=\"30 minutes ago\" --name-only --pretty=format: 2>/dev/null | grep -v \"^$\" | grep -vE \"INSIGHTS\\.md$\"); uncommitted=$(git status --porcelain 2>/dev/null | grep -vE \"INSIGHTS\\.md$\"); if [ -n \"$recent\" ] || [ -n \"$uncommitted\" ]; then jq -n \"{hookSpecificOutput:{hookEventName:\\\"Stop\\\",additionalContext:\\\"Reminder (engineering-insights hook): source files changed recently in this repo. Before finishing, check whether a non-trivial, actionable engineering lesson surfaced this session and, if so, invoke the engineering-insights skill / update the relevant module INSIGHTS.md. If nothing new cleared the bar, doing nothing is the correct outcome.\\\"}}\"; fi",
+            "timeout": 15,
+            "statusMessage": "Checking engineering-insights…"
+          }
+        ]
+      }
+    ]
+  }
+}

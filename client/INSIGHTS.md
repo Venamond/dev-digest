@@ -1,4 +1,4 @@
-# `client` — learnings
+# `client` — insights
 
 Append-only. Written by the `engineering-insights` skill (and by hand) after
 sessions that touch this module. Every entry must pass the cold test: an
@@ -37,7 +37,7 @@ ground truth — wrap-ups can mischaracterize a session.
   the fixture's actual runtime value can legitimately be `null`. When a
   server-side task extends such a contract, expect to also patch every
   client fixture of that type in the same change, not just the server side.
-  (2026-07-31, run-cost-ui feature; full explanation in `server/LEARNINGS.md`
+  (2026-07-31, run-cost-ui feature; full explanation in `server/INSIGHTS.md`
   under the same date.)
 
 ## Recurring Errors & Fixes
