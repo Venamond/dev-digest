@@ -27,6 +27,7 @@ function pr(o: Partial<PrMeta>): PrMeta {
     opened_at: "2026-06-01T00:00:00.000Z",
     updated_at: "2026-06-01T00:00:00.000Z",
     score: null,
+    findings: null,
     cost_usd: null,
     ...o,
   };
@@ -50,5 +51,19 @@ describe("PRRow — cost column", () => {
   it("shows the formatted cost of the latest run", () => {
     renderRow(pr({ cost_usd: 0.014 }));
     expect(screen.getByText("$0.014")).toBeInTheDocument();
+  });
+});
+
+describe("PRRow — findings column", () => {
+  it("shows an em-dash when the latest review found nothing", () => {
+    renderRow(pr({ findings: { critical: 0, warning: 0, suggestion: 0 } }));
+    const dashes = screen.getAllByText("—");
+    expect(dashes.length).toBeGreaterThan(0);
+  });
+
+  it("shows a count per non-zero severity, in critical/warning/suggestion order", () => {
+    renderRow(pr({ findings: { critical: 2, warning: 0, suggestion: 3 } }));
+    expect(screen.getByText("2")).toBeInTheDocument();
+    expect(screen.getByText("3")).toBeInTheDocument();
   });
 });
