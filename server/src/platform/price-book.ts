@@ -17,6 +17,11 @@ const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
  * provider's per-call cost hook, which cannot await. The first call after a
  * cold start (or expiry) returns the fallback while a refresh runs in the
  * background; subsequent calls use the live prices.
+ *
+ * Lookup is by EXACT model id, so live prices only actually apply to models
+ * whose id already matches OpenRouter's namespaced form (e.g. `"openai/gpt-4.1"`)
+ * — in practice that's the openrouter provider; callers passing bare ids
+ * (e.g. plain "gpt-4.1") always miss and fall through to the static fallback.
  */
 export class PriceBook {
   private prices = new Map<string, { in: number; out: number }>();
@@ -58,7 +63,7 @@ export class PriceBook {
 
   private maybeRefresh(): void {
     if (this.refreshing) return;
-    if (this.now() < this.expires && this.prices.size > 0) return;
+    if (this.now() < this.expires) return;
     this.refreshing = true;
     this.expires = this.now() + this.ttlMs; // set early so concurrent calls don't stampede
     this.listOpenRouterModels()

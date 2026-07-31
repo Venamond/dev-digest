@@ -171,25 +171,30 @@ export class Container {
   }
 
   private async buildLlm(id: 'openai' | 'anthropic' | 'openrouter'): Promise<LLMProvider> {
+    // All three providers share ONE injection point: PriceBook. In practice,
+    // only the openrouter path currently gets LIVE prices from it — its model
+    // IDs match PriceBook's OpenRouter-sourced price map exactly. openai/
+    // anthropic pass bare model IDs (e.g. "gpt-4.1", not "openai/gpt-4.1"),
+    // which never match that map, so those two always fall through to
+    // PriceBook's static-table fallback (the same estimateCost table used
+    // before this wiring existed) — a known limitation, not a bug. Fixing it
+    // would mean normalizing model IDs (e.g. trying "<provider>/<model>") in
+    // PriceBook.estimate(); deliberately out of scope for now.
+    const estimateCost = (model: string, tokensIn: number, tokensOut: number) =>
+      this.priceBook.estimate(model, tokensIn, tokensOut);
     if (id === 'openai') {
       const key = await this.secrets.get('OPENAI_API_KEY');
       if (!key) throw new ConfigError('OPENAI_API_KEY is not configured');
-      return new OpenAIProvider(key);
+      return new OpenAIProvider(key, { estimateCost });
     }
     if (id === 'openrouter') {
-      // Single OpenRouter provider lives in reviewer-core (shared with the CI
-      // runner); inject the PriceBook so cost attribution uses LIVE OpenRouter
-      // prices (with the static table as a fallback) rather than a hardcoded one.
       const key = await this.secrets.get('OPENROUTER_API_KEY');
       if (!key) throw new ConfigError('OPENROUTER_API_KEY is not configured');
-      return new OpenRouterProvider(key, {
-        estimateCost: (model, tokensIn, tokensOut) =>
-          this.priceBook.estimate(model, tokensIn, tokensOut),
-      });
+      return new OpenRouterProvider(key, { estimateCost });
     }
     const key = await this.secrets.get('ANTHROPIC_API_KEY');
     if (!key) throw new ConfigError('ANTHROPIC_API_KEY is not configured');
-    return new AnthropicProvider(key);
+    return new AnthropicProvider(key, { estimateCost });
   }
 
   async embedder(): Promise<Embedder> {
