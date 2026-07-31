@@ -61,6 +61,28 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Recurring Errors & Fixes
 
+- Deleting a run (timeline trash icon → `deleteAgentRun`) while its LLM call
+  is still in flight orphans a `reviews`/`findings` row: `runOneAgent`
+  (`run-executor.ts`) writes `reviews`/`findings` (then updates `agent_runs`)
+  only AFTER the LLM responds, but `deleteAgentRun` deletes `reviews` by
+  `run_id` BEFORE that row exists if the user deletes mid-flight — so its
+  `DELETE FROM reviews` matches nothing, then the still-running job inserts a
+  review anyway once the LLM returns (`reviews.run_id` has no FK to
+  `agent_runs.id`, so nothing rejects it). The orphan has no `agent_runs` row
+  so it never appears in the Timeline, but its findings still get summed by
+  `SeverityCounters` (`page.tsx`'s `allFindings`, which tallies every
+  `reviews` row for the PR) — the PR detail's severity total (e.g. "1
+  CRITICAL · 5 WARNING · 1 SUGGESTION") silently exceeds the sum of the
+  finding counts shown on each visible timeline run. Fixed by having
+  `runOneAgent` check `repo.agentRunExists(runId)` right after the LLM call
+  returns and before persisting, throwing `RunCancelledError` (existing
+  cancellation path) if the run was deleted out from under it. Regression
+  test: `server/test/reviews.it.test.ts` — "deleting a run while its review
+  is still in flight does not orphan a review/findings" (uses
+  `MockLLMProvider`'s new `delayMs` option to hold the mock call open long
+  enough to delete the run mid-flight). (2026-07-31, PR-list Findings
+  column / severity-counters merge)
+
 - Deleting an `agent_runs` row or a `reviews` row (`deleteAgentRun`,
   `server/src/modules/reviews/repository/run.repo.ts`) does NOT clear
   `pull_requests.last_reviewed_sha`. Only `markReviewed()`

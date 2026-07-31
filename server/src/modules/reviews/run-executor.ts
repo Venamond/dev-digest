@@ -214,6 +214,18 @@ export class ReviewRunExecutor {
 
       const keptFindings = outcome.review.findings;
 
+      // The user may have deleted this run (timeline trash icon) while the LLM
+      // call above was still in flight — `deleteAgentRun` only removes a
+      // `reviews` row that already exists, so it can't catch a review that
+      // hasn't been written yet. Treat a missing agent_runs row as a
+      // cancellation: persisting a review now would orphan it (and its
+      // findings) with no run to show it against in the timeline, while the
+      // PR-wide severity counters would still tally them — a source of the
+      // total/timeline mismatch.
+      if (!(await this.repo.agentRunExists(runId))) {
+        throw new RunCancelledError();
+      }
+
       // ---- Persist review + findings ----------------------------------------
       const review = await this.repo.insertReview({
         workspaceId,

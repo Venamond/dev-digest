@@ -53,6 +53,9 @@ export interface MockLLMOptions {
   structuredBySchema?: Record<string, unknown>;
   completionText?: string;
   embedding?: number[];
+  /** Delay before completeStructured resolves — lets tests act while a run is
+   *  still "in flight" (e.g. delete it mid-review to exercise that race). */
+  delayMs?: number;
 }
 
 export class MockLLMProvider implements LLMProvider {
@@ -88,6 +91,7 @@ export class MockLLMProvider implements LLMProvider {
 
   async completeStructured<T>(req: StructuredRequest<T>): Promise<StructuredResult<T>> {
     this.calls.push({ method: 'completeStructured', req });
+    if (this.opts.delayMs) await new Promise((r) => setTimeout(r, this.opts.delayMs));
     const fixture = this.opts.structuredBySchema?.[req.schemaName] ?? this.opts.structured ?? {};
     const parsed = (req.schema as z.ZodType<T>).safeParse(fixture);
     if (!parsed.success) {

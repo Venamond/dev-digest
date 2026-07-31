@@ -68,6 +68,13 @@ export async function listRunsForPull(
   }));
 }
 
+/** Whether an agent_runs row still exists — used to detect "run was deleted
+ *  out from under an in-flight job" before that job persists a review. */
+export async function agentRunExists(db: Db, runId: string): Promise<boolean> {
+  const rows = await db.select({ id: t.agentRuns.id }).from(t.agentRuns).where(eq(t.agentRuns.id, runId));
+  return rows.length > 0;
+}
+
 /**
  * Delete one agent run (+ its trace via FK cascade) AND the review it produced.
  * Workspace-scoped. `reviews.run_id` has no FK to `agent_runs`, so the review

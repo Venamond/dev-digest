@@ -221,6 +221,58 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
     await app.close();
   });
 
+  it('deleting a run while its review is still in flight does not orphan a review/findings', async () => {
+    const app = await buildApp({
+      config: config(),
+      db: pg.handle.db,
+      overrides: {
+        embedder: new MockEmbedder(),
+        git: new MockGitClient({ diff: DIFF }),
+        llm: { openai: new MockLLMProvider('openai', { structured: REVIEW_FIXTURE, delayMs: 200 }) },
+      },
+    });
+    const { pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
+    const agent = (
+      await app.inject({
+        method: 'POST',
+        url: '/agents',
+        payload: { name: 'Sec', provider: 'openai', model: 'gpt-4.1', system_prompt: 'sec' },
+      })
+    ).json();
+
+    const started = await app.inject({
+      method: 'POST',
+      url: `/pulls/${pr.id}/review`,
+      payload: { agentId: agent.id },
+    });
+    const runId = started.json().runs[0].run_id;
+
+    // The mock LLM call is mid-flight (delayMs above) — delete the run now, the
+    // way the timeline's trash icon does, before its review/findings are ever
+    // written. Reproduces the race in run-executor.ts's `runOneAgent`.
+    const del = await app.inject({ method: 'DELETE', url: `/runs/${runId}` });
+    expect(del.json().ok).toBe(true);
+
+    // The run row is gone (nothing for waitForPrRuns to poll), so just give the
+    // still-in-flight job (delayMs above) time to reach its persist step.
+    await new Promise((r) => setTimeout(r, 500));
+
+    // No orphaned review/findings: the run row is gone, and no review was ever
+    // written against it (the executor must treat the missing run as cancelled
+    // rather than persisting a review/findings nothing will ever show again).
+    const [run] = await pg.handle.db.select().from(t.agentRuns).where(eq(t.agentRuns.id, runId));
+    expect(run).toBeUndefined();
+    const orphanedReviews = await pg.handle.db.select().from(t.reviews).where(eq(t.reviews.runId, runId));
+    expect(orphanedReviews).toHaveLength(0);
+
+    const reviews = (
+      await app.inject({ method: 'GET', url: `/pulls/${pr.id}/reviews` })
+    ).json();
+    expect(reviews).toHaveLength(0);
+
+    await app.close();
+  });
+
   it('dual-provider structured output: anthropic provider returns the same Review shape', async () => {
     const app = await appWith(REVIEW_FIXTURE, 'anthropic');
     const { pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
