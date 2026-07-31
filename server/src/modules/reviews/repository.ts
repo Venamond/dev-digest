@@ -87,6 +87,12 @@ export class ReviewRepository {
     return runRepo.deleteAgentRun(this.db, workspaceId, runId);
   }
 
+  /** Whether an agent_runs row still exists (not workspace-scoped — callers
+   *  already hold the runId from a job they started). */
+  agentRunExists(runId: string): Promise<boolean> {
+    return runRepo.agentRunExists(this.db, runId);
+  }
+
   /** Mark a still-running run as cancelled (no-op if it already finished). */
   cancelRunIfRunning(runId: string): Promise<boolean> {
     return runRepo.cancelRunIfRunning(this.db, runId);
