@@ -4,12 +4,19 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Icon, Avatar, Badge, CircularScore } from "@devdigest/ui";
+import { Icon, Avatar, Badge, CircularScore, SEV } from "@devdigest/ui";
 import { CostBadge } from "@/components/cost-badge";
 import type { PrMeta } from "@/lib/types";
 import { SIZE_COLOR, STATUS_META } from "../../constants";
 import { relativeTime, sizeOf } from "../../helpers";
 import { s } from "../../styles";
+
+/** (lowercase PrMeta.findings key) → SEV token key, in display order. */
+const FINDINGS_LEVELS = [
+  ["critical", "CRITICAL"],
+  ["warning", "WARNING"],
+  ["suggestion", "SUGGESTION"],
+] as const;
 
 export function PRRow({ pr, repoId }: { pr: PrMeta; repoId: string }) {
   const t = useTranslations("prReview");
@@ -50,6 +57,24 @@ export function PRRow({ pr, repoId }: { pr: PrMeta; repoId: string }) {
       <div style={s.scoreCell}>
         {reviewed ? (
           <CircularScore score={pr.score!} size={34} stroke={3} />
+        ) : (
+          <span style={s.muted}>—</span>
+        )}
+      </div>
+      <div style={s.findingsCell}>
+        {pr.findings && (pr.findings.critical || pr.findings.warning || pr.findings.suggestion) ? (
+          FINDINGS_LEVELS.filter(([key]) => pr.findings![key] > 0).map(([key, sevKey]) => {
+            const SevIcon = Icon[SEV[sevKey].icon];
+            return (
+              <span
+                key={key}
+                style={{ display: "inline-flex", alignItems: "center", gap: 2, color: SEV[sevKey].c }}
+              >
+                <SevIcon size={13} />
+                {pr.findings![key]}
+              </span>
+            );
+          })
         ) : (
           <span style={s.muted}>—</span>
         )}

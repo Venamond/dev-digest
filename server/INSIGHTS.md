@@ -13,6 +13,18 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Codebase Patterns
 
+- `server/src/modules/pulls/status.ts`'s `rollupSeverities()` was already
+  written, exported, and unit-tested (`server/test/pulls-status.test.ts`)
+  before it was ever wired into a route — the file's own docstring says the
+  PR list should show a findings breakdown, but `pulls/routes.ts` had a
+  comment claiming that was "intentionally not surfaced." The comment was
+  stale, not a real product decision. When a route's comment says a field is
+  deliberately omitted, check whether a pure helper for exactly that field
+  already exists elsewhere in the same module before assuming it needs to be
+  built — this codebase accumulates ready-to-wire helpers that outlive the
+  routes that were supposed to use them. (2026-07-31, PR-list Findings
+  column)
+
 ## Tool & Library Notes
 
 - A `z.object({ field: z.number().nullable() })` field is REQUIRED at the TS
@@ -48,6 +60,19 @@ ground truth — wrap-ups can mischaracterize a session.
   fixed, per product decision.
 
 ## Recurring Errors & Fixes
+
+- Deleting an `agent_runs` row or a `reviews` row (`deleteAgentRun`,
+  `server/src/modules/reviews/repository/run.repo.ts`) does NOT clear
+  `pull_requests.last_reviewed_sha`. Only `markReviewed()`
+  (`server/src/modules/reviews/repository/pull.repo.ts`) ever writes that
+  column, and nothing resets it. So once a PR's review status flips to
+  `reviewed` (per `deriveReviewStatus` in `status.ts`), deleting its runs
+  from the UI does NOT move it back to `needs_review` — it stays `reviewed`
+  until a new commit changes `head_sha`. There is no app action that resets
+  this; to force a PR back to `needs_review` for testing/demo purposes, null
+  `last_reviewed_sha` directly: `UPDATE pull_requests SET
+  last_reviewed_sha = NULL WHERE id = '<pr-id>';` — this does not touch
+  `agent_runs`/`reviews`/`findings`. (2026-07-31)
 
 ## Session Notes
 
