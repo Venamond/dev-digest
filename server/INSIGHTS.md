@@ -25,6 +25,29 @@ ground truth — wrap-ups can mischaracterize a session.
   routes that were supposed to use them. (2026-07-31, PR-list Findings
   column)
 
+- `GET /repos/:id/pulls`'s findings badge originally summed only the PR's
+  single newest `reviews` row (picked via `orderBy(desc(createdAt))`, first
+  seen per PR). A review run fans out to one `reviews` row PER REVIEWER AGENT
+  (General/Security/Performance/…) created within moments of each other —
+  "newest" just means "whichever agent's row got its `createdAt` timestamp
+  last", not "the review". That silently dropped every other agent's
+  findings from the list badge, while the PR-detail page's
+  `SeverityCounters` sums findings across ALL of the PR's reviews and so
+  showed a higher, correct-looking total — a mismatch that reads as "PR list
+  findings count doesn't match the detail page." Fixed by summing findings
+  across every `reviews` row for the PR (join `findings`→`reviews`, group by
+  `reviews.pr_id`), matching the detail page's definition — same fix shape as
+  the earlier `SeverityCounters` design already used. NOTE: `score` and
+  `cost_usd` on this same list endpoint still use "latest review"/"latest
+  run" semantics (`latestReviewByPr`, `latestCostByPr`) and were NOT touched
+  by this fix — they weren't reported as wrong, but the same
+  one-review-picked-arbitrarily caveat applies if a future report shows a PR
+  with the "wrong" agent's score displayed. Regression test:
+  `server/test/reviews.it.test.ts` — "PR-list findings badge sums every
+  reviewer's findings, not just the latest review" (runs 2 agents against one
+  PR, asserts the list endpoint's `findings` counts both). (2026-07-31,
+  PR-list Findings column / severity-counters merge)
+
 ## Tool & Library Notes
 
 - A `z.object({ field: z.number().nullable() })` field is REQUIRED at the TS

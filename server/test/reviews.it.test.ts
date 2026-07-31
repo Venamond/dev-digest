@@ -360,4 +360,39 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
     expect(body.runs.length).toBeGreaterThanOrEqual(2);
     await app.close();
   });
+
+  it('PR-list findings badge sums every reviewer\'s findings, not just the latest review', async () => {
+    const app = await appWith(REVIEW_FIXTURE);
+    const { pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
+
+    // Two agents reviewing the SAME PR — like a "run all" batch, each produces
+    // its own `reviews` row moments apart. Each keeps 1 CRITICAL finding after
+    // grounding (REVIEW_FIXTURE's line-999 finding is always dropped).
+    const agentA = (
+      await app.inject({
+        method: 'POST',
+        url: '/agents',
+        payload: { name: 'A', provider: 'openai', model: 'gpt-4.1', system_prompt: 'a' },
+      })
+    ).json();
+    const agentB = (
+      await app.inject({
+        method: 'POST',
+        url: '/agents',
+        payload: { name: 'B', provider: 'openai', model: 'gpt-4.1', system_prompt: 'b' },
+      })
+    ).json();
+
+    await app.inject({ method: 'POST', url: `/pulls/${pr.id}/review`, payload: { agentId: agentA.id } });
+    await app.inject({ method: 'POST', url: `/pulls/${pr.id}/review`, payload: { agentId: agentB.id } });
+    await waitForPrRuns(pg.handle.db, pr.id, { expected: 2 });
+
+    const list = (await app.inject({ method: 'GET', url: `/repos/${pr.repoId}/pulls` })).json();
+    const listedPr = list.find((p: { id: string }) => p.id === pr.id);
+    // Both reviews' findings, not just the one from whichever review row
+    // happens to be newest.
+    expect(listedPr.findings).toEqual({ critical: 2, warning: 0, suggestion: 0 });
+
+    await app.close();
+  });
 });
