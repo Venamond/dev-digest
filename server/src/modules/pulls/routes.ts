@@ -128,23 +128,28 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
       }
     }
 
-    // Findings severity breakdown for each PR's latest review, via the same
-    // rollupSeverities() the PR-detail Findings tab counters use.
+    // Findings severity breakdown per PR, via the same rollupSeverities() the
+    // PR-detail Findings tab counters use — and, like that tab, summed across
+    // EVERY review for the PR, not just the latest one. A review run fans out
+    // to one `reviews` row per reviewer agent (General/Security/Performance/…),
+    // all created within moments of each other; picking only the single
+    // newest row showed one agent's findings and silently dropped the rest,
+    // so this count disagreed with the PR-detail page's total.
     const findingsByPr = new Map<string, ReturnType<typeof rollupSeverities>>();
-    const latestReviewIds = [...latestReviewByPr.values()].map((rv) => rv.id);
-    if (latestReviewIds.length > 0) {
+    if (prIds.length > 0) {
       const findingRows = await container.db
-        .select({ reviewId: t.findings.reviewId, severity: t.findings.severity })
+        .select({ prId: t.reviews.prId, severity: t.findings.severity })
         .from(t.findings)
-        .where(inArray(t.findings.reviewId, latestReviewIds));
+        .innerJoin(t.reviews, eq(t.reviews.id, t.findings.reviewId))
+        .where(and(inArray(t.reviews.prId, prIds), eq(t.reviews.kind, 'review')));
       const bySeverityRows = new Map<string, { severity: string }[]>();
       for (const fr of findingRows) {
-        const list = bySeverityRows.get(fr.reviewId) ?? [];
+        const list = bySeverityRows.get(fr.prId) ?? [];
         list.push({ severity: fr.severity });
-        bySeverityRows.set(fr.reviewId, list);
+        bySeverityRows.set(fr.prId, list);
       }
-      for (const [prId, rv] of latestReviewByPr) {
-        findingsByPr.set(prId, rollupSeverities(bySeverityRows.get(rv.id) ?? []));
+      for (const prId of prIds) {
+        findingsByPr.set(prId, rollupSeverities(bySeverityRows.get(prId) ?? []));
       }
     }
 
