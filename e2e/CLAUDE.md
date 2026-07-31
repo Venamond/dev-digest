@@ -55,10 +55,10 @@ npm run typecheck
 | [README.md](README.md) | working here for the first time — flow format, coverage table |
 | [docs/](docs/README.md) | writing an ADR or architecture note for this package |
 | [specs/](specs/) | writing or editing a flow — see an existing spec for the shape first |
-| [LEARNINGS.md](LEARNINGS.md) | **as soon as a request makes clear it concerns `e2e`** — read before any other action |
+| [INSIGHTS.md](INSIGHTS.md) | **as soon as a request makes clear it concerns `e2e`** — read before any other action |
 | [../TESTING.md](../TESTING.md) | understanding how this suite fits the overall test strategy |
 
-**On finishing work here: re-read `LEARNINGS.md`, then append only if
+**On finishing work here: re-read `INSIGHTS.md`, then append only if
 something genuinely new and non-trivial surfaced that isn't already
 recorded** (via the `engineering-insights` skill or `/engineering-insights`).
 Writing nothing is correct when nothing new cleared that bar.
