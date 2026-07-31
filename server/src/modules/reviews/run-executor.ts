@@ -210,9 +210,21 @@ export class ReviewRunExecutor {
           if (this.container.runBus.isCancelled(runId)) throw new RunCancelledError();
         },
       });
-      const { tokensIn, tokensOut, grounding } = outcome;
+      const { tokensIn, tokensOut, grounding, costUsd } = outcome;
 
       const keptFindings = outcome.review.findings;
+
+      // The user may have deleted this run (timeline trash icon) while the LLM
+      // call above was still in flight — `deleteAgentRun` only removes a
+      // `reviews` row that already exists, so it can't catch a review that
+      // hasn't been written yet. Treat a missing agent_runs row as a
+      // cancellation: persisting a review now would orphan it (and its
+      // findings) with no run to show it against in the timeline, while the
+      // PR-wide severity counters would still tally them — a source of the
+      // total/timeline mismatch.
+      if (!(await this.repo.agentRunExists(runId))) {
+        throw new RunCancelledError();
+      }
 
       // ---- Persist review + findings ----------------------------------------
       const review = await this.repo.insertReview({
@@ -249,6 +261,7 @@ export class ReviewRunExecutor {
         grounding,
         score: outcome.review.score,
         blockers,
+        costUsd,
         error: null,
       });
 
@@ -265,6 +278,7 @@ export class ReviewRunExecutor {
           duration_ms: durationMs,
           tokens_in: tokensIn,
           tokens_out: tokensOut,
+          cost_usd: costUsd,
           findings: findingRows.length,
           grounding,
         },
@@ -421,7 +435,7 @@ export class ReviewRunExecutor {
         pr: pull.number,
         source: 'local',
       },
-      stats: { duration_ms: durationMs, tokens_in: 0, tokens_out: 0, findings: 0, grounding },
+      stats: { duration_ms: durationMs, tokens_in: 0, tokens_out: 0, cost_usd: null, findings: 0, grounding },
       prompt_assembly: { system: agent.systemPrompt, skills: null, memory: null, specs: null, user: '' },
       tool_calls: [],
       raw_output: '',

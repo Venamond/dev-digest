@@ -142,6 +142,7 @@ export default function PRDetailPage() {
             liveRunIds={liveRunIds}
             reviewRunning={reviewRunning}
             lethalTrifecta={lethalTrifecta}
+            allFindings={allFindings}
             runs={runs}
             prRuns={prRuns}
             prCommits={pr.commits}

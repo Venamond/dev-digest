@@ -1,0 +1,7 @@
+# `client/docs`
+
+Architecture decision records and design notes for `@devdigest/web` that
+don't belong in the always-loaded `CLAUDE.md` — link them from there under
+"Read when" instead of inlining detail.
+
+Empty for now; add one file per decision.
