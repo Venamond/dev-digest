@@ -59,9 +59,9 @@ here.
 | [docs/agent-prompts/](docs/agent-prompts/README.md) | editing a built-in agent's system prompt |
 | `<module>/README.md` | working inside that module — deep architecture diagram |
 | `<module>/CLAUDE.md` | working inside that module — conventions + gotchas |
-| `<module>/LEARNINGS.md` | **as soon as the user's request makes clear which module it concerns** — read it before any other action; treat it as high-confidence guidance unless told otherwise |
+| `<module>/INSIGHTS.md` | **as soon as the user's request makes clear which module it concerns** — read it before any other action; treat it as high-confidence guidance unless told otherwise |
 
-**On finishing work in a module: re-read its `LEARNINGS.md`, then append only
+**On finishing work in a module: re-read its `INSIGHTS.md`, then append only
 if something genuinely new and non-trivial surfaced that isn't already
 recorded** (via the `engineering-insights` skill or `/engineering-insights`).
 Writing nothing is the correct outcome when nothing new cleared that bar.

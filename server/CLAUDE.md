@@ -63,11 +63,11 @@ pnpm typecheck
 | [src/modules/repo-intel/README.md](src/modules/repo-intel/README.md) | touching indexing, repo map, blast radius, phantom detection |
 | [docs/](docs/README.md) | writing an ADR or architecture note for this package |
 | [specs/](specs/README.md) | implementing against a written spec/contract for this package |
-| [LEARNINGS.md](LEARNINGS.md) | **as soon as a request makes clear it concerns `server`** — read before any other action |
-| [src/modules/repo-intel/LEARNINGS.md](src/modules/repo-intel/LEARNINGS.md) | same, specifically for `repo-intel` work |
+| [INSIGHTS.md](INSIGHTS.md) | **as soon as a request makes clear it concerns `server`** — read before any other action |
+| [src/modules/repo-intel/INSIGHTS.md](src/modules/repo-intel/INSIGHTS.md) | same, specifically for `repo-intel` work |
 | [../TESTING.md](../TESTING.md) | writing a new test — unit vs `.it.test.ts` rules |
 
-**On finishing work here: re-read the relevant `LEARNINGS.md`, then append
+**On finishing work here: re-read the relevant `INSIGHTS.md`, then append
 only if something genuinely new and non-trivial surfaced that isn't already
 recorded** (via the `engineering-insights` skill or `/engineering-insights`).
 Writing nothing is correct when nothing new cleared that bar.

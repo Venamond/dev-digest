@@ -58,10 +58,10 @@ npm run typecheck  # also the build; this package never emits JS
 | [README.md](README.md) | working here for the first time — pipeline diagram, public API |
 | [docs/](docs/README.md) | writing an ADR or architecture note for this package |
 | [specs/](specs/README.md) | implementing against a written spec for the engine |
-| [LEARNINGS.md](LEARNINGS.md) | **as soon as a request makes clear it concerns `reviewer-core`** — read before any other action |
+| [INSIGHTS.md](INSIGHTS.md) | **as soon as a request makes clear it concerns `reviewer-core`** — read before any other action |
 | [../TESTING.md](../TESTING.md) | writing a new test |
 
-**On finishing work here: re-read `LEARNINGS.md`, then append only if
+**On finishing work here: re-read `INSIGHTS.md`, then append only if
 something genuinely new and non-trivial surfaced that isn't already
 recorded** (via the `engineering-insights` skill or `/engineering-insights`).
 Writing nothing is correct when nothing new cleared that bar.

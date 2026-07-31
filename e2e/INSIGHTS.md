@@ -1,4 +1,4 @@
-# `reviewer-core` — learnings
+# `e2e` — insights
 
 Append-only. Written by the `engineering-insights` skill (and by hand) after
 sessions that touch this module. Every entry must pass the cold test: an

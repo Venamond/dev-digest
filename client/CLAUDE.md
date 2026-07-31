@@ -54,11 +54,11 @@ pnpm typecheck
 | [README.md](README.md) | working here for the first time — UI route ↔ API map |
 | [docs/](docs/README.md) | writing an ADR or architecture note for this package |
 | [specs/](specs/README.md) | implementing against a written spec for a screen/flow |
-| [LEARNINGS.md](LEARNINGS.md) | **as soon as a request makes clear it concerns `client`** — read before any other action |
+| [INSIGHTS.md](INSIGHTS.md) | **as soon as a request makes clear it concerns `client`** — read before any other action |
 | [../e2e/README.md](../e2e/README.md) | a change needs real browser coverage, not just a component test |
 | [../TESTING.md](../TESTING.md) | writing a new test |
 
-**On finishing work here: re-read `LEARNINGS.md`, then append only if
+**On finishing work here: re-read `INSIGHTS.md`, then append only if
 something genuinely new and non-trivial surfaced that isn't already
 recorded** (via the `engineering-insights` skill or `/engineering-insights`).
 Writing nothing is correct when nothing new cleared that bar.
