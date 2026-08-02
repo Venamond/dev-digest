@@ -48,11 +48,19 @@ export function usePrRuns(prId: string | null | undefined) {
 }
 
 // ---- Persisted reviews + findings for a PR ----
-export function usePrReviews(prId: string | null | undefined) {
+/** `opts.enabled` lets a caller gate the fetch behind its own condition (e.g.
+ *  "only after the user has hovered for 200ms") without losing the `!!prId`
+ *  guard. `opts.staleTime` lets a caller that only needs an occasional lazy
+ *  read (e.g. a hover preview) avoid refetching on every re-hover. */
+export function usePrReviews(
+  prId: string | null | undefined,
+  opts: { enabled?: boolean; staleTime?: number } = {},
+) {
   return useQuery({
     queryKey: ["reviews", prId],
     queryFn: () => api.get<ReviewRecord[]>(`/pulls/${prId}/reviews`),
-    enabled: !!prId,
+    enabled: !!prId && (opts.enabled ?? true),
+    staleTime: opts.staleTime,
   });
 }
 
