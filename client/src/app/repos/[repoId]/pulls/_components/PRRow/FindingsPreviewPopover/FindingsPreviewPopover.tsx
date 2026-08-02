@@ -9,11 +9,16 @@
 "use client";
 
 import React from "react";
+import { createPortal } from "react-dom";
 import { usePrReviews } from "@/lib/hooks/reviews";
 import { FindingsPreviewPanel } from "./FindingsPreviewPanel";
 import { s } from "./styles";
 
 const HOVER_OPEN_DELAY_MS = 200;
+// Must stay LESS than HOVER_OPEN_DELAY_MS: each row holds independent open/close
+// state, and "only one popover visible at a time across the PR list" relies on
+// the previous row's popover finishing its close before a newly-hovered row's
+// popover opens. Don't reorder/change these without preserving that relationship.
 const HOVER_CLOSE_DELAY_MS = 150;
 
 export function FindingsPreviewPopover({
@@ -26,10 +31,12 @@ export function FindingsPreviewPopover({
   children: React.ReactNode;
 }) {
   const [open, setOpen] = React.useState(false);
+  const [pos, setPos] = React.useState<{ top: number; left: number } | null>(null);
   const openTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const anchorRef = React.useRef<HTMLDivElement | null>(null);
 
-  const { data, isLoading } = usePrReviews(prId, { enabled: open, staleTime: 60_000 });
+  const { data, isLoading, isError } = usePrReviews(prId, { enabled: open, staleTime: 60_000 });
 
   const handleEnter = () => {
     if (closeTimer.current) {
@@ -62,16 +69,35 @@ export function FindingsPreviewPopover({
     [],
   );
 
+  // Measure the trigger's position when the popover opens, so the portaled
+  // panel (rendered into document.body, see below) can be placed with
+  // position: fixed instead of relying on an absolutely-positioned ancestor —
+  // which is what let the PR-list card's `overflow: hidden` clip it before.
+  React.useLayoutEffect(() => {
+    if (!open || !anchorRef.current) return;
+    const rect = anchorRef.current.getBoundingClientRect();
+    setPos({ top: rect.bottom + 6, left: rect.left });
+  }, [open]);
+
   const findings = React.useMemo(() => (data ?? []).flatMap((r) => r.findings), [data]);
 
   return (
-    <div data-findings-preview style={s.wrapper} onMouseEnter={handleEnter} onMouseLeave={handleLeave}>
+    <div
+      data-findings-preview
+      ref={anchorRef}
+      style={s.wrapper}
+      onMouseEnter={handleEnter}
+      onMouseLeave={handleLeave}
+    >
       {children}
-      {open && (
-        <div style={s.popoverAnchor}>
-          <FindingsPreviewPanel findings={findings} count={count} loading={isLoading} />
-        </div>
-      )}
+      {open &&
+        pos &&
+        createPortal(
+          <div style={{ ...s.popoverAnchor, top: pos.top, left: pos.left }}>
+            <FindingsPreviewPanel findings={findings} count={count} loading={isLoading} error={isError} />
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

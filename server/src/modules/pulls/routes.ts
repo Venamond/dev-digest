@@ -135,6 +135,11 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
     // all created within moments of each other; picking only the single
     // newest row showed one agent's findings and silently dropped the rest,
     // so this count disagreed with the PR-detail page's total.
+    // NOTE: `GET /pulls/:id/reviews` (used by the findings-preview popover) does
+    // NOT filter by `kind` here — the two currently agree only because
+    // run-executor.ts is the only insert path and always writes `kind: 'review'`;
+    // if a future feature ever inserts a `'summary'`-kind review, the popover's
+    // header count and its list-length could silently diverge from this badge count.
     const findingsByPr = new Map<string, ReturnType<typeof rollupSeverities>>();
     if (prIds.length > 0) {
       const findingRows = await container.db

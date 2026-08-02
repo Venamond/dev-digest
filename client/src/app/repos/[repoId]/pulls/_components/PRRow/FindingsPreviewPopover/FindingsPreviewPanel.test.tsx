@@ -66,4 +66,13 @@ describe("FindingsPreviewPanel", () => {
     expect(screen.getByText("security")).toBeInTheDocument();
     expect(screen.getByText("80% conf")).toBeInTheDocument();
   });
+
+  it("shows an error message when error is true, even with no findings", () => {
+    render(
+      <NextIntlClientProvider locale="en" messages={{ prReview: messages }}>
+        <FindingsPreviewPanel findings={[]} count={0} loading={false} error />
+      </NextIntlClientProvider>,
+    );
+    expect(screen.getByText("Couldn't load findings")).toBeInTheDocument();
+  });
 });

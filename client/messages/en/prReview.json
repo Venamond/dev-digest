@@ -97,7 +97,8 @@
       "updated": "Updated"
     },
     "findingsPreview": {
-      "title": "{count} FINDINGS"
+      "title": "{count} FINDINGS",
+      "error": "Couldn't load findings"
     },
     "filesCount": "{count} files",
     "errorTitle": "Couldn’t load pull requests",

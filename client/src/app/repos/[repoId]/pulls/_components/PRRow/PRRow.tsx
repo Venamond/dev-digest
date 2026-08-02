@@ -65,6 +65,11 @@ export function PRRow({ pr, repoId }: { pr: PrMeta; repoId: string }) {
       <div style={s.findingsCell}>
         {pr.findings && (pr.findings.critical || pr.findings.warning || pr.findings.suggestion) ? (
           <FindingsPreviewPopover
+            // pr.id is typed nullish in the shared PrMeta contract, but this branch only
+            // renders when pr.findings has a nonzero count, which only happens for a
+            // persisted PR row that always has an id — and even if it were ever
+            // undefined, usePrReviews's own `enabled: !!prId` guard means the query
+            // simply never fires.
             prId={pr.id as string}
             count={pr.findings.critical + pr.findings.warning + pr.findings.suggestion}
           >

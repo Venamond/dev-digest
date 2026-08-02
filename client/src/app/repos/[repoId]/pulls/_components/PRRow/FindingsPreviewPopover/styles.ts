@@ -7,11 +7,13 @@ export const s = {
     alignItems: "center",
     gap: 8,
   } satisfies CSSProperties,
+  // Portal-friendly: rendered via createPortal into document.body (see
+  // FindingsPreviewPopover.tsx) so the panel escapes the PR-list card's
+  // `overflow: hidden`. top/left are computed per-instance from the trigger's
+  // measured bounding rect and applied as inline styles at render time.
   popoverAnchor: {
-    position: "absolute",
-    top: "calc(100% + 6px)",
-    left: 0,
-    zIndex: 20,
+    position: "fixed",
+    zIndex: 1000,
   } satisfies CSSProperties,
   panel: {
     width: 360,
@@ -41,6 +43,16 @@ export const s = {
     justifyContent: "center",
     padding: "12px 0",
     color: "var(--text-muted)",
+  } satisfies CSSProperties,
+  // Same layout slot as `loading` — shown instead of the empty-state `null`
+  // when the reviews fetch errors, so hovering doesn't silently show nothing.
+  error: {
+    display: "flex",
+    justifyContent: "center",
+    padding: "12px 14px",
+    color: "var(--text-muted)",
+    fontSize: 12,
+    textAlign: "center",
   } satisfies CSSProperties,
   list: {
     display: "flex",

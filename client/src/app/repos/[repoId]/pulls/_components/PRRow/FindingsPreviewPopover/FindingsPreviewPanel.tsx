@@ -25,13 +25,15 @@ export function FindingsPreviewPanel({
   findings,
   count,
   loading,
+  error,
 }: {
   findings: FindingRecord[];
   count: number;
   loading?: boolean;
+  error?: boolean;
 }) {
   const t = useTranslations("prReview");
-  if (!loading && findings.length === 0) return null;
+  if (!loading && !error && findings.length === 0) return null;
 
   const sorted = [...findings].sort(
     (a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity],
@@ -43,7 +45,9 @@ export function FindingsPreviewPanel({
         <Icon.AlertOctagon size={14} />
         {t("list.findingsPreview.title", { count })}
       </div>
-      {loading ? (
+      {error ? (
+        <div style={s.error}>{t("list.findingsPreview.error")}</div>
+      ) : loading ? (
         <div style={s.loading}>
           <Icon.RefreshCw size={14} style={{ animation: "ddspin 1s linear infinite" }} />
         </div>

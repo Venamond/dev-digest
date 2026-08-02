@@ -124,4 +124,18 @@ describe("FindingsPreviewPopover", () => {
     });
     expect(screen.queryByText("Hardcoded secret")).not.toBeInTheDocument();
   });
+
+  it("shows an error message after the hover delay when the reviews fetch errors", () => {
+    mockedUsePrReviews.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+    } as ReturnType<typeof usePrReviews>);
+    renderPopover();
+    fireEvent.mouseEnter(screen.getByText("2").parentElement!);
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(screen.getByText("Couldn't load findings")).toBeInTheDocument();
+  });
 });
