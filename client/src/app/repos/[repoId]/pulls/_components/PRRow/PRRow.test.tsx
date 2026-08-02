@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PrMeta } from "@/lib/types";
 import messages from "../../../../../../../messages/en/prReview.json";
 import { PRRow } from "./PRRow";
@@ -34,10 +35,13 @@ function pr(o: Partial<PrMeta>): PrMeta {
 }
 
 function renderRow(p: PrMeta) {
+  const qc = new QueryClient();
   return render(
-    <NextIntlClientProvider locale="en" messages={{ prReview: messages }}>
-      <PRRow pr={p} repoId="r1" />
-    </NextIntlClientProvider>,
+    <QueryClientProvider client={qc}>
+      <NextIntlClientProvider locale="en" messages={{ prReview: messages }}>
+        <PRRow pr={p} repoId="r1" />
+      </NextIntlClientProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -65,5 +69,15 @@ describe("PRRow — findings column", () => {
     renderRow(pr({ findings: { critical: 2, warning: 0, suggestion: 3 } }));
     expect(screen.getByText("2")).toBeInTheDocument();
     expect(screen.getByText("3")).toBeInTheDocument();
+  });
+
+  it("wraps a non-empty findings badge in a hover trigger for the findings preview", () => {
+    const { container } = renderRow(pr({ findings: { critical: 1, warning: 0, suggestion: 0 } }));
+    expect(container.querySelector("[data-findings-preview]")).not.toBeNull();
+  });
+
+  it("does not render a findings-preview trigger when there are no findings", () => {
+    const { container } = renderRow(pr({ findings: { critical: 0, warning: 0, suggestion: 0 } }));
+    expect(container.querySelector("[data-findings-preview]")).toBeNull();
   });
 });

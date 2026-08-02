@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Icon, Avatar, Badge, CircularScore, SEV } from "@devdigest/ui";
 import { CostBadge } from "@/components/cost-badge";
+import { FindingsPreviewPopover } from "./FindingsPreviewPopover";
 import type { PrMeta } from "@/lib/types";
 import { SIZE_COLOR, STATUS_META } from "../../constants";
 import { relativeTime, sizeOf } from "../../helpers";
@@ -63,18 +64,23 @@ export function PRRow({ pr, repoId }: { pr: PrMeta; repoId: string }) {
       </div>
       <div style={s.findingsCell}>
         {pr.findings && (pr.findings.critical || pr.findings.warning || pr.findings.suggestion) ? (
-          FINDINGS_LEVELS.filter(([key]) => pr.findings![key] > 0).map(([key, sevKey]) => {
-            const SevIcon = Icon[SEV[sevKey].icon];
-            return (
-              <span
-                key={key}
-                style={{ display: "inline-flex", alignItems: "center", gap: 2, color: SEV[sevKey].c }}
-              >
-                <SevIcon size={13} />
-                {pr.findings![key]}
-              </span>
-            );
-          })
+          <FindingsPreviewPopover
+            prId={pr.id as string}
+            count={pr.findings.critical + pr.findings.warning + pr.findings.suggestion}
+          >
+            {FINDINGS_LEVELS.filter(([key]) => pr.findings![key] > 0).map(([key, sevKey]) => {
+              const SevIcon = Icon[SEV[sevKey].icon];
+              return (
+                <span
+                  key={key}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 2, color: SEV[sevKey].c }}
+                >
+                  <SevIcon size={13} />
+                  {pr.findings![key]}
+                </span>
+              );
+            })}
+          </FindingsPreviewPopover>
         ) : (
           <span style={s.muted}>—</span>
         )}
