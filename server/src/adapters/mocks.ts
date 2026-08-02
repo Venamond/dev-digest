@@ -56,6 +56,9 @@ export interface MockLLMOptions {
   /** Delay before completeStructured resolves — lets tests act while a run is
    *  still "in flight" (e.g. delete it mid-review to exercise that race). */
   delayMs?: number;
+  /** Override the fixed $0.001 mock cost — lets a test give two agents two
+   *  different costs to verify an endpoint sums them instead of picking one. */
+  costUsd?: number;
 }
 
 export class MockLLMProvider implements LLMProvider {
@@ -102,7 +105,7 @@ export class MockLLMProvider implements LLMProvider {
       model: req.model,
       tokensIn: 100,
       tokensOut: 50,
-      costUsd: 0.001,
+      costUsd: this.opts.costUsd ?? 0.001,
       raw: JSON.stringify(fixture),
       attempts: 1,
     };

@@ -395,4 +395,45 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
 
     await app.close();
   });
+
+  it('PR-list cost sums every run\'s cost, not just the latest run\'s', async () => {
+    const app = await buildApp({
+      config: config(),
+      db: pg.handle.db,
+      overrides: {
+        embedder: new MockEmbedder(),
+        git: new MockGitClient({ diff: DIFF }),
+        llm: {
+          openai: new MockLLMProvider('openai', { structured: REVIEW_FIXTURE, costUsd: 0.002 }),
+          anthropic: new MockLLMProvider('anthropic', { structured: REVIEW_FIXTURE, costUsd: 0.005 }),
+        },
+      },
+    });
+    const { pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
+
+    const agentA = (
+      await app.inject({
+        method: 'POST',
+        url: '/agents',
+        payload: { name: 'A', provider: 'openai', model: 'gpt-4.1', system_prompt: 'a' },
+      })
+    ).json();
+    const agentB = (
+      await app.inject({
+        method: 'POST',
+        url: '/agents',
+        payload: { name: 'B', provider: 'anthropic', model: 'claude-3-5-sonnet-latest', system_prompt: 'b' },
+      })
+    ).json();
+
+    await app.inject({ method: 'POST', url: `/pulls/${pr.id}/review`, payload: { agentId: agentA.id } });
+    await app.inject({ method: 'POST', url: `/pulls/${pr.id}/review`, payload: { agentId: agentB.id } });
+    await waitForPrRuns(pg.handle.db, pr.id, { expected: 2 });
+
+    const list = (await app.inject({ method: 'GET', url: `/repos/${pr.repoId}/pulls` })).json();
+    const listedPr = list.find((p: { id: string }) => p.id === pr.id);
+    expect(listedPr.cost_usd).toBeCloseTo(0.007, 6);
+
+    await app.close();
+  });
 });

@@ -153,19 +153,23 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
       }
     }
 
-    // Latest agent-run COST per PR for the list's cost column. Same pattern as
-    // the score block above, but from `agent_runs` (not `reviews`) — cost is a
-    // property of the RUN, not the review. "Latest", not summed across runs.
-    const latestCostByPr = new Map<string, number | null>();
+    // Total cost per PR — summed across every agent_runs row, same aggregation
+    // shape as findingsByPr above (a review run fans out to one row per
+    // reviewer agent). A run whose model has no known price persists
+    // cost_usd=null; those are excluded from the sum rather than treated as
+    // $0, so a PR whose runs are ALL unknown-price reports cost null
+    // (unknown), not a misleadingly-precise 0.
+    const totalCostByPr = new Map<string, number>();
+    const hasCostByPr = new Set<string>();
     if (prIds.length > 0) {
       const runRows = await container.db
         .select({ prId: t.agentRuns.prId, costUsd: t.agentRuns.costUsd })
         .from(t.agentRuns)
-        .where(inArray(t.agentRuns.prId, prIds))
-        .orderBy(desc(t.agentRuns.ranAt));
-      // Rows are newest-first → first seen per PR is the latest run.
+        .where(inArray(t.agentRuns.prId, prIds));
       for (const rr of runRows) {
-        if (rr.prId && !latestCostByPr.has(rr.prId)) latestCostByPr.set(rr.prId, rr.costUsd);
+        if (!rr.prId || rr.costUsd == null) continue;
+        hasCostByPr.add(rr.prId);
+        totalCostByPr.set(rr.prId, (totalCostByPr.get(rr.prId) ?? 0) + rr.costUsd);
       }
     }
 
@@ -194,7 +198,7 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
         updated_at: r.updatedAt?.toISOString() ?? null,
         score: review ? review.score : null,
         findings: review ? findingsByPr.get(r.id) ?? { critical: 0, warning: 0, suggestion: 0 } : null,
-        cost_usd: latestCostByPr.get(r.id) ?? null,
+        cost_usd: hasCostByPr.has(r.id) ? totalCostByPr.get(r.id)! : null,
       };
     });
   });
