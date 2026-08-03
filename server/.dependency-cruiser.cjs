@@ -1,6 +1,29 @@
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
-  forbidden: [],
+  forbidden: [
+    {
+      name: 'no-domain-io',
+      severity: 'error',
+      comment:
+        'Ring 0 (domain) must have no I/O. It defines port interfaces; ' +
+        'ring 2 implements them. See .claude/skills/onion-architecture/rules/layers.md',
+      from: {
+        path: '^(src/vendor/shared|src/platform/grounding\\.ts|src/modules/pulls/status\\.ts)',
+      },
+      to: {
+        path: '^(node_modules/(fastify|drizzle-orm|octokit|postgres|simple-git|@fastify)|src/db/)',
+      },
+    },
+    {
+      name: 'no-domain-node-builtins',
+      severity: 'error',
+      comment: 'Ring 0 must not touch Node builtins (fs, child_process, …).',
+      from: {
+        path: '^(src/vendor/shared|src/platform/grounding\\.ts|src/modules/pulls/status\\.ts)',
+      },
+      to: { dependencyTypes: ['core'] },
+    },
+  ],
   options: {
     // doNotFollow stops recursion INTO node_modules but still records the
     // edge from our source files to the npm package — that edge is what
