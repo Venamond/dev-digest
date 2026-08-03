@@ -23,6 +23,18 @@ module.exports = {
       },
       to: { dependencyTypes: ['core'] },
     },
+    {
+      name: 'no-route-to-db',
+      severity: 'error',
+      comment:
+        'Ring 3 (routes) must go through service → repository, never straight ' +
+        'to Drizzle. Known offenders are grandfathered in the baseline; do not ' +
+        'add more. See rules/fastify-routes.md',
+      from: { path: '^src/modules/[^/]+/routes\\.ts$' },
+      to: {
+        path: '^(node_modules/\\.pnpm/[^/]+/node_modules/drizzle-orm|node_modules/drizzle-orm|src/db/schema)',
+      },
+    },
   ],
   options: {
     // doNotFollow stops recursion INTO node_modules but still records the
