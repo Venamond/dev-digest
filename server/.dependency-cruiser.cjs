@@ -35,6 +35,20 @@ module.exports = {
         path: '^(node_modules/\\.pnpm/[^/]+/node_modules/drizzle-orm|node_modules/drizzle-orm|src/db/schema)',
       },
     },
+    {
+      name: 'no-app-to-schema',
+      severity: 'error',
+      comment:
+        'Ring 1 (services, helpers, executors, pipelines) may name row shapes ' +
+        'via src/db/rows.ts, but must not import the Drizzle table objects or ' +
+        'the query builder. See rules/drizzle-repositories.md',
+      from: {
+        path: '^src/modules/[^/]+/(service|helpers|run-executor|diff-loader)\\.ts$|^src/modules/repo-intel/pipeline/',
+      },
+      to: {
+        path: '^(node_modules/\\.pnpm/[^/]+/node_modules/drizzle-orm|node_modules/drizzle-orm|src/db/schema)',
+      },
+    },
   ],
   options: {
     // doNotFollow stops recursion INTO node_modules but still records the
