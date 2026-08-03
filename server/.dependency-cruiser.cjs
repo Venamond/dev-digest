@@ -11,7 +11,7 @@ module.exports = {
         path: '^(src/vendor/shared|src/platform/grounding\\.ts|src/modules/pulls/status\\.ts)',
       },
       to: {
-        path: '^(node_modules/(fastify|drizzle-orm|octokit|postgres|simple-git|@fastify)|src/db/)',
+        path: '^(node_modules/\\.pnpm/[^/]+/node_modules/(fastify|drizzle-orm|octokit|postgres|simple-git|@fastify)|node_modules/(fastify|drizzle-orm|octokit|postgres|simple-git|@fastify)|octokit$|src/db/)',
       },
     },
     {
