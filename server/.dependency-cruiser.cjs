@@ -49,6 +49,35 @@ module.exports = {
         path: '^(node_modules/\\.pnpm/[^/]+/node_modules/drizzle-orm|node_modules/drizzle-orm|src/db/schema)',
       },
     },
+    {
+      name: 'no-infra-to-app',
+      severity: 'error',
+      comment:
+        'Ring 2 (adapters) implements ring 0 interfaces. An adapter depending ' +
+        'on a service is the inversion Onion Architecture exists to prevent.',
+      from: { path: '^src/adapters/' },
+      to: { path: '^src/modules/[^/]+/(service|repository|routes)(\\.ts|/)' },
+    },
+    {
+      name: 'no-cross-module-internals',
+      severity: 'error',
+      comment:
+        "A module must not reach into another module's data or application " +
+        'layer. Shared repositories are exposed via the container (see ' +
+        'container.agentsRepo / container.reviewRepo).',
+      from: { path: '^src/modules/([^/]+)/', pathNot: '^src/modules/_shared/' },
+      to: {
+        path: '^src/modules/([^/]+)/(service|repository)(\\.ts|/)',
+        pathNot: '^src/modules/$1/',
+      },
+    },
+    {
+      name: 'no-circular',
+      severity: 'error',
+      comment: 'Circular dependencies break the ring ordering.',
+      from: {},
+      to: { circular: true },
+    },
   ],
   options: {
     // doNotFollow stops recursion INTO node_modules but still records the
