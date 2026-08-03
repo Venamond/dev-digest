@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Icon, Avatar, Badge, CircularScore, SEV } from "@devdigest/ui";
 import { CostBadge } from "@/components/cost-badge";
-import { FindingsPreviewPopover } from "./FindingsPreviewPopover";
+import { FindingsPreviewPopover } from "../FindingsPreview";
 import type { PrMeta } from "@/lib/types";
 import { SIZE_COLOR, STATUS_META } from "../../constants";
 import { relativeTime, sizeOf } from "../../helpers";
@@ -81,7 +81,9 @@ export function PRRow({ pr, repoId }: { pr: PrMeta; repoId: string }) {
                   style={{ display: "inline-flex", alignItems: "center", gap: 2, color: SEV[sevKey].c }}
                 >
                   <SevIcon size={13} />
-                  {pr.findings![key]}
+                  <span style={{ textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 2 }}>
+                    {pr.findings![key]}
+                  </span>
                 </span>
               );
             })}

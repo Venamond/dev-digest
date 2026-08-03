@@ -2,9 +2,13 @@
 
 import React from "react";
 import { useTranslations } from "next-intl";
-import { Badge, Icon, CircularScore, type IconName } from "@devdigest/ui";
-import type { RunSummary, PrCommit } from "@devdigest/shared";
+import { Badge, Icon, SEV, CircularScore, type IconName, type Severity } from "@devdigest/ui";
+import type { RunSummary, PrCommit, ReviewRecord, FindingRecord } from "@devdigest/shared";
 import { CostBadge } from "@/components/cost-badge";
+import { HoverPreviewAnchor, FindingsPreviewPanel } from "../../../_components/FindingsPreview";
+
+/** Severity display order for the per-run findings badges. */
+const SEVERITY_LEVELS: Severity[] = ["CRITICAL", "WARNING", "SUGGESTION"];
 
 /**
  * PR timeline — every agent run interleaved with the PR's commits, newest-first
@@ -87,12 +91,19 @@ function tsOf(s: string | null | undefined): number {
 
 export function RunHistory({
   runs,
+  reviews = [],
   commits = [],
   onOpenTrace,
   onGoToReview,
   onDelete,
 }: {
   runs: RunSummary[];
+  /** The PR's persisted reviews (with findings), keyed to runs via `run_id` —
+   *  already loaded by the PR-detail page (usePrReviews), so a run's findings
+   *  breakdown/preview here needs no extra fetch. Optional: when omitted (or a
+   *  run's review isn't in the list) this falls back to the plain finding-count
+   *  text instead of the per-severity badges. */
+  reviews?: ReviewRecord[];
   commits?: PrCommit[];
   /** Open the trace + log drawer for a run (the logs icon). */
   onOpenTrace: (runId: string) => void;
@@ -101,6 +112,13 @@ export function RunHistory({
   onDelete?: (runId: string) => void;
 }) {
   const t = useTranslations("prReview");
+  const findingsByRunId = React.useMemo(() => {
+    const map = new Map<string, FindingRecord[]>();
+    for (const review of reviews) {
+      if (review.run_id) map.set(review.run_id, review.findings);
+    }
+    return map;
+  }, [reviews]);
   if (runs.length === 0 && commits.length === 0) return null;
 
   const items: TimelineItem[] = [
@@ -150,6 +168,13 @@ export function RunHistory({
         const r = item.run;
         const o = outcomeOf(r);
         const settled = r.status === "done";
+        const runFindings = findingsByRunId.get(r.run_id);
+        const severityCounts = runFindings
+          ? SEVERITY_LEVELS.map(
+              (level) => [level, runFindings.filter((f) => f.severity === level).length] as const,
+            )
+          : [];
+        const severityTotal = severityCounts.reduce((n, [, count]) => n + count, 0);
         return (
           <div key={`run:${r.run_id}`} style={rowStyle}>
             <Badge color={o.color} bg={o.bg} icon={o.icon}>
@@ -189,11 +214,43 @@ export function RunHistory({
                   {r.error}
                 </div>
               )}
-              {settled && (
-                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                  {t("runStatus.findings", { count: r.findings_count ?? 0 })}
-                  {(r.blockers ?? 0) > 0 ? t("runStatus.blockers", { count: r.blockers ?? 0 }) : ""}
-                </div>
+              {settled && runFindings && severityTotal > 0 ? (
+                <HoverPreviewAnchor
+                  content={<FindingsPreviewPanel findings={runFindings} count={severityTotal} />}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
+                    {severityCounts
+                      .filter(([, count]) => count > 0)
+                      .map(([level, count]) => {
+                        const SevIcon = Icon[SEV[level].icon];
+                        return (
+                          <span
+                            key={level}
+                            style={{ display: "inline-flex", alignItems: "center", gap: 2, color: SEV[level].c }}
+                          >
+                            <SevIcon size={12} />
+                            <span
+                              style={{ textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 2 }}
+                            >
+                              {count}
+                            </span>
+                          </span>
+                        );
+                      })}
+                    {(r.blockers ?? 0) > 0 && (
+                      <span style={{ color: "var(--text-muted)" }}>
+                        {t("runStatus.blockers", { count: r.blockers ?? 0 })}
+                      </span>
+                    )}
+                  </div>
+                </HoverPreviewAnchor>
+              ) : (
+                settled && (
+                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                    {t("runStatus.findings", { count: r.findings_count ?? 0 })}
+                    {(r.blockers ?? 0) > 0 ? t("runStatus.blockers", { count: r.blockers ?? 0 }) : ""}
+                  </div>
+                )
               )}
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, fontSize: 11, color: "var(--text-muted)", flexShrink: 0 }}>
