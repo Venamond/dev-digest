@@ -13,6 +13,20 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Codebase Patterns
 
+- `server/AGENTS.md`'s Structure section states "routes never touch the DB".
+  That invariant is NOT actually held: as of 2026-08-03,
+  `modules/pulls/routes.ts`, `modules/polling/routes.ts`,
+  `modules/workspace/routes.ts` and `modules/settings/routes.ts` all import
+  `drizzle-orm` and `../../db/schema.js` and run `container.db.select()`
+  directly in handlers, bypassing service+repository. Separately,
+  `modules/reviews/run-executor.ts`, `modules/reviews/diff-loader.ts` and
+  `modules/_shared/schemas.ts` import types from `db/schema` into the
+  service/application layer. Do not assume the documented layering holds when
+  reasoning about a route — grep the file for `drizzle-orm` first. When adding
+  a NEW route, follow the documented rule (routes → service → repository), not
+  the surrounding code in those four files. (2026-08-03, Onion Architecture
+  skill research)
+
 - `server/src/modules/pulls/status.ts`'s `rollupSeverities()` was already
   written, exported, and unit-tested (`server/test/pulls-status.test.ts`)
   before it was ever wired into a route — the file's own docstring says the
@@ -49,6 +63,39 @@ ground truth — wrap-ups can mischaracterize a session.
   PR-list Findings column / severity-counters merge)
 
 ## Tool & Library Notes
+
+- In a `dependency-cruiser` config's `options`, `exclude: { path: ... }` and
+  `doNotFollow: { path: ... }` are NOT interchangeable, even though both are
+  commonly set to `node_modules`. `doNotFollow` stops recursion INTO a
+  matched module but still records the edge FROM the importing file to it —
+  that edge is exactly what a `forbidden` rule like "route must not import
+  drizzle-orm" needs to see. `exclude` drops the matched module, and every
+  edge to it, from the graph entirely. With both set (as a first draft of
+  `server/.dependency-cruiser.cjs` had), every rule targeting a real,
+  resolvable `node_modules` package (`fastify`, `drizzle-orm`) silently
+  matched zero violations — while unresolvable bare specifiers (`octokit`,
+  `p-queue`, due to their ESM export-map conditions) still showed up, because
+  failed resolutions bypass the `exclude` filter. That asymmetry is what
+  makes the bug look like a resolver problem when it's actually a
+  graph-filtering one: `--output-type err-long` shows zero violations either
+  way, so diagnosing it requires dumping the raw dependency graph
+  (`depcruise <target> --output-type json`) and checking whether the
+  suspect module appears in any `dependencies` array at all. Fix: set only
+  `doNotFollow`, never `exclude`, for `node_modules`. (2026-08-03, Onion
+  Architecture skill implementation, Task 1)
+
+- `dependency-cruiser` (17.4.3) is ALREADY a runtime dependency of `server` —
+  but only as a library, for `repo-intel`'s import graph
+  (`adapters/depgraph/index.ts` → `DepCruiseGraph`). Its CLI (`pnpm exec
+  depcruise`) is fully available with zero new installs, and supports
+  `--ignore-known [file]` (default
+  `.dependency-cruiser-known-violations.json`), which grandfathers existing
+  violations while failing the build on new ones. There is no
+  `.dependency-cruiser.cjs` in the repo as of 2026-08-03 — nothing enforces
+  import boundaries today. If asked to enforce layering/architecture rules
+  here, do NOT propose adding eslint-plugin-boundaries or a new tool; write a
+  `.dependency-cruiser.cjs` and a `depcruise --ignore-known` script instead.
+  (2026-08-03, Onion Architecture skill research)
 
 - A `z.object({ field: z.number().nullable() })` field is REQUIRED at the TS
   level, not optional — `.nullable()` only unions in `null`, it does not add
