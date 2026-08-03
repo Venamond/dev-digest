@@ -11,7 +11,10 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
-    "db:seed": "tsx src/db/seed.ts"
+    "db:seed": "tsx src/db/seed.ts",
+    "arch:check": "depcruise src --config .dependency-cruiser.cjs --ignore-known",
+    "arch:baseline": "depcruise src --config .dependency-cruiser.cjs --output-type baseline > .dependency-cruiser-known-violations.json",
+    "arch:check:core": "depcruise ../reviewer-core/src --config ../reviewer-core/.dependency-cruiser.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.33.1",
