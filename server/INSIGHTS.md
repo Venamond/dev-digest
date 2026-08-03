@@ -64,6 +64,24 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Tool & Library Notes
 
+- Running `dependency-cruiser` against a package via a relative target path
+  from a DIFFERENT cwd (e.g. `server/package.json`'s `arch:check:core`:
+  `depcruise ../reviewer-core/src --config ../reviewer-core/.dependency-cruiser.cjs`,
+  invoked from `server/`) makes every reported module `source`/resolved path
+  come out prefixed with that relative segment —
+  `../reviewer-core/src/prompt.ts`, not `src/prompt.ts`. A rule's `from:
+  { path: '^src/' }` or `to: { pathNot: '^node_modules/...' }` written
+  assuming cwd == the target package's root will silently match nothing (0
+  violations, no error) when invoked this way. Write such regexes unanchored
+  — `(^|/)src/`, `(^|/)node_modules/...` — so they work regardless of the
+  invoking cwd. Also hit dependency-cruiser's regex-safety linter ("has an
+  unsafe regular expression. Bailing out.") on `^node_modules/(\.pnpm/[^/]+
+  /node_modules/)?(pkg1|pkg2)(/|$)` — an optional group nested next to
+  alternation; splitting into two non-nested alternatives
+  (`^node_modules/(pkg1|pkg2)(/|$)|^node_modules/\.pnpm/[^/]+/node_modules/
+  (pkg1|pkg2)(/|$)`) fixed it. (2026-08-04, Onion Architecture skill
+  implementation, Task 6)
+
 - A `dependency-cruiser` `forbidden` rule's `to.path` regex written as
   `node_modules/<pkg-name>` will silently never match in this repo, because
   `server`'s pnpm install resolves packages through a nested store —
