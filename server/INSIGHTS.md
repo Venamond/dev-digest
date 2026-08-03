@@ -11,6 +11,31 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## What Doesn't Work
 
+- The onion-architecture baseline's "monotonic decrease" policy
+  (`.dependency-cruiser-known-violations.json` may only shrink, stated in
+  `.claude/skills/onion-architecture/enforcement.md`) has already been
+  broken without anyone deciding to break it. The skill's own implementation
+  plan (`docs/superpowers/plans/2026-08-03-onion-architecture-skill.md`)
+  fixed the baseline at exactly 6 entries (4 `no-route-to-db` + 2
+  `no-app-to-schema`) and explicitly said `no-circular`/
+  `no-cross-module-internals` hits must never be silently baselined —
+  "report each hit... a hit means either a real architectural problem worth
+  fixing now or an over-broad regex worth narrowing." As of 2026-08-04 the
+  committed baseline has grown to 16 entries: 8 `no-route-to-db`, 3
+  `no-app-to-schema`, and **5 `no-circular`** — the exact category the plan
+  said must never be baselined reflexively. `pnpm arch:check` still passes
+  green because `--ignore-known` treats the expanded baseline as ground
+  truth; nothing failed loudly. Root cause not yet investigated — the most
+  likely culprit is the PR-list findings work that touched
+  `server/src/modules/pulls/routes.ts` (`git log -p` on that file is the
+  place to start) since `pnpm arch:baseline` was presumably re-run after
+  that change added more edges. Before trusting `pnpm arch:check`'s green
+  status as "no new architectural drift," diff
+  `.dependency-cruiser-known-violations.json` against the 6-entry version
+  from `062dd53`/`75de6de` (the original onion-architecture commits) to see
+  what was actually silently grandfathered in, especially the 5 circular
+  dependencies.
+
 ## Codebase Patterns
 
 - `server/AGENTS.md`'s Structure section states "routes never touch the DB".
