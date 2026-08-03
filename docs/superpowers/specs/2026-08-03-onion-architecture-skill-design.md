@@ -18,11 +18,17 @@ rules, and nothing enforces them. The result is drift that already happened:
   `drizzle-orm` and `db/schema` and query `container.db` directly inside
   handlers — the HTTP layer reaching past service and repository into the
   database.
-- `modules/reviews/run-executor.ts`, `modules/reviews/diff-loader.ts` and
-  `modules/_shared/schemas.ts` import types from `db/schema`, leaking the
-  persistence shape into the application layer.
+- `modules/reviews/run-executor.ts` and `modules/reviews/diff-loader.ts`
+  `import * as schema from '../../db/schema.js'` — pulling the Drizzle table
+  objects themselves into the application layer.
 - `server/AGENTS.md` claims "routes never touch the DB". That invariant is
   false today, so the documentation actively misleads.
+
+Note the deliberate seam this does *not* include: `server/src/db/rows.ts`
+exports `$inferSelect` row types (`AgentRow`, `PullRow`, `FindingRow`, …) and
+its own docstring explains it exists so cross-cutting consumers can name a row
+shape without importing another module's data layer. Importing `db/rows.ts`
+from the application layer is sanctioned; importing `db/schema` is not.
 
 Agents (and humans) copy the file they are sitting next to. Without a written
 rule and a machine check, each new module has a coin-flip chance of inheriting
@@ -64,8 +70,8 @@ The skill's central artefact. Every other rule refers back to this table.
 
 | Ring | Contents | Rule |
 | --- | --- | --- |
-| **0 — Domain** | `reviewer-core/src/*`; `server/src/vendor/shared/contracts/*` (Zod contracts); `server/src/vendor/shared/adapters.ts` (port interfaces); pure helpers: `modules/pulls/status.ts`, `platform/grounding.ts`, `modules/reviews/helpers.ts`, `modules/agents/helpers.ts` | No I/O. Must not import `fastify`, `drizzle-orm`, `octokit`, `postgres`, `simple-git`, or `node:fs`. Defines interfaces; implements none of them. |
-| **1 — Application** | `modules/*/service.ts`, `modules/reviews/run-executor.ts`, `modules/repo-intel/pipeline/*`, `platform/model-router.ts` | Orchestrates ring 0 through ports. Knows nothing of HTTP or of Drizzle. Must not import `db/schema`. |
+| **0 — Domain** | `reviewer-core/src/*`; `server/src/vendor/shared/contracts/*` (Zod contracts); `server/src/vendor/shared/adapters.ts` (port interfaces); pure helpers: `modules/pulls/status.ts`, `platform/grounding.ts` | No I/O. Verified today: `vendor/shared` imports only `zod`; `reviewer-core` only `zod` + `openai` + `@devdigest/shared`; `grounding.ts` imports nothing. Must not import `fastify`, `drizzle-orm`, `octokit`, `postgres`, `simple-git`, `node:fs`, or anything under `db/`. Defines interfaces; implements none of them. |
+| **1 — Application** | `modules/*/service.ts`, `modules/reviews/run-executor.ts`, `modules/reviews/helpers.ts`, `modules/agents/helpers.ts`, `modules/repo-intel/pipeline/*`, `platform/model-router.ts` | Orchestrates ring 0 through ports. Knows nothing of HTTP. May name persistence shapes via `db/rows.ts` (the sanctioned seam) but must not import `db/schema` or `drizzle-orm`. |
 | **2 — Infrastructure** | `server/src/adapters/*`, `modules/*/repository.ts`, `server/src/db/*` | Implements ring-0 interfaces. Must not import ring 1 (`modules/*/service.ts`). |
 | **3 — Presentation** | `modules/*/routes.ts`, `platform/sse.ts`, `app.ts`, `server.ts` | Validate with a Zod contract, call a service, map errors. Must not import `drizzle-orm` or `db/schema`. |
 | **Composition root** | `platform/container.ts`, `modules/index.ts` | The only place concrete classes meet interfaces. Exempt from the rules above by design. |
@@ -80,9 +86,9 @@ exists to prevent and is a hard error.
 
 | Rule name | Forbids |
 | --- | --- |
-| `no-domain-io` | ring 0 → `fastify`, `drizzle-orm`, `octokit`, `postgres`, `simple-git`, `node:fs`, `db/*` |
+| `no-domain-io` | ring 0 → `fastify`, `drizzle-orm`, `octokit`, `postgres`, `simple-git`, `node:fs`, `db/*` (including `db/rows.ts`) |
 | `no-route-to-db` | `modules/*/routes.ts` → `drizzle-orm`, `db/schema` |
-| `no-app-to-schema` | `modules/*/service.ts`, `run-executor.ts`, pipeline → `db/schema` |
+| `no-app-to-schema` | ring 1 (`modules/*/service.ts`, `modules/*/helpers.ts`, `run-executor.ts`, `diff-loader.ts`, `repo-intel/pipeline/*`) → `db/schema`, `drizzle-orm`. `db/rows.ts` is explicitly allowed. |
 | `no-infra-to-app` | `adapters/*` → `modules/*` |
 | `no-cross-module-internals` | `modules/a/*` → `modules/b/{repository,service}.ts` (shared access goes through the container, per the existing `agentsRepo`/`reviewRepo` precedent) |
 | `no-circular` | dependency cycles |
@@ -135,8 +141,11 @@ translates failures via `platform/errors.ts`. Anti-example:
 `container.db.select()` in `modules/pulls/routes.ts`.
 
 **`drizzle-repositories.md`** — `drizzle-orm` is imported only in
-`modules/*/repository.ts` and `db/*`. A repository accepts and returns
-contract types, never `InferSelectModel` rows. The transaction boundary
+`modules/*/repository.ts` and `db/*`. A repository ideally accepts and returns
+contract types; where a row type must cross into ring 1 (as
+`reviews/helpers.ts` and `agents/helpers.ts` do today), it comes from
+`db/rows.ts`, never from another module's `repository.ts` and never from
+`db/schema` directly. The transaction boundary
 belongs to the application layer and is expressed as a port; a `tx` handle is
 never threaded into ring 0 or ring 1 code.
 
