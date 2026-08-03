@@ -21,7 +21,12 @@ Each rule is tagged with a severity for use by consuming agents:
 
 - Components must be pure — same inputs = same outputs, no side effects during render
 - Business logic in hooks/helpers, NOT in component bodies
-- Container components fetch data; presentational components receive props and render UI
+- Prefer hooks as the seam between logic and rendering over a mandated
+  container/presentational file split — the pattern's own originator
+  (Dan Abramov) retracted it in 2019: "I don't suggest splitting your
+  components like this anymore... Hooks let me do the same thing without
+  an arbitrary division." See `frontend-architecture/SKILL.md` § Business
+  Logic Placement for how this project applies that.
 - Helper functions extracted OUTSIDE the component body
 - Max 200 lines per component — split if larger
 - Max 5-7 props — more suggests the component does too much
@@ -113,6 +118,11 @@ New arrays, objects, and functions created inline in JSX props break `React.memo
 - Use try-catch in async functions within hooks
 
 ## Tailwind CSS (MEDIUM)
+
+> **Project note:** `client/` deliberately does the opposite of this
+> section — colocated `styles.ts` JS style objects, not Tailwind utility
+> classes. See `frontend-architecture/deviations.md` for why. If you're
+> working in `client/`, follow that convention instead of this section.
 
 - Use utility classes for all styling — no inline `style={}` objects
 - Use responsive prefixes (`sm:`, `md:`, `lg:`) for responsive design
