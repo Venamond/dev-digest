@@ -64,6 +64,27 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Tool & Library Notes
 
+- A `dependency-cruiser` `forbidden` rule's `to.path` regex written as
+  `node_modules/<pkg-name>` will silently never match in this repo, because
+  `server`'s pnpm install resolves packages through a nested store —
+  `node_modules/.pnpm/<pkg>@<version>/node_modules/<pkg>/...` — not
+  `node_modules/<pkg>/...` directly. This is not a resolution failure
+  (`couldNotResolve` stays `false`), so `--output-type err-long` gives no
+  clue; the rule just reports zero violations for a package that is in
+  fact imported. Verified by temporarily importing each of
+  `@fastify/cors`, `postgres`, `fastify`, `drizzle-orm`, `simple-git` into a
+  ring-0 file and confirming a naive regex missed all five while a
+  `src/db/`-style relative-path alternative in the same rule worked fine.
+  Fix: match both forms, e.g. `^(node_modules/\.pnpm/[^/]+/node_modules/
+  (pkg1|pkg2)|node_modules/(pkg1|pkg2)|...)`. Separately, `octokit`
+  specifically never resolves to a `node_modules/...` path at all under
+  this repo's `moduleResolution: Bundler` + `enhancedResolveOptions` setup
+  (pre-existing, unrelated to pnpm's store layout — same behavior for
+  `octokit` was seen with plain `doNotFollow` from Task 1) — a rule meant
+  to catch an `octokit` import needs a bare `octokit$` alternative in the
+  `to.path` regex, not just the `node_modules/octokit` form. (2026-08-03,
+  Onion Architecture skill implementation, Task 2)
+
 - In a `dependency-cruiser` config's `options`, `exclude: { path: ... }` and
   `doNotFollow: { path: ... }` are NOT interchangeable, even though both are
   commonly set to `node_modules`. `doNotFollow` stops recursion INTO a
