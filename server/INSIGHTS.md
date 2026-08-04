@@ -68,6 +68,20 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Tool & Library Notes
 
+- A JSDoc/block comment that contains the two-character sequence star-slash
+  (e.g. documenting a glob like "star-slash + bare") terminates the comment
+  early; esbuild then fails with a cryptic "Expected ';' but found …" on a
+  later line. Spell such patterns in words inside block comments — never
+  write that terminator sequence literally. (2026-08-04, PriceBook)
+
+- Adding Fastify `schema.response` via ZodTypeProvider tightens the handler
+  return type to `z.infer`. A DTO field typed `string | null` will fail
+  `tsc` against an enum/`z.enum` field even when runtime values are valid —
+  narrow at the DTO boundary (e.g. `verdict as Verdict | null` in
+  `reviewToDto`) when wiring response schemas. Hot paths already covered:
+  repos list/add/refresh/delete, pulls list/detail/comments, reviews
+  run/list/runs/trace/findings actions. (2026-08-04)
+
 - Running `dependency-cruiser` against a package via a relative target path
   from a DIFFERENT cwd (e.g. `server/package.json`'s `arch:check:core`:
   `depcruise ../reviewer-core/src --config ../reviewer-core/.dependency-cruiser.cjs`,
