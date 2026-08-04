@@ -19,15 +19,12 @@
  * block is skipped when the soft budget trips, leaving status 'partial'.
  */
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
 import { cpus } from 'node:os';
 import { join } from 'node:path';
 import PQueue from 'p-queue';
 import type { RepoRef } from '@devdigest/shared';
 import type { RepoIntelDeps } from '../deps.js';
 import { withTimeout } from '../../../platform/resilience.js';
-import { parseSymbols, parseReferences, langForFile } from '../../../adapters/astgrep/index.js';
-import { extractEndpoints, extractCrons } from '../../../adapters/codeindex/extract.js';
 import {
   DEFAULT_REPO_MAP_TOKEN_BUDGET,
   INDEX_SOFT_BUDGET_MS,
@@ -97,7 +94,7 @@ export async function runFullIndex(
   const currentSha = await safeCurrentHead(deps, ref);
 
   // Walk + filter -------------------------------------------------------
-  const walk = await walkClone(repo.clonePath);
+  const walk = await walkClone(repo.clonePath, deps.fs);
   if (walk.files.length === 0) {
     await safePersist(repository, repoId, currentSha, 'partial', 0, walk.stats.skippedTooLarge, {
       ...walk.stats,
@@ -134,14 +131,14 @@ export async function runFullIndex(
     }
 
     void parseQ.add(async () => {
-      const lang = langForFile(relPath);
+      const lang = deps.codeAnalysis.langForFile(relPath);
       if (!lang) {
         filesSkipped += 1;
         return;
       }
       let source: string;
       try {
-        source = await readFile(join(repo.clonePath!, relPath), 'utf8');
+        source = await deps.fs.readFile(join(repo.clonePath!, relPath), 'utf8');
       } catch (err) {
         filesSkipped += 1;
         recordParseDegraded(parseDegraded, relPath, asMessage(err));
@@ -154,8 +151,8 @@ export async function runFullIndex(
       try {
         const parsed = await withTimeout(
           Promise.resolve().then(() => ({
-            symbols: parseSymbols(relPath, source),
-            references: parseReferences(relPath, source),
+            symbols: deps.codeAnalysis.parseSymbols(relPath, source),
+            references: deps.codeAnalysis.parseReferences(relPath, source),
           })),
           MAX_PARSE_MS_PER_FILE,
         );
@@ -183,8 +180,8 @@ export async function runFullIndex(
         }
         // Per-file facts (endpoints/crons) so blast reads from file_facts
         // instead of re-parsing the clone (T3 blast migration).
-        const endpoints = extractEndpoints(source);
-        const crons = extractCrons(source);
+        const endpoints = deps.codeAnalysis.extractEndpoints(source);
+        const crons = deps.codeAnalysis.extractCrons(source);
         if (endpoints.length > 0 || crons.length > 0) {
           factsBuf.push({ filePath: relPath, endpoints, crons });
         }

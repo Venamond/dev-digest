@@ -29,6 +29,8 @@ import type { RepoIntel } from '../modules/repo-intel/types.js';
 import { RepoIntelService } from '../modules/repo-intel/service.js';
 import { type DepGraph, DepCruiseGraph } from '../adapters/depgraph/index.js';
 import { type Tokenizer, TiktokenTokenizer } from '../adapters/tokenizer/index.js';
+import { type CloneFs, nodeCloneFs } from '../adapters/clone-fs.js';
+import { type CodeAnalysis, astgrepCodeAnalysis } from '../adapters/code-analysis.js';
 
 /**
  * DI container. One per app instance. Holds config, db, the JobRunner,
@@ -51,6 +53,9 @@ export interface ContainerOverrides {
   /** repo-intel T3 adapters — only the indexer pipeline reads these. */
   depgraph?: DepGraph;
   tokenizer?: Tokenizer;
+  /** Clone filesystem / code analysis — repo-intel application ports. */
+  fs?: CloneFs;
+  codeAnalysis?: CodeAnalysis;
 }
 
 export class Container {
@@ -130,6 +135,16 @@ export class Container {
     if (this.overrides.tokenizer) return this.overrides.tokenizer;
     this._tokenizer ??= new TiktokenTokenizer();
     return this._tokenizer;
+  }
+
+  /** Clone filesystem for repo-intel walk/parse (injectable in tests). */
+  get fs(): CloneFs {
+    return this.overrides.fs ?? nodeCloneFs;
+  }
+
+  /** Ast-grep + extract facts for repo-intel (injectable in tests). */
+  get codeAnalysis(): CodeAnalysis {
+    return this.overrides.codeAnalysis ?? astgrepCodeAnalysis;
   }
 
   /**

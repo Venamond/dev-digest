@@ -11,6 +11,8 @@ import type { Db } from '../../db/client.js';
 import type { JobRunner } from '../../platform/jobs.js';
 import type { DepGraph } from '../../adapters/depgraph/index.js';
 import type { Tokenizer } from '../../adapters/tokenizer/index.js';
+import type { CloneFs } from '../../adapters/clone-fs.js';
+import type { CodeAnalysis } from '../../adapters/code-analysis.js';
 
 export interface RepoIntelConfigSlice {
   repoIntelEnabled: boolean;
@@ -24,4 +26,8 @@ export interface RepoIntelDeps {
   config: RepoIntelConfigSlice;
   depgraph: DepGraph;
   tokenizer: Tokenizer;
+  /** Clone filesystem (walk + per-file reads) — no direct node:fs in app code. */
+  fs: CloneFs;
+  /** Ast-grep + extract facts — no concrete adapter imports in app code. */
+  codeAnalysis: CodeAnalysis;
 }

@@ -113,15 +113,15 @@ export function FindingsTab({
                   loading={cancelMutation.isPending}
                   onClick={handleCancelAll}
                 >
-                  Cancel
+                  {t("findingsTab.cancel")}
                 </Button>
                 <Button kind="ghost" size="sm" icon="FileText" onClick={handleOpenFirstTrace}>
-                  Open run trace
+                  {t("findingsTab.openTrace")}
                 </Button>
               </div>
             }
           >
-            Live review
+            {t("findingsTab.liveReview")}
           </SectionLabel>
           <RunStatus runIds={liveRunIds} onDone={onRunDone} />
         </div>
@@ -130,19 +130,17 @@ export function FindingsTab({
       {reviewRunning && (
         <div style={s.reviewInProgress}>
           <Icon.RefreshCw size={16} style={{ color: "var(--accent)", animation: "ddspin 1s linear infinite" }} />
-          <span style={s.reviewInProgressText}>Review in progress…</span>
-          <span style={s.reviewInProgressSub}>
-            the agent is analyzing the diff — this can take a while on large PRs.
-          </span>
+          <span style={s.reviewInProgressText}>{t("findingsTab.inProgress")}</span>
+          <span style={s.reviewInProgressSub}>{t("findingsTab.inProgressSub")}</span>
         </div>
       )}
 
       {lethalTrifecta.length > 0 && (
         <div style={s.lethalTrifecta}>
           <Icon.Shield size={16} style={{ color: "var(--crit)" }} />
-          <span style={s.lethalTrifectaTitle}>Lethal Trifecta detected</span>
+          <span style={s.lethalTrifectaTitle}>{t("findingsTab.lethalTitle")}</span>
           <Badge color="var(--crit)" bg="transparent">
-            {lethalTrifecta.length} finding(s)
+            {t("findingsTab.findingsCount", { count: lethalTrifecta.length })}
           </Badge>
         </div>
       )}
@@ -151,9 +149,11 @@ export function FindingsTab({
         <div style={s.timelineSection}>
           <SectionLabel
             icon="Activity"
-            right={<span style={{ fontSize: 12, color: "var(--text-muted)" }}>runs &amp; commits · newest first</span>}
+            right={
+              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("findingsTab.timelineHint")}</span>
+            }
           >
-            Timeline
+            {t("findingsTab.timeline")}
           </SectionLabel>
           <RunHistory
             runs={prRuns ?? []}

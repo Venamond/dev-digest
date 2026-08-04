@@ -55,18 +55,39 @@
     "sectionLabel": "Review runs",
     "groupedHint": "grouped by run · newest first",
     "emptyTitle": "No findings yet",
-    "emptyBody": "Run a review to generate findings. Use Run Review ▾ above (run all enabled agents or a specific one)."
+    "emptyBody": "Run a review to generate findings. Use Run Review ▾ above (run all enabled agents or a specific one).",
+    "cancel": "Cancel",
+    "openTrace": "Open run trace",
+    "liveReview": "Live review",
+    "inProgress": "Review in progress…",
+    "inProgressSub": "the agent is analyzing the diff — this can take a while on large PRs.",
+    "lethalTitle": "Lethal Trifecta detected",
+    "findingsCount": "{count} finding(s)",
+    "timeline": "Timeline",
+    "timelineHint": "runs & commits · newest first"
+  },
+  "overview": {
+    "description": "Description"
+  },
+  "severity": {
+    "CRITICAL": "CRITICAL",
+    "WARNING": "WARNING",
+    "SUGGESTION": "SUGGESTION",
+    "INFO": "INFO"
+  },
+  "reviewRun": {
+    "agentTitle": "Agent",
+    "findingsCount": "{count} finding(s)",
+    "blockersCount": "{count} blocker(s)",
+    "agentFallback": "agent",
+    "deleteConfirm": "Delete this \"{agent}\" review run and its findings?",
+    "deleteTitle": "Delete this review run"
   },
   "diffTab": {
     "sectionLabel": "Files changed · {count} files",
     "showComments": "Show comments ({count})",
     "hideComments": "Hide comments ({count})",
     "postError": "Couldn't post the comment to GitHub."
-  },
-  "reviewRun": {
-    "agentFallback": "agent",
-    "deleteConfirm": "Delete this \"{agent}\" review run and its findings?",
-    "deleteTitle": "Delete this review run"
   },
   "runStatus": {
     "elapsed": "Running · {count} agent(s)",

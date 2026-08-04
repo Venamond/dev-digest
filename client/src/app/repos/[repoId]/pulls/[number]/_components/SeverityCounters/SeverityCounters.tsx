@@ -4,6 +4,7 @@
 "use client";
 
 import React from "react";
+import { useTranslations } from "next-intl";
 import { SEV, type Severity } from "@devdigest/ui";
 import type { FindingRecord } from "@devdigest/shared";
 
@@ -18,6 +19,7 @@ export function SeverityCounters({
   active: Severity | null;
   onSelect: (severity: Severity | null) => void;
 }) {
+  const t = useTranslations("prReview");
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, fontSize: 13 }}>
       {LEVELS.map((level, i) => {
@@ -44,7 +46,7 @@ export function SeverityCounters({
                 outline: isActive ? `1px solid ${SEV[level].c}` : "none",
               }}
             >
-              {count} {level}
+              {count} {t(`severity.${level}`)}
             </button>
           </React.Fragment>
         );

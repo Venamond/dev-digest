@@ -92,15 +92,21 @@ export function ReviewRunAccordion({
         }}
       >
         <Icon.Cpu size={15} style={{ color: "var(--text-muted)" }} />
-        <span style={{ fontWeight: 600, fontSize: 14 }}>{review.agent_name ?? "Agent"}</span>
+        <span style={{ fontWeight: 600, fontSize: 14 }}>
+          {review.agent_name ?? t("reviewRun.agentTitle")}
+        </span>
         {review.verdict && (
           <Badge color={verdictColor} bg="transparent">
-            {review.verdict.replace("_", " ")}
+            {review.verdict === "request_changes"
+              ? t("verdict.requestChanges")
+              : review.verdict === "approve"
+                ? t("verdict.approve")
+                : t("verdict.comment")}
           </Badge>
         )}
         <span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-          {findings.length} finding{findings.length === 1 ? "" : "s"}
-          {blockers > 0 ? ` · ${blockers} blocker${blockers === 1 ? "" : "s"}` : ""}
+          {t("reviewRun.findingsCount", { count: findings.length })}
+          {blockers > 0 ? ` · ${t("reviewRun.blockersCount", { count: blockers })}` : ""}
         </span>
         <span style={{ flex: 1 }} />
         {review.score != null && (

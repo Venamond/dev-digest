@@ -17,6 +17,12 @@ cold-test every entry, append-only, treat as a draft to spot-check.
   module recreates the `no-circular` cycle that was burned down to
   baseline 0 on 2026-08-04 — don't reintroduce it.
 
+- Clone I/O and AST parse go through injected ports on `RepoIntelDeps`:
+  `fs` (`adapters/clone-fs.ts`) and `codeAnalysis`
+  (`adapters/code-analysis.ts`). Application code must not import
+  `node:fs` or `adapters/astgrep` / `adapters/codeindex/extract` directly
+  — that was burned down 2026-08-04 (architecture plan F18).
+
 ## Tool & Library Notes
 
 ## Recurring Errors & Fixes

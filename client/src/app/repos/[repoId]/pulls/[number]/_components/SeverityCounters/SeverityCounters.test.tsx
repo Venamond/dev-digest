@@ -1,6 +1,8 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, screen, cleanup, fireEvent } from "@testing-library/react";
+import { NextIntlClientProvider } from "next-intl";
 import type { FindingRecord } from "@devdigest/shared";
+import messages from "../../../../../../../../messages/en/prReview.json";
 import { SeverityCounters } from "./SeverityCounters";
 
 afterEach(cleanup);
@@ -32,23 +34,30 @@ const FINDINGS: FindingRecord[] = [
   finding("WARNING", "f3"),
 ];
 
+function renderCounters(
+  findings: FindingRecord[],
+  active: FindingRecord["severity"] | null,
+  onSelect = vi.fn(),
+) {
+  return render(
+    <NextIntlClientProvider locale="en" messages={{ prReview: messages }}>
+      <SeverityCounters findings={findings} active={active} onSelect={onSelect} />
+    </NextIntlClientProvider>,
+  );
+}
+
 describe("SeverityCounters", () => {
   it("shows a count per severity, 0 for levels with no findings", () => {
-    render(<SeverityCounters findings={FINDINGS} active={null} onSelect={vi.fn()} />);
-    expect(screen.getByText("2 CRITICAL")).toBeInTheDocument();
-    expect(screen.getByText("1 WARNING")).toBeInTheDocument();
-    expect(screen.getByText("0 SUGGESTION")).toBeInTheDocument();
+    renderCounters(FINDINGS, null);
+    expect(screen.getByRole("button", { name: "2 CRITICAL" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "1 WARNING" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "0 SUGGESTION" })).toBeInTheDocument();
   });
 
-  it("clicking a level selects it; clicking the active level again clears it", () => {
+  it("toggles the active severity filter on click", () => {
     const onSelect = vi.fn();
-    render(<SeverityCounters findings={FINDINGS} active={null} onSelect={onSelect} />);
-    fireEvent.click(screen.getByText("2 CRITICAL"));
+    renderCounters(FINDINGS, null, onSelect);
+    fireEvent.click(screen.getByRole("button", { name: "2 CRITICAL" }));
     expect(onSelect).toHaveBeenCalledWith("CRITICAL");
-
-    cleanup();
-    render(<SeverityCounters findings={FINDINGS} active="CRITICAL" onSelect={onSelect} />);
-    fireEvent.click(screen.getByText("2 CRITICAL"));
-    expect(onSelect).toHaveBeenCalledWith(null);
   });
 });

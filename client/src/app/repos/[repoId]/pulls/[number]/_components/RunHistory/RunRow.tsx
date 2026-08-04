@@ -57,7 +57,7 @@ export function RunRow({
               textUnderlineOffset: 3,
             }}
           >
-            {r.agent_name ?? "Agent"}
+            {r.agent_name ?? t("reviewRun.agentTitle")}
           </button>{" "}
           <span className="mono" style={{ fontSize: 12, fontWeight: 400, color: "var(--text-muted)" }}>
             {r.provider}/{r.model}
