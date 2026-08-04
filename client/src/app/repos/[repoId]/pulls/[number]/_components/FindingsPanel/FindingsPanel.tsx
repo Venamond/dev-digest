@@ -9,7 +9,7 @@ import type { FindingRecord } from "@devdigest/shared";
 import { FindingCard } from "../FindingCard";
 import { useFindingAction } from "../../../../../../../lib/hooks/reviews";
 import { KEY_TO_ACTION } from "./constants";
-import { visibleFindings } from "./helpers";
+import { isTypingTarget, visibleFindings } from "./helpers";
 import { s } from "./styles";
 
 export function FindingsPanel({
@@ -28,6 +28,8 @@ export function FindingsPanel({
 }) {
   const t = useTranslations("prReview");
   const action = useFindingAction();
+  const rootRef = React.useRef<HTMLDivElement>(null);
+  const [panelActive, setPanelActive] = React.useState(false);
   const [hideLow, setHideLow] = React.useState(false);
   const [focusIdx, setFocusIdx] = React.useState(0);
 
@@ -36,11 +38,22 @@ export function FindingsPanel({
     [findings, hideLow, severityFilter],
   );
 
+  // Shortcuts only apply after the user interacts inside this panel — never
+  // globally on the PR page (a/d used to accept/dismiss finding 0 by accident).
+  React.useEffect(() => {
+    const onPointerDown = (e: PointerEvent) => {
+      setPanelActive(!!rootRef.current?.contains(e.target as Node));
+    };
+    window.addEventListener("pointerdown", onPointerDown);
+    return () => window.removeEventListener("pointerdown", onPointerDown);
+  }, []);
+
   // j/k navigation + a/d shortcuts on the focused finding (keyboard).
   React.useEffect(() => {
+    if (!panelActive) return;
     const handler = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (isTypingTarget(e.target)) return;
       if (e.key === "j") setFocusIdx((i) => Math.min(i + 1, shown.length - 1));
       else if (e.key === "k") setFocusIdx((i) => Math.max(i - 1, 0));
       else if (KEY_TO_ACTION[e.key] && shown[focusIdx]) {
@@ -49,10 +62,10 @@ export function FindingsPanel({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [shown, focusIdx, action, prId]);
+  }, [panelActive, shown, focusIdx, action, prId]);
 
   return (
-    <div>
+    <div ref={rootRef} data-testid="findings-panel">
       <div style={s.toolbar}>
         <div style={s.toggleGroup}>
           {t("panel.hideLowConfidence")}

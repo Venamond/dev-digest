@@ -28,19 +28,16 @@ ground truth — wrap-ups can mischaracterize a session.
   `["pr-runs", prId]`, each repeated across several call sites. (Verified
   2026-08-03 by grep; no bug observed yet — this is a latent coupling.)
 
-- `FindingsPanel` (`_components/FindingsPanel/FindingsPanel.tsx`) binds a
-  `keydown` listener to `window` for `j`/`k` (move focus) and `a`/`d`
-  (accept/dismiss the currently-focused finding) — it only skips firing when
-  `document.activeElement` is an `<input>`/`<textarea>`, not when the user
-  simply isn't intending to act on a finding. Any keypress of `a` or `d`
-  anywhere else on a PR page with this tab open silently accepts/dismisses
-  `shown[focusIdx]` (default index 0 = the first visible finding) with no
-  confirmation and no visible feedback beyond the badge changing color. This
-  already caused real confusion in a session (2026-07-31): a finding showed
-  `accepted_at` set with nobody having clicked Accept — traced to this
-  listener. There's no "un-accept" action in the UI, only Accept ↔ Dismiss
-  (each clears the other's timestamp) — resetting to neutral requires a
-  direct DB update (`findings.accepted_at = null, dismissed_at = null`).
+- `FindingsPanel` keyboard shortcuts (`j`/`k` focus, `a`/`d` accept/dismiss)
+  used to listen on `window` whenever the Findings tab was mounted, so typing
+  `a`/`d` elsewhere on the PR page silently mutated `shown[0]`. Fixed
+  2026-08-04: shortcuts arm only after a `pointerdown` inside the panel
+  (`panelActive`), and skip when the target is an editable field
+  (`isTypingTarget` in `helpers.ts` — INPUT/TEXTAREA/SELECT/contentEditable)
+  or when meta/ctrl/alt is held. Regression: `FindingsPanel.test.tsx` —
+  "does not accept/dismiss via a/d until the panel is activated". There is
+  still no "un-accept" to neutral in the UI (Accept ↔ Dismiss only); reset
+  via DB if needed (`accepted_at`/`dismissed_at` = null).
 
 ## Tool & Library Notes
 

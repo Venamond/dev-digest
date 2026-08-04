@@ -274,6 +274,7 @@ export interface AuthProvider {
 export type SecretKey =
   | 'OPENAI_API_KEY'
   | 'ANTHROPIC_API_KEY'
+  | 'OPENROUTER_API_KEY'
   | 'GITHUB_TOKEN'
   | 'DATABASE_URL'
   | (string & {});

@@ -6,10 +6,14 @@ workspace: cross-package code is shared via tsconfig path aliases, not npm.
 
 ## Stack
 
-Node ≥22 · pnpm ≥10 · Fastify 5 + Drizzle + Postgres/pgvector (server) ·
+Node ≥22 · Fastify 5 + Drizzle + Postgres/pgvector (server) ·
 Next.js 15 + React 19 (client) · Zod contracts shared via
 `server/src/vendor/shared` (duplicated into `client/src/vendor/shared`, see
 Gotchas).
+
+**Package managers:** `server/` and `client/` use **pnpm ≥10**; `reviewer-core/`
+and `e2e/` use **npm**. Keep vendored contracts in sync with
+`./scripts/check-shared-sync.sh` (CI enforces this).
 
 ## Commands
 
@@ -18,6 +22,7 @@ Gotchas).
 cd server && pnpm db:migrate  # NOT run automatically on boot
 cd server && pnpm test        # unit + integration
 cd client && pnpm test        # vitest + jsdom
+./scripts/check-shared-sync.sh  # server/client vendor/shared must match
 ```
 
 ## Map — where things live
