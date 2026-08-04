@@ -161,21 +161,38 @@ is a gate people stop running.
 
 ### 10. Memoize the verdict
 
-Read/write `.claude/pr-self-review.local.md` (gitignored): current commit
-SHA, a hash of the dirty worktree (e.g. `git diff | shasum`, combined with
-the untracked-file list), the verdict, and the critical count.
+Write `.claude/pr-self-review.local.md` (gitignored) in this exact format —
+a `.claude/settings.json` `PreToolUse` hook reads it and must compute the
+same hash, so the shape here is a contract, not a suggestion:
 
-On the next invocation, if both SHA and worktree hash are unchanged from
-what's recorded, report "unchanged since the last run — verdict stands"
-instead of repeating the full procedure. Any difference invalidates it and
+```
+sha: <output of `git rev-parse HEAD`>
+worktree_hash: <output of `(git diff HEAD; git ls-files --others --exclude-standard) | shasum` (first field only)>
+verdict: CLEAR|BLOCKED
+critical_count: <integer>
+```
+
+On the next invocation, if both `sha` and `worktree_hash` match the current
+repo state, report "unchanged since the last run — verdict stands" instead
+of repeating the full procedure. Any difference invalidates the record and
 forces a full run from step 1.
 
 This file holds only that state — never the full report text. If report
 persistence is ever added, it's a separate file; this one stays small.
 
-## Explicitly out of scope
+## Enforcement beyond the soft gate
 
-No CI integration, no `PreToolUse` hook, no persisted DB record of runs, no
-machine-readable (JSON) findings output, no auto-fixing, no severity blocks
-added to the 7 skills that lack them. All additive later if this soft gate
-proves insufficient in practice.
+This skill is the judgment layer — routing, line-level review, severity
+classification — and none of that runs inside a hook. A
+`.claude/settings.json` `PreToolUse` hook on `Bash` backs it with a
+mechanical check: before `gh pr create` or `git push`, it reads the file
+from step 10 and denies the command unless `sha`/`worktree_hash` match the
+current repo state **and** `verdict: CLEAR`. It cannot perform the review
+itself — only confirm this skill already did, recently, and cleanly. If the
+file is missing, stale, or the verdict is `BLOCKED`, the hook denies with a
+message pointing back to `/pr-self-review`.
+
+No CI integration, no persisted DB record of runs, no machine-readable
+(JSON) findings output, no auto-fixing, no severity blocks added to the 7
+skills that lack them. All additive later if this soft gate proves
+insufficient in practice.

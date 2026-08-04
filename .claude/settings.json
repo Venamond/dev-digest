@@ -11,6 +11,19 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "input=$(cat)\ncmd=$(echo \"$input\" | jq -r '.tool_input.command // \"\"')\nif ! echo \"$cmd\" | grep -qE '(^|[;&|]|&&)\\s*(gh pr create|git push)\\b'; then\n  exit 0\nfi\ncd \"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\" 2>/dev/null || exit 0\nSTATE=\".claude/pr-self-review.local.md\"\ndeny() {\n  jq -n --arg reason \"$1\" '{hookSpecificOutput:{hookEventName:\"PreToolUse\",permissionDecision:\"deny\",permissionDecisionReason:$reason}}'\n  exit 0\n}\n[ -f \"$STATE\" ] || deny \"pr-self-review has not been run yet. Run /pr-self-review before opening a PR or pushing.\"\nCUR_SHA=$(git rev-parse HEAD 2>/dev/null)\nCUR_HASH=$( (git diff HEAD; git ls-files --others --exclude-standard) | shasum | awk '{print $1}')\nREC_SHA=$(grep '^sha:' \"$STATE\" | head -1 | awk '{print $2}')\nREC_HASH=$(grep '^worktree_hash:' \"$STATE\" | head -1 | awk '{print $2}')\nREC_VERDICT=$(grep '^verdict:' \"$STATE\" | head -1 | awk '{print $2}')\nif [ \"$CUR_SHA\" != \"$REC_SHA\" ] || [ \"$CUR_HASH\" != \"$REC_HASH\" ]; then\n  deny \"pr-self-review verdict is stale (commit or working tree changed since last run). Run /pr-self-review again.\"\nfi\nif [ \"$REC_VERDICT\" != \"CLEAR\" ]; then\n  deny \"pr-self-review verdict is BLOCKED. Fix CRITICAL findings and re-run /pr-self-review.\"\nfi\nexit 0\n",
+            "timeout": 10,
+            "statusMessage": "Checking pr-self-review verdict…"
+          }
+        ]
+      }
     ]
   }
 }

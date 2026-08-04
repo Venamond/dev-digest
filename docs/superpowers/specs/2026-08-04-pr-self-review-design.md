@@ -1,8 +1,22 @@
 # PR Self Review skill — design
 
 **Date:** 2026-08-04
-**Status:** draft — seven additions (P1–P7) approved 2026-08-04; three
-decisions (A1–A3) still assumed pending confirmation
+**Status:** implemented 2026-08-04. Seven additions (P1–P7) approved; A2/A3
+implemented as designed. **A1 (inline default) also stands, but decision 1
+("soft gate, not a hook") was reversed** — see "Amendment" below.
+
+## Amendment (2026-08-04, post-implementation)
+
+Decision 1 said no `PreToolUse` hook, with the Risks section naming one as
+the fallback if bypasses were observed. That fallback was invoked directly,
+without waiting for an observed bypass. A `.claude/settings.json`
+`PreToolUse` hook on `Bash` now denies `gh pr create` / `git push` unless
+`.claude/pr-self-review.local.md` (the P7 memoization file) shows a
+`sha`/`worktree_hash` match for the current repo state and `verdict: CLEAR`.
+The hook does not reimplement the skill's judgment — it only checks that the
+skill already ran, recently, against this exact state, and passed. See
+`SKILL.md`'s "Enforcement beyond the soft gate" section for the exact
+contract between the memoization file and the hook.
 **Scope:** new `.claude/skills/pr-self-review/`, new
 `.claude/commands/pr-self-review.md`, one line added to `CLAUDE.md`, one row
 added to `.claude/skills/README.md`. No changes to the 12 existing skills.
