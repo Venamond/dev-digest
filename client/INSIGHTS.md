@@ -13,20 +13,11 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Codebase Patterns
 
-- TanStack Query keys in `src/lib/hooks/*` are inline string literals with no
-  key factory, and at least one invalidation crosses a module boundary by raw
-  string: `core.ts:50` (`useTestConnection`) calls
-  `qc.invalidateQueries({ queryKey: ["provider-models"] })`, but that key is
-  declared in `agents.ts:86` (`useProviderModels`) as
-  `["provider-models", provider]`. It works only because TanStack Query matches
-  by key *prefix*, and nothing in either file points at the other. Before
-  renaming or reshaping any `queryKey` in `src/lib/hooks/`, grep the literal
-  across the whole directory — the compiler will not catch a missed
-  invalidation, and the symptom is a stale cache (e.g. the agent editor's model
-  picker keeping an empty list after a provider key is saved), not an error.
-  Same applies to `["repos"]`, `["agents"]`, `["reviews", prId]` and
-  `["pr-runs", prId]`, each repeated across several call sites. (Verified
-  2026-08-03 by grep; no bug observed yet — this is a latent coupling.)
+- TanStack Query keys previously were inline string literals with cross-file
+  invalidation by raw string (e.g. `useTestConnection` → `["provider-models"]`).
+  Fixed 2026-08-04: every key / invalidation goes through
+  `src/lib/hooks/keys.ts` (`queryKeys`). When adding a new query, extend that
+  factory — do not introduce a bare string-array `queryKey`.
 
 - `FindingsPanel` keyboard shortcuts (`j`/`k` focus, `a`/`d` accept/dismiss)
   used to listen on `window` whenever the Findings tab was mounted, so typing

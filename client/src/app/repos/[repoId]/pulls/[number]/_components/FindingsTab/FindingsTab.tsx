@@ -1,14 +1,17 @@
 "use client";
 
 import React, { useCallback } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Icon, Badge, Button, SectionLabel, EmptyState, type Severity } from "@devdigest/ui";
-import { RunStatus } from "../RunStatus";
+import { RunStatus } from "../RunStatus/RunStatus";
 import { RunHistory } from "../RunHistory/RunHistory";
-import { ReviewRunAccordion } from "../ReviewRunAccordion";
-import { SeverityCounters } from "../SeverityCounters";
+import { ReviewRunAccordion } from "../ReviewRunAccordion/ReviewRunAccordion";
+import { SeverityCounters } from "../SeverityCounters/SeverityCounters";
 import { s } from "./styles";
 import type { FindingRecord, ReviewRecord, RunSummary, PrCommit } from "@devdigest/shared";
 import type { UseMutationResult } from "@tanstack/react-query";
+
+const SEVERITIES = new Set<Severity>(["CRITICAL", "WARNING", "SUGGESTION", "INFO"]);
 
 interface FindingsTabProps {
   prId: string | null;
@@ -75,9 +78,23 @@ export function FindingsTab({
     setTarget((p) => ({ runId, n: (p?.n ?? 0) + 1 }));
   }, []);
 
-  // Severity counters filter — click a level to show only that level's
-  // findings across every run below; click the active level again to clear.
-  const [severityFilter, setSeverityFilter] = React.useState<Severity | null>(null);
+  // Severity counters filter — URL-backed (?severity=) so the filter is shareable.
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
+  const rawSeverity = searchParams.get("severity");
+  const severityFilter: Severity | null =
+    rawSeverity && SEVERITIES.has(rawSeverity as Severity) ? (rawSeverity as Severity) : null;
+  const setSeverityFilter = useCallback(
+    (next: Severity | null) => {
+      const sp = new URLSearchParams(searchParams.toString());
+      if (next) sp.set("severity", next);
+      else sp.delete("severity");
+      const qs = sp.toString();
+      router.replace(`${pathname}${qs ? `?${qs}` : ""}`);
+    },
+    [pathname, router, searchParams],
+  );
 
   return (
     <section>

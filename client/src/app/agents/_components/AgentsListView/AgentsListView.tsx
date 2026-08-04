@@ -3,13 +3,13 @@
 "use client";
 
 import React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button, Dropdown, EmptyState, ErrorState, Skeleton, Icon } from "@devdigest/ui";
-import { AppShell } from "../../../../components/app-shell";
-import { useAgents, useUpdateAgent } from "../../../../lib/hooks/agents";
-import { AgentCard } from "../AgentCard";
-import { CreateAgentModal } from "./_components/CreateAgentModal";
+import { AppShell } from "@/components/app-shell";
+import { useAgents, useUpdateAgent } from "@/lib/hooks/agents";
+import { AgentCard } from "@/components/agent-card/AgentCard";
+import { CreateAgentModal } from "./_components/CreateAgentModal/CreateAgentModal";
 import { TEMPLATES } from "./constants";
 import { filterAgents } from "./helpers";
 import { s } from "./styles";
@@ -17,10 +17,18 @@ import { s } from "./styles";
 export function AgentsListView() {
   const t = useTranslations("agents");
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: agents, isLoading, isError, refetch } = useAgents();
   const update = useUpdateAgent();
   const [creating, setCreating] = React.useState(false);
-  const [search, setSearch] = React.useState("");
+  const search = searchParams.get("q") ?? "";
+  const setSearch = (q: string) => {
+    const sp = new URLSearchParams(searchParams.toString());
+    if (q) sp.set("q", q);
+    else sp.delete("q");
+    const qs = sp.toString();
+    router.replace(`/agents${qs ? `?${qs}` : ""}`);
+  };
 
   const list = filterAgents(agents ?? [], search);
 

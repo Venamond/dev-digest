@@ -3,7 +3,7 @@ import { render, screen, cleanup, fireEvent, act } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { NextIntlClientProvider } from "next-intl";
 import type { ReviewRecord } from "@devdigest/shared";
-import messages from "../../../../../../../messages/en/prReview.json";
+import messages from "../../../messages/en/prReview.json";
 import { FindingsPreviewPopover } from "./FindingsPreviewPopover";
 import { usePrReviews } from "@/lib/hooks/reviews";
 

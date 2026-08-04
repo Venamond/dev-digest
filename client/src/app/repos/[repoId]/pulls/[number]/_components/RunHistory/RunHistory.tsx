@@ -5,7 +5,8 @@ import { useTranslations } from "next-intl";
 import { Badge, Icon, SEV, CircularScore, type IconName, type Severity } from "@devdigest/ui";
 import type { RunSummary, PrCommit, ReviewRecord, FindingRecord } from "@devdigest/shared";
 import { CostBadge } from "@/components/cost-badge";
-import { HoverPreviewAnchor, FindingsPreviewPanel } from "../../../_components/FindingsPreview";
+import { HoverPreviewAnchor } from "@/components/findings-preview/HoverPreviewAnchor";
+import { FindingsPreviewPanel } from "@/components/findings-preview/FindingsPreviewPanel";
 
 /** Severity display order for the per-run findings badges. */
 const SEVERITY_LEVELS: Severity[] = ["CRITICAL", "WARNING", "SUGGESTION"];

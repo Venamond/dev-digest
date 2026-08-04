@@ -5,53 +5,30 @@ Where `client/`'s current code doesn't yet follow a rule in
 each entry is a worklist item for a future refactor, not something to fix
 as a side effect of unrelated work.
 
-## Thick route entries instead of thin + `_components/<View>`
+## Thick route entries — resolved (2026-08-04)
 
-**Rule:** [SKILL.md § Server/Client Boundary](SKILL.md#serverclient-boundary-critical) —
-route entries stay Server Components and delegate to a `'use client'`
-view under `_components/`.
+Route entries are now thin Server Components that delegate to `'use client'`
+views (`HomeRedirectView`, `PullsListView`, `PrDetailView`,
+`AgentEditorPageView`, plus the pre-existing Agents/Settings/AddRepo
+pattern). Do not reintroduce `"use client"` on `page.tsx`.
 
-**Violates:**
+## Query keys — resolved (2026-08-04)
 
-- `src/app/page.tsx`
-- `src/app/repos/[repoId]/pulls/page.tsx`
-- `src/app/repos/[repoId]/pulls/[number]/page.tsx`
-- `src/app/agents/[id]/page.tsx`
+All query keys / invalidations go through `src/lib/hooks/keys.ts`
+(`queryKeys`). Do not add new inline string-array keys.
 
-All four carry `"use client"` directly on the route entry with the page's
-full implementation inline, instead of following the pattern
-`src/app/agents/page.tsx` and `src/app/settings/[section]/page.tsx`
-already use correctly (see [examples.md](examples.md) for the two side by
-side).
+## Cross-route feature imports — resolved (2026-08-04)
 
-Note: because the app is already client-rendered below the route entry in
-this codebase, moving `'use client'` into `_components/` here would not
-by itself reduce the client bundle — the view is imported by the page
-either way. The reason to still follow the rule is consistency and
-keeping the option of server-side `params`/`metadata` open, not a
-bundle-size win this skill can currently demonstrate.
+`AgentCard` and FindingsPreview live under `src/components/`
+(`agent-card/`, `findings-preview/`). Feature folders under one route must
+not import from another route's `_components/`.
 
-**Do not copy this pattern into a new route.** Fixing these four is a
-separate refactor task, not part of this skill.
+## App barrels — resolved (2026-08-04)
 
-## Query keys without a shared factory
-
-**Rule:** [SKILL.md § Data Architecture](SKILL.md#data-architecture-project) —
-query keys should live behind a per-feature factory, not as repeated
-inline literals.
-
-**Violates:** all of `src/lib/hooks/*` — keys are inline string arrays.
-Concrete example already causing invisible coupling: `core.ts:50`
-(`useTestConnection`) invalidates `["provider-models"]`, a key declared in
-`agents.ts:86` (`useProviderModels`) — see
-[examples.md](examples.md#query-keys-implicit-coupling-vs-a-factory) for
-the full before/after. Recorded independently in `client/INSIGHTS.md`
-under Tool & Library Notes (2026-08-03).
-
-**Do not add a new query key as a bare literal expecting this to be fixed
-first** — follow the existing inline-literal pattern for now, since a
-partial migration (some hooks on a factory, most not) would be worse than
-a consistent one. Introducing the factory repo-wide is a separate task.
+`src/app/**/index.ts` re-exports removed. Import the concrete file
+(`./FindingsPanel/FindingsPanel`). The sanctioned barrel exception remains
+vendored packages (`src/vendor/*`) and the existing `src/lib/hooks/index.ts`
+re-export surface.
 
 ## Styles: `react-best-practices`' Tailwind rule doesn't apply here
 
@@ -63,10 +40,9 @@ It's listed here because it's a deviation from the *sibling*
 "Use utility classes for all styling — no inline `style={}` objects."
 
 `client/` has `tailwindcss` v4 installed and configured, but the actual,
-deliberate convention is colocated JS style objects in `styles.ts` beside
-each component: 23 such files exist under `src/`, and files under
-`src/app` use `style={` far more often than `className=`. Also recorded in
-`client/INSIGHTS.md` under Tool & Library Notes (2026-08-03).
+deliberate convention is JS style objects in a colocated `styles.ts` beside
+each component. Also recorded in `client/INSIGHTS.md` under Tool & Library
+Notes (2026-08-03).
 
 **If you're working from `react-best-practices` in `client/`, this
 override supersedes its Tailwind section.** Do not convert an existing
