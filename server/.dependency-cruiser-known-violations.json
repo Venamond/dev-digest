@@ -230,62 +230,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/modules/polling/routes.ts",
-    "to": "node_modules/.pnpm/drizzle-orm@0.38.4_postgres@3.4.9/node_modules/drizzle-orm/index.cjs",
-    "unresolvedTo": "drizzle-orm",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-route-to-db"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/polling/routes.ts",
-    "to": "src/db/schema.ts",
-    "unresolvedTo": "../../db/schema.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-route-to-db"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/pulls/routes.ts",
-    "to": "node_modules/.pnpm/drizzle-orm@0.38.4_postgres@3.4.9/node_modules/drizzle-orm/index.cjs",
-    "unresolvedTo": "drizzle-orm",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-route-to-db"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/pulls/routes.ts",
-    "to": "src/db/schema.ts",
-    "unresolvedTo": "../../db/schema.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-route-to-db"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/modules/settings/routes.ts",
     "to": "node_modules/.pnpm/drizzle-orm@0.38.4_postgres@3.4.9/node_modules/drizzle-orm/index.cjs",
     "unresolvedTo": "drizzle-orm",

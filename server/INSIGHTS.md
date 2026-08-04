@@ -12,45 +12,25 @@ ground truth — wrap-ups can mischaracterize a session.
 ## What Doesn't Work
 
 - The onion-architecture baseline's "monotonic decrease" policy
-  (`.dependency-cruiser-known-violations.json` may only shrink, stated in
-  `.claude/skills/onion-architecture/enforcement.md`) has already been
-  broken without anyone deciding to break it. The skill's own implementation
-  plan (`docs/superpowers/plans/2026-08-03-onion-architecture-skill.md`)
-  fixed the baseline at exactly 6 entries (4 `no-route-to-db` + 2
-  `no-app-to-schema`) and explicitly said `no-circular`/
-  `no-cross-module-internals` hits must never be silently baselined —
-  "report each hit... a hit means either a real architectural problem worth
-  fixing now or an over-broad regex worth narrowing." As of 2026-08-04 the
-  committed baseline has grown to 16 entries: 8 `no-route-to-db`, 3
-  `no-app-to-schema`, and **5 `no-circular`** — the exact category the plan
-  said must never be baselined reflexively. `pnpm arch:check` still passes
-  green because `--ignore-known` treats the expanded baseline as ground
-  truth; nothing failed loudly. Root cause not yet investigated — the most
-  likely culprit is the PR-list findings work that touched
-  `server/src/modules/pulls/routes.ts` (`git log -p` on that file is the
-  place to start) since `pnpm arch:baseline` was presumably re-run after
-  that change added more edges. Before trusting `pnpm arch:check`'s green
-  status as "no new architectural drift," diff
-  `.dependency-cruiser-known-violations.json` against the 6-entry version
-  from `062dd53`/`75de6de` (the original onion-architecture commits) to see
-  what was actually silently grandfathered in, especially the 5 circular
-  dependencies.
+  (`.dependency-cruiser-known-violations.json` may only shrink) was broken
+  once (grew to 16: 8 `no-route-to-db`, 3 `no-app-to-schema`, 5
+  `no-circular`). As of 2026-08-04 pulls+polling routes were extracted to
+  `pulls/{repository,service,facade}.ts`, removing 4 `no-route-to-db`
+  entries → baseline is **12**. Remaining grandfathered fat routes:
+  `settings/routes.ts`, `workspace/routes.ts`. Never grow the baseline;
+  `pnpm arch:check` in CI uses `--ignore-known`.
 
 ## Codebase Patterns
 
-- `server/AGENTS.md`'s Structure section states "routes never touch the DB".
-  That invariant is NOT actually held: as of 2026-08-03,
-  `modules/pulls/routes.ts`, `modules/polling/routes.ts`,
-  `modules/workspace/routes.ts` and `modules/settings/routes.ts` all import
-  `drizzle-orm` and `../../db/schema.js` and run `container.db.select()`
-  directly in handlers, bypassing service+repository. Separately,
-  `modules/reviews/run-executor.ts`, `modules/reviews/diff-loader.ts` and
-  `modules/_shared/schemas.ts` import types from `db/schema` into the
-  service/application layer. Do not assume the documented layering holds when
-  reasoning about a route — grep the file for `drizzle-orm` first. When adding
-  a NEW route, follow the documented rule (routes → service → repository), not
-  the surrounding code in those four files. (2026-08-03, Onion Architecture
-  skill research)
+- `pulls` + `polling` routes no longer touch the DB (2026-08-04): use
+  `PullsService` via `pulls/facade.ts` (`createPullsService(container)`).
+  Polling must NOT import `pulls/service.ts` directly — that hits
+  `no-cross-module-internals`; putting the service on `Container` cycles with
+  composition root. Still grandfathered with Drizzle in handlers:
+  `workspace/routes.ts`, `settings/routes.ts`. Application-layer
+  `db/schema` imports remain in `run-executor.ts`, `diff-loader.ts`,
+  `_shared/schemas.ts`. When adding a NEW route, follow routes → service →
+  repository.
 
 - `server/src/modules/pulls/status.ts`'s `rollupSeverities()` was already
   written, exported, and unit-tested (`server/test/pulls-status.test.ts`)

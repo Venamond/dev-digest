@@ -25,9 +25,10 @@ pnpm arch:check:core # same, for reviewer-core purity
   feature per module. Dependencies point inward only: routes → service →
   repository → db. Routes must not import `drizzle-orm` or `db/schema`;
   services may name row shapes via `db/rows.ts` but not `db/schema`.
-  Enforced by `pnpm arch:check`. **Four routes predate this rule** (`pulls`,
-  `polling`, `workspace`, `settings`) and are grandfathered in
-  `.dependency-cruiser-known-violations.json` — do not copy them. Full ring
+  Enforced by `pnpm arch:check`. **Two routes still predate this rule**
+  (`workspace`, `settings`) and remain grandfathered in
+  `.dependency-cruiser-known-violations.json` — do not copy them. `pulls` /
+  `polling` go through `pulls/{service,repository,facade}.ts`. Full ring
   map: `.claude/skills/onion-architecture/SKILL.md`.
 - `adapters/*` — ports behind the DI container; prod impl vs
   `adapters/mocks.ts` in tests.
