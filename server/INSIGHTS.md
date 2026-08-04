@@ -13,24 +13,23 @@ ground truth — wrap-ups can mischaracterize a session.
 
 - The onion-architecture baseline's "monotonic decrease" policy
   (`.dependency-cruiser-known-violations.json` may only shrink) was broken
-  once (grew to 16: 8 `no-route-to-db`, 3 `no-app-to-schema`, 5
-  `no-circular`). As of 2026-08-04 pulls+polling routes were extracted to
-  `pulls/{repository,service,facade}.ts`, removing 4 `no-route-to-db`
-  entries → baseline is **12**. Remaining grandfathered fat routes:
-  `settings/routes.ts`, `workspace/routes.ts`. Never grow the baseline;
-  `pnpm arch:check` in CI uses `--ignore-known`.
+  once (peaked at 16). Burn-down 2026-08-04: pulls/polling then
+  settings/workspace extracted → **0 `no-route-to-db` left**; agents
+  helpers↔repository cycle fixed via `db/rows.ts` → baseline is **7**
+  (3 `no-app-to-schema` + 4 `no-circular` in repo-intel↔container).
+  `no-app-to-schema` also matches `feature-models.ts`. Never grow the
+  baseline; `pnpm arch:check` in CI uses `--ignore-known`.
 
 ## Codebase Patterns
 
-- `pulls` + `polling` routes no longer touch the DB (2026-08-04): use
-  `PullsService` via `pulls/facade.ts` (`createPullsService(container)`).
-  Polling must NOT import `pulls/service.ts` directly — that hits
-  `no-cross-module-internals`; putting the service on `Container` cycles with
-  composition root. Still grandfathered with Drizzle in handlers:
-  `workspace/routes.ts`, `settings/routes.ts`. Application-layer
-  `db/schema` imports remain in `run-executor.ts`, `diff-loader.ts`,
-  `_shared/schemas.ts`. When adding a NEW route, follow routes → service →
-  repository.
+- All F1 routes are thin as of 2026-08-04: `pulls`/`polling` via
+  `PullsService` + `pulls/facade.ts` (polling must not import
+  `pulls/service.ts` — `no-cross-module-internals`); `settings` via
+  `SettingsService`/`SettingsRepository` (feature-models reads settings
+  through the repository too); `workspace` via `WorkspaceService`.
+  Application-layer `db/schema` imports remain in `run-executor.ts`,
+  `diff-loader.ts`, `repos/helpers.ts`. When adding a NEW route, follow
+  routes → service → repository.
 
 - `server/src/modules/pulls/status.ts`'s `rollupSeverities()` was already
   written, exported, and unit-tested (`server/test/pulls-status.test.ts`)

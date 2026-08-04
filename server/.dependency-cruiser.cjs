@@ -43,7 +43,9 @@ module.exports = {
         'via src/db/rows.ts, but must not import the Drizzle table objects or ' +
         'the query builder. See rules/drizzle-repositories.md',
       from: {
-        path: '^src/modules/[^/]+/(service|helpers|run-executor|diff-loader)\\.ts$|^src/modules/repo-intel/pipeline/',
+        // feature-models is application-layer (reads settings via repository);
+        // keep it in the ring-1 ban so it never grows a direct drizzle import again.
+        path: '^src/modules/[^/]+/(service|helpers|run-executor|diff-loader|feature-models)\\.ts$|^src/modules/repo-intel/pipeline/',
       },
       to: {
         path: '^(node_modules/\\.pnpm/[^/]+/node_modules/drizzle-orm|node_modules/drizzle-orm|src/db/schema)',
