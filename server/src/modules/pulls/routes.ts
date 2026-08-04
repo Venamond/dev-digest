@@ -1,7 +1,12 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
-import type { PrMeta, PrDetail, PrReviewComment } from '@devdigest/shared';
-import { PrCommentInput } from '@devdigest/shared';
+import { z } from 'zod';
+import {
+  PrMeta,
+  PrDetail,
+  PrReviewComment,
+  PrCommentInput,
+} from '@devdigest/shared';
 import { getContext } from '../_shared/context.js';
 import { IdParams } from '../_shared/schemas.js';
 import { createPullsService } from './facade.js';
@@ -21,15 +26,23 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
   const app = appBase.withTypeProvider<ZodTypeProvider>();
   const service = createPullsService(app.container);
 
-  app.get('/repos/:id/pulls', { schema: { params: IdParams } }, async (req): Promise<PrMeta[]> => {
-    const { workspaceId } = await getContext(app.container, req);
-    return service.listForRepo(workspaceId, req.params.id, app.log);
-  });
+  app.get(
+    '/repos/:id/pulls',
+    { schema: { params: IdParams, response: { 200: z.array(PrMeta) } } },
+    async (req) => {
+      const { workspaceId } = await getContext(app.container, req);
+      return service.listForRepo(workspaceId, req.params.id, app.log);
+    },
+  );
 
-  app.get('/pulls/:id', { schema: { params: IdParams } }, async (req): Promise<PrDetail> => {
-    const { workspaceId } = await getContext(app.container, req);
-    return service.getDetail(workspaceId, req.params.id, app.log);
-  });
+  app.get(
+    '/pulls/:id',
+    { schema: { params: IdParams, response: { 200: PrDetail } } },
+    async (req) => {
+      const { workspaceId } = await getContext(app.container, req);
+      return service.getDetail(workspaceId, req.params.id, app.log);
+    },
+  );
 
   // ---- Inline review comments (Files changed tab) -------------------------
   // Proxied live to GitHub (no local persistence): GET reflects existing PR
@@ -37,8 +50,8 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
   // GitHub and avoids a stale local mirror.
   app.get(
     '/pulls/:id/comments',
-    { schema: { params: IdParams } },
-    async (req): Promise<PrReviewComment[]> => {
+    { schema: { params: IdParams, response: { 200: z.array(PrReviewComment) } } },
+    async (req) => {
       const { workspaceId } = await getContext(app.container, req);
       return service.listComments(workspaceId, req.params.id, app.log);
     },
@@ -46,8 +59,14 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
 
   app.post(
     '/pulls/:id/comments',
-    { schema: { params: IdParams, body: PrCommentInput } },
-    async (req): Promise<PrReviewComment> => {
+    {
+      schema: {
+        params: IdParams,
+        body: PrCommentInput,
+        response: { 200: PrReviewComment },
+      },
+    },
+    async (req) => {
       const { workspaceId } = await getContext(app.container, req);
       return service.createComment(workspaceId, req.params.id, req.body);
     },

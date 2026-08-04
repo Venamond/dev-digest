@@ -2,7 +2,7 @@
  * Pure helpers for the review service (side-effect free; operate purely on
  * their arguments — no DB / network / `this`).
  */
-import type { Finding } from '@devdigest/shared';
+import type { Finding, Verdict } from '@devdigest/shared';
 import type { FindingRow, PullRow, ReviewRow } from './repository.js';
 
 // reduceReviews + sliceDiff live in @devdigest/reviewer-core (pure engine logic
@@ -22,7 +22,7 @@ export interface ReviewDto {
   run_id: string | null;
   agent_name?: string | null;
   kind: 'summary' | 'review';
-  verdict: string | null;
+  verdict: Verdict | null;
   summary: string | null;
   score: number | null;
   model: string | null;
@@ -64,7 +64,7 @@ export function reviewToDto(
     run_id: review.runId,
     agent_name: agentName ?? null,
     kind: review.kind as 'summary' | 'review',
-    verdict: review.verdict,
+    verdict: (review.verdict as Verdict | null) ?? null,
     summary: review.summary,
     score: review.score,
     model: review.model,

@@ -10,3 +10,14 @@ import { z } from 'zod';
  */
 export const IdParams = z.object({ id: z.string().uuid() });
 export type IdParams = z.infer<typeof IdParams>;
+
+/** Common mutation ack — DELETE/cancel/etc. that only report success. */
+export const OkResponse = z.object({ ok: z.boolean() });
+
+/** In-flight run row from GET /pulls/:id/runs/active (no full RunSummary yet). */
+export const ActiveRunSummary = z.object({
+  run_id: z.string(),
+  agent_id: z.string().nullable(),
+  agent_name: z.string().nullable(),
+  ran_at: z.string().nullable(),
+});
