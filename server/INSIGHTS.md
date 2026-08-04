@@ -14,11 +14,12 @@ ground truth — wrap-ups can mischaracterize a session.
 - The onion-architecture baseline's "monotonic decrease" policy
   (`.dependency-cruiser-known-violations.json` may only shrink) was broken
   once (peaked at 16). Burn-down 2026-08-04: pulls/polling then
-  settings/workspace extracted → **0 `no-route-to-db` left**; agents
-  helpers↔repository cycle fixed via `db/rows.ts` → baseline is **7**
-  (3 `no-app-to-schema` + 4 `no-circular` in repo-intel↔container).
-  `no-app-to-schema` also matches `feature-models.ts`. Never grow the
-  baseline; `pnpm arch:check` in CI uses `--ignore-known`.
+  settings/workspace extracted → **0 `no-route-to-db`**; agents
+  helpers↔repository cycle fixed via `db/rows.ts`; run-executor /
+  diff-loader / repos/helpers now use `RepoRow` from `db/rows.ts` →
+  **0 `no-app-to-schema`**. Baseline is **4** (repo-intel↔container
+  circular type edges only). Never grow the baseline; `pnpm arch:check`
+  in CI uses `--ignore-known`.
 
 ## Codebase Patterns
 
@@ -27,9 +28,8 @@ ground truth — wrap-ups can mischaracterize a session.
   `pulls/service.ts` — `no-cross-module-internals`); `settings` via
   `SettingsService`/`SettingsRepository` (feature-models reads settings
   through the repository too); `workspace` via `WorkspaceService`.
-  Application-layer `db/schema` imports remain in `run-executor.ts`,
-  `diff-loader.ts`, `repos/helpers.ts`. When adding a NEW route, follow
-  routes → service → repository.
+  Application-layer code names row shapes via `db/rows.ts` only. When
+  adding a NEW route, follow routes → service → repository.
 
 - `server/src/modules/pulls/status.ts`'s `rollupSeverities()` was already
   written, exported, and unit-tested (`server/test/pulls-status.test.ts`)

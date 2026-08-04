@@ -1,5 +1,6 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, chmod } from 'node:fs/promises';
 import { dirname } from 'node:path';
+import { z } from 'zod';
 import type { SecretsProvider, SecretKey } from '@devdigest/shared';
 
 /**
@@ -13,6 +14,10 @@ import type { SecretsProvider, SecretKey } from '@devdigest/shared';
  * Stored values take precedence over env so a key entered in the UI wins.
  * Swap for a VaultSecretsProvider later without touching call sites.
  */
+
+/** Secrets file must be a flat string→string map; anything else is ignored. */
+const SecretsFileSchema = z.record(z.string(), z.string());
+
 export class LocalSecretsProvider implements SecretsProvider {
   private cache: Record<string, string> | null = null;
 
@@ -25,10 +30,11 @@ export class LocalSecretsProvider implements SecretsProvider {
     if (this.cache) return this.cache;
     let data: Record<string, string> = {};
     try {
-      const parsed = JSON.parse(await readFile(this.filePath, 'utf8'));
-      if (parsed && typeof parsed === 'object') data = parsed as Record<string, string>;
+      const raw: unknown = JSON.parse(await readFile(this.filePath, 'utf8'));
+      const parsed = SecretsFileSchema.safeParse(raw);
+      if (parsed.success) data = parsed.data;
     } catch {
-      // Missing or unreadable file → no stored overrides yet.
+      // Missing, unreadable, or invalid JSON → no stored overrides yet.
     }
     this.cache = data;
     return data;
@@ -45,6 +51,10 @@ export class LocalSecretsProvider implements SecretsProvider {
     const data = await this.load();
     data[key as string] = value;
     await mkdir(dirname(this.filePath), { recursive: true });
+    // mode on writeFile is only applied at create-time on many OSes — chmod
+    // after write so an existing world-readable file is tightened too.
     await writeFile(this.filePath, `${JSON.stringify(data, null, 2)}\n`, { mode: 0o600 });
+    await chmod(this.filePath, 0o600);
+    this.cache = data;
   }
 }

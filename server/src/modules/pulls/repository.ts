@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray } from 'drizzle-orm';
 import type { Db } from '../../db/client.js';
-import type { PullRow } from '../../db/rows.js';
+import type { PullRow, RepoRow, PrFileRow, PrCommitRow } from '../../db/rows.js';
 import * as t from '../../db/schema.js';
 
 /**
@@ -9,9 +9,7 @@ import * as t from '../../db/schema.js';
  * Every workspace-scoped lookup guards tenancy via `workspaceId`.
  */
 
-export type RepoRow = typeof t.repos.$inferSelect;
-export type PrFileRow = typeof t.prFiles.$inferSelect;
-export type PrCommitRow = typeof t.prCommits.$inferSelect;
+export type { RepoRow, PrFileRow, PrCommitRow };
 
 export interface GhPullUpsert {
   number: number;

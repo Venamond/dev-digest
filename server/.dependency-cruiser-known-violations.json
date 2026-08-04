@@ -1,47 +1,5 @@
 [
   {
-    "type": "dependency",
-    "from": "src/modules/repos/helpers.ts",
-    "to": "src/db/schema.ts",
-    "unresolvedTo": "../../db/schema.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-app-to-schema"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/reviews/diff-loader.ts",
-    "to": "src/db/schema.ts",
-    "unresolvedTo": "../../db/schema.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-app-to-schema"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/reviews/run-executor.ts",
-    "to": "src/db/schema.ts",
-    "unresolvedTo": "../../db/schema.js",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-app-to-schema"
-    }
-  },
-  {
     "type": "cycle",
     "from": "src/modules/repo-intel/pipeline/full.ts",
     "to": "src/platform/container.ts",
