@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 
 /** Global 404 for unknown App Router paths. */
-export default function NotFound() {
+export default async function NotFound() {
+  const t = await getTranslations("common");
   return (
     <main
       style={{
@@ -16,10 +18,10 @@ export default function NotFound() {
       }}
     >
       <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: "var(--text-primary)" }}>
-        Page not found
+        {t("errors.notFoundTitle")}
       </h1>
       <p style={{ fontSize: 14, margin: 0, color: "var(--text-secondary)", maxWidth: 360 }}>
-        That route does not exist in the studio. Pick a repo, open Agents, or go home.
+        {t("errors.notFoundBody")}
       </p>
       <Link
         href="/"
@@ -31,7 +33,7 @@ export default function NotFound() {
           textDecoration: "none",
         }}
       >
-        Back to home
+        {t("errors.notFoundCta")}
       </Link>
     </main>
   );

@@ -37,7 +37,36 @@
     "running": "Running…",
     "runReview": "Run Review",
     "mergedWarning": "Already merged — review is informational",
-    "mergedTooltip": "This PR is already merged; running a review won’t affect the merged code."
+    "mergedTooltip": "This PR is already merged; running a review won’t affect the merged code.",
+    "noAgentsYet": "No agents yet — create one"
+  },
+  "detail": {
+    "viewOnGithub": "View on GitHub",
+    "staleBanner": "This PR is already {status} — running a review is informational and won't affect the merged code.",
+    "loadErrorTitle": "Couldn't load this pull request",
+    "loadErrorBody": "PR #{number} could not be loaded.",
+    "tabs": {
+      "overview": "Overview",
+      "findings": "Agent runs",
+      "diff": "Files changed"
+    }
+  },
+  "findingsTab": {
+    "sectionLabel": "Review runs",
+    "groupedHint": "grouped by run · newest first",
+    "emptyTitle": "No findings yet",
+    "emptyBody": "Run a review to generate findings. Use Run Review ▾ above (run all enabled agents or a specific one)."
+  },
+  "diffTab": {
+    "sectionLabel": "Files changed · {count} files",
+    "showComments": "Show comments ({count})",
+    "hideComments": "Hide comments ({count})",
+    "postError": "Couldn't post the comment to GitHub."
+  },
+  "reviewRun": {
+    "agentFallback": "agent",
+    "deleteConfirm": "Delete this \"{agent}\" review run and its findings?",
+    "deleteTitle": "Delete this review run"
   },
   "runStatus": {
     "elapsed": "Running · {count} agent(s)",
@@ -110,6 +139,7 @@
   "timeline": {
     "goToReview": "Jump to this run’s findings below",
     "openTrace": "Open run trace & logs",
-    "deleteRun": "Delete run"
+    "deleteRun": "Delete run",
+    "deleteConfirm": "Delete this run from history? (its logs are removed too)"
   }
 }

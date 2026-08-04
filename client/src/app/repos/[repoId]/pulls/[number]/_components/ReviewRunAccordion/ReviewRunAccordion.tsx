@@ -6,6 +6,7 @@
 "use client";
 
 import React from "react";
+import { useTranslations } from "next-intl";
 import { Icon, Badge } from "@devdigest/ui";
 import type { ReviewRecord, Verdict } from "@devdigest/shared";
 import { FindingsPanel } from "../FindingsPanel/FindingsPanel";
@@ -45,6 +46,7 @@ export function ReviewRunAccordion({
   /** PR-level severity counter filter — only this run's findings of this severity show. */
   severityFilter?: string | null;
 }) {
+  const t = useTranslations("prReview");
   const [open, setOpen] = React.useState(defaultOpen);
   const rootRef = React.useRef<HTMLDivElement | null>(null);
   React.useEffect(() => {
@@ -112,13 +114,19 @@ export function ReviewRunAccordion({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            if (window.confirm(`Delete this "${review.agent_name ?? "agent"}" review run and its findings?`)) {
+            if (
+              window.confirm(
+                t("reviewRun.deleteConfirm", {
+                  agent: review.agent_name ?? t("reviewRun.agentFallback"),
+                }),
+              )
+            ) {
               del.mutate(review.id);
             }
           }}
           disabled={del.isPending}
-          title="Delete this review run"
-          aria-label="Delete this review run"
+          title={t("reviewRun.deleteTitle")}
+          aria-label={t("reviewRun.deleteTitle")}
           style={{
             background: "none",
             border: "none",
