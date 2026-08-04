@@ -5,11 +5,14 @@ its entirety.
 
 ## What it is
 
-- **No I/O beyond the injected LLM call.** The only side effect anywhere in
-  this package is calling the `LLMProvider` interface passed in by the
-  caller (`server` for local reviews, the CI agent-runner for pipeline
-  runs). No database, no filesystem, no network beyond that one injected
-  call.
+- **Pipeline I/O is injected.** `reviewPullRequest` only calls the
+  `LLMProvider` interface passed in by the caller (`server` for local
+  reviews, the CI agent-runner for pipeline runs). No database, no
+  filesystem, no GitHub from the pipeline.
+- **One concrete exception:** `OpenRouterProvider` (`llm/openrouter.ts`) is
+  shipped in-package so studio + CI share the same OpenRouter client. It
+  uses the allowlisted `openai` SDK. Do not add further concrete adapters
+  here — openai/anthropic direct clients stay in `server/src/adapters/llm`.
 - **Allowlisted dependencies: `openai` and `zod` only** (plus
   `@devdigest/shared` via the tsconfig path alias — that resolves to a
   local file, not an npm install, so it doesn't count against the

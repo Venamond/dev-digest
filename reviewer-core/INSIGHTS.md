@@ -13,6 +13,14 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Codebase Patterns
 
+- `OpenRouterProvider` (`src/llm/openrouter.ts`) is the intentional sole
+  concrete network client in `reviewer-core` — studio (`container.ts`) and
+  the future CI runner share it. The review pipeline still takes an injected
+  `LLMProvider`; unit tests stub that interface and never construct
+  OpenRouter. Do not add openai/anthropic concrete providers here (they live
+  under `server/src/adapters/llm`). Documented in `AGENTS.md` + onion
+  `reviewer-core-purity.md` (2026-08-04, architecture plan F22).
+
 ## Tool & Library Notes
 
 ## Recurring Errors & Fixes

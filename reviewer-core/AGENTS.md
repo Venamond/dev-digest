@@ -1,9 +1,12 @@
 # `@devdigest/reviewer-core` — review engine
 
 Pure review logic: diff → prompt → LLM → grounded findings. No database,
-GitHub, or filesystem access — the only side effect is an LLM call through an
-**injected** `LLMProvider`. This is what makes it mock-testable and what
-lets the server and the future CI runner (L06) share one engine.
+GitHub, or filesystem access. The review *pipeline* (`reviewPullRequest`)
+only talks to an **injected** `LLMProvider` — that is what makes it
+mock-testable. The package also ships one concrete adapter,
+`OpenRouterProvider` (`llm/openrouter.ts`), shared by the studio server and
+the future CI runner (L06); openai/anthropic providers stay in
+`server/src/adapters/llm`.
 
 ## Commands
 
@@ -19,13 +22,20 @@ npm run typecheck  # also the build; this package never emits JS
 - `review/run.ts` — `reviewPullRequest`, the entrypoint; picks single-pass vs
   map-reduce.
 - `review/reduce.ts` — `reduceReviews`, `scoreFromFindings`, `sliceDiff`.
-- `llm/*` — `LLMProvider` contract + structured-output parsing (Zod → JSON
-  Schema, parse-with-repair).
+- `llm/structured.ts` — Zod → JSON Schema + parse-with-repair helpers.
+- `llm/openrouter.ts` — **sole concrete LLM adapter** in this package
+  (OpenAI SDK → OpenRouter). Intentional exception to pipeline purity so CI
+  and server share one OpenRouter client; do not add a second concrete
+  provider here.
 
 ## Non-default conventions
 
-- **No I/O beyond the injected LLM call.** Do not add DB/fs/network access
-  here — that logic belongs in the caller (server or CI runner).
+- **Pipeline I/O is injected only.** `reviewPullRequest` must not construct
+  providers, touch DB/fs, or call GitHub — the caller injects `LLMProvider`.
+  Unit tests stub that interface; they never hit the network.
+- **`OpenRouterProvider` is the only allowed concrete network client** in
+  this package. Further adapters (openai/anthropic direct, GitHub, fs)
+  belong in `server/src/adapters` (or a future CI package), not here.
 - **Purity is enforced, not just documented.** `cd ../server && pnpm
   arch:check:core` fails the build on any Node builtin or any dependency
   outside `openai`/`zod`. See
@@ -54,6 +64,9 @@ npm run typecheck  # also the build; this package never emits JS
 
 - Don't introduce a DB, GitHub, or filesystem dependency into this package —
   that breaks the mock-testability the whole engine relies on.
+- Don't relocate `OpenRouterProvider` into `server` without also updating
+  the CI-runner plan (L06) — it lives here so both callers share one client.
+  Don't add parallel concrete providers beside it.
 
 ## Read when
 
