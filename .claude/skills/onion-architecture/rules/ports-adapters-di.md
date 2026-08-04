@@ -27,17 +27,19 @@ client, anything that does I/O) follows this sequence:
 A service constructor should take the specific ports it needs, explicitly.
 
 **This does not hold everywhere yet.** `ReviewsService`, `AgentsService`,
-`ReposService`, and `RepoIntelService` all currently take `Container` in
-their constructor (`constructor(private container: Container) {}`). This is
-grandfathered — a known pattern in the existing codebase, not something
-`dependency-cruiser` can catch statically (it's a constructor parameter
-type, not an import-graph edge). It is also the direct cause of the
-`no-circular` violations baselined in `enforcement.md`: `repo-intel/service.ts`
-imports `container.ts` for typing, and `container.ts` imports
-`RepoIntelService` back to construct it.
+and `ReposService` still take `Container` in their constructor
+(`constructor(private container: Container) {}`). That pattern is
+grandfathered — not something `dependency-cruiser` can catch from a
+constructor parameter alone.
 
-**Do not copy this into a new service.** A new service should list the
-ports it actually uses in its constructor signature.
+`RepoIntelService` was the circular case: it (and its pipeline) imported
+`Container` for typing while `container.ts` imported `RepoIntelService` to
+construct it. Fixed 2026-08-04 by taking a narrow `RepoIntelDeps` bag
+(`modules/repo-intel/deps.ts`) instead — composition root still passes
+`this`, but the import edge is gone.
+
+**Do not copy the Container-in-constructor pattern into a new service.**
+List the ports (or a narrow deps bag) the service actually uses.
 
 ## Check it
 

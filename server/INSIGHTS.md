@@ -17,9 +17,10 @@ ground truth — wrap-ups can mischaracterize a session.
   settings/workspace extracted → **0 `no-route-to-db`**; agents
   helpers↔repository cycle fixed via `db/rows.ts`; run-executor /
   diff-loader / repos/helpers now use `RepoRow` from `db/rows.ts` →
-  **0 `no-app-to-schema`**. Baseline is **4** (repo-intel↔container
-  circular type edges only). Never grow the baseline; `pnpm arch:check`
-  in CI uses `--ignore-known`.
+  **0 `no-app-to-schema`**. repo-intel takes `RepoIntelDeps`
+  (`modules/repo-intel/deps.ts`) instead of importing `Container` →
+  **0 circular**. Baseline is **0**. Never grow the baseline; `pnpm
+  arch:check` in CI uses `--ignore-known`.
 
 ## Codebase Patterns
 

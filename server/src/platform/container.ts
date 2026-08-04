@@ -113,6 +113,7 @@ export class Container {
    */
   get repoIntel(): RepoIntel {
     if (this.overrides.repoIntel) return this.overrides.repoIntel;
+    // Pass `this` as RepoIntelDeps (structural) — service must not import Container.
     this._repoIntel ??= new RepoIntelService(this);
     return this._repoIntel;
   }
