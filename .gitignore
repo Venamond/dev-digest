@@ -26,3 +26,6 @@ test-results/
 
 # local git worktrees
 .claude/worktrees/
+
+# pr-self-review verdict memoization (local state, not a shared report)
+.claude/pr-self-review.local.md

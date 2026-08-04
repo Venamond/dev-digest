@@ -82,3 +82,7 @@ here.
 if something genuinely new and non-trivial surfaced that isn't already
 recorded** (via the `engineering-insights` skill or `/engineering-insights`).
 Writing nothing is the correct outcome when nothing new cleared that bar.
+
+**Before running `gh pr create`, run the `pr-self-review` skill (or
+`/pr-self-review`) against the local change set.** It routes the diff to the
+relevant skills above and blocks on CRITICAL findings.
