@@ -157,20 +157,11 @@ ground truth — wrap-ups can mischaracterize a session.
   null). (2026-07-31, run-cost-ui feature)
 
 - `PriceBook.estimate(model, tokensIn, tokensOut)`
-  (`server/src/platform/price-book.ts`) does an EXACT string match against a
-  price map keyed by OpenRouter's provider-namespaced model IDs (e.g.
-  `"openai/gpt-4.1"`). `OpenAIProvider`/`AnthropicProvider` pass their own
-  bare model IDs (e.g. `"gpt-4.1"`), which never match that map — so
-  injecting `PriceBook.estimate` as their cost estimator (as
-  `container.ts`'s `buildLlm` does) never actually returns a live price for
-  those two providers; it always falls through to the static `estimateCost`
-  table, identical to the pre-wiring behavior. Only the `openrouter`
-  provider's model IDs are already OpenRouter-namespaced, so only that path
-  benefits from live pricing today. Fixing this needs ID normalization
-  inside `PriceBook.estimate` (e.g. try the bare ID, then
-  `"<provider>/<model>"`) — not implemented as of 2026-07-31; documented as
-  a known limitation in `container.ts`'s `buildLlm` comment rather than
-  fixed, per product decision.
+  (`server/src/platform/price-book.ts`) keys the live map by OpenRouter
+  namespaced IDs (e.g. `"openai/gpt-4.1"`). Bare ids from openai/anthropic
+  providers are resolved via known provider prefixes then a unique
+  provider/bare suffix match; ambiguous matches fall through to the static
+  `estimateCost` table. See `server/test/price-book.test.ts`.
 
 ## Recurring Errors & Fixes
 
