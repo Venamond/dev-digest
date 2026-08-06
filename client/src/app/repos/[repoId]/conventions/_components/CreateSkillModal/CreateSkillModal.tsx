@@ -8,6 +8,7 @@ import {
   useConventionSkillDraft,
   useCreateConventionSkill,
 } from "@/lib/hooks/conventions";
+import { useSkills } from "@/lib/hooks/skills";
 import { estimateTokens } from "@/app/skills/[id]/_components/SkillEditor/constants";
 import { MarkdownEditor } from "@/components/markdown-editor/MarkdownEditor";
 import { MODAL_WIDTH, s } from "./styles";
@@ -27,6 +28,7 @@ export function CreateSkillModal({
   const router = useRouter();
   const draftQ = useConventionSkillDraft(repoId, true);
   const create = useCreateConventionSkill(repoId);
+  const skillsQ = useSkills();
 
   const [name, setName] = React.useState("");
   const [description, setDescription] = React.useState("");
@@ -36,6 +38,14 @@ export function CreateSkillModal({
   /** Once the user edits, stop overwriting local fields from draft refetches. */
   const [touched, setTouched] = React.useState(false);
   const appliedDraftAt = React.useRef<number | null>(null);
+
+  // Upsert bumps when a skill with this name already exists — show the version
+  // that will be written (v1 for a new name, else current + 1).
+  const nextVersion = React.useMemo(() => {
+    const trimmed = name.trim() || "repo-conventions";
+    const existing = skillsQ.data?.find((sk) => sk.name === trimmed);
+    return existing ? existing.version + 1 : 1;
+  }, [name, skillsQ.data]);
 
   // Re-apply draft whenever the server payload changes (e.g. more Accepts),
   // unless the user has already edited the form.
@@ -91,7 +101,9 @@ export function CreateSkillModal({
       footer={
         <div style={s.footer}>
           <span style={s.footerNote}>
-            {create.isSuccess ? t("modal.footerSaved") : t("modal.footerHint")}
+            {create.isSuccess
+              ? t("modal.footerSaved", { version: nextVersion })
+              : t("modal.footerHint", { version: nextVersion })}
           </span>
           <div style={s.footerActions}>
             <Button kind="ghost" onClick={onClose}>

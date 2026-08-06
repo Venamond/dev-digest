@@ -52,8 +52,8 @@
     "body": "Skill body",
     "unsaved": "unsaved",
     "tokens": "{tokens} tokens",
-    "footerHint": "Same name updates the existing skill and bumps its version",
-    "footerSaved": "Saved · added to Skills Lab",
+    "footerHint": "Saved as v{version} · added to Skills Lab",
+    "footerSaved": "Saved as v{version} · added to Skills Lab",
     "cancel": "Cancel",
     "create": "Create skill",
     "creating": "Creating…"

@@ -11,6 +11,14 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## What Doesn't Work
 
+- Do not put `sessionStorage` (or any client-only value) into sidebar `href`s
+  during render to "skip" `/skills` → `/skills/:id` hops. SSR emits `/skills`,
+  the client first paint emits `/skills/{uuid}` → React hydration mismatch.
+  The real slow-nav fix is persistent `AppShell` (below); list pages already
+  show list+editor. Last-id href overrides also made the browser status bar
+  show long UUIDs on hover — removed; use static `/skills` and `/agents`.
+  (2026-08-07)
+
 ## Codebase Patterns
 
 - `AppShell` is mounted once under `lib/providers.tsx` (`CrumbProvider` +
@@ -19,6 +27,31 @@ ground truth — wrap-ups can mischaracterize a session.
   Publish breadcrumbs with `useSetCrumb([...])` from `@/components/app-shell`
   instead (`useSetCrumb` no-ops outside the provider so unit tests stay simple).
   (2026-08-07, slow left-nav switching)
+
+- Crumb publish/subscribe is split: `SetCrumbContext` (stable setter) vs
+  `CrumbStateContext` (current crumbs). `useSetCrumb` must depend only on the
+  setter + a serialized crumb key — never on a combined `ctx` object that
+  changes when crumbs update (that caused set→cleanup-clear→set infinite
+  loops). See `components/app-shell/crumb-context.tsx`. (2026-08-07)
+
+- Shell nav links go through `ShellLink` (`components/app-shell/ShellLink.tsx`)
+  as `ctx.Link`: `span` + `router.push` / prefetch, not `next/link` `<a>`.
+  Real anchors make the browser status bar flash the URL on hover; the product
+  UI should not. (2026-08-07)
+
+- `MarkdownEditor` with `fill` must still sync textarea height from
+  `scrollHeight` / line count every value change (`MarkdownEditor.tsx`).
+  Skipping sync in fill mode left the textarea at ~2 browser rows so only the
+  tops of glyphs showed over an empty pane. Editor background token is
+  `var(--bg-primary)` — `var(--bg)` is undefined and paints a black block.
+  (2026-08-07, conventions Create-skill modal)
+
+- Conventions Create-skill modal footer is
+  `Saved as v{version} · added to Skills Lab` (`conventions.modal.footerHint` /
+  `footerSaved`). Compute `version` as `1` for a new name, else
+  `existing.version + 1` from `useSkills()` — do not ship a version-less
+  "bumps its version" hint; the design/spec require the number.
+  (`CreateSkillModal` under `repos/[repoId]/conventions/`). (2026-08-07)
 
 - TanStack Query keys previously were inline string literals with cross-file
   invalidation by raw string (e.g. `useTestConnection` → `["provider-models"]`).
@@ -90,6 +123,11 @@ ground truth — wrap-ups can mischaracterize a session.
   under the same date.)
 
 ## Recurring Errors & Fixes
+
+- `useSetCrumb` Maximum update depth: if the effect depends on a crumb `ctx`
+  that is rebuilt whenever crumbs change, `setCrumb` → new ctx → effect
+  cleanup clears crumbs → effect runs again. Depend on the stable setter from
+  `SetCrumbContext` only (see Codebase Patterns). (2026-08-07)
 
 - Mocking a TanStack Query hook that returns a fresh `data: [...]` array on
   every call will infinite-loop any component whose `useEffect` depends on

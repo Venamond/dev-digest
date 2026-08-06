@@ -24,6 +24,13 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Codebase Patterns
 
+- Conventions → skill persist is upsert-by-name
+  (`modules/conventions/repository.ts` `upsertExtractedSkill`): same
+  workspace + name updates the existing skill and bumps `version` (plus a
+  `skill_versions` row) when description/body change. A plain INSERT per
+  "Create skill" produced duplicate `repo-conventions` rows all stuck at
+  `v1`. Enabled-only toggles must not bump. (2026-08-06)
+
 - All F1 routes are thin as of 2026-08-04: `pulls`/`polling` via
   `PullsService` + `pulls/facade.ts` (polling must not import
   `pulls/service.ts` — `no-cross-module-internals`); `settings` via
