@@ -31,13 +31,16 @@ export function MarkdownEditor({
   const contentLineCount = Math.max(value.split("\n").length, 1);
   const lineCount = Math.max(contentLineCount, minLines);
 
+  // Grow the textarea to the full body height in both modes. With `fill`, the
+  // outer pane scrolls; without it, the shell grows with the content. Skipping
+  // this in fill mode left the textarea at the browser default (~2 rows) so
+  // only the top of the first visible line showed over an empty pane.
   React.useEffect(() => {
-    if (fill) return;
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "0px";
     el.style.height = `${Math.max(el.scrollHeight, lineCount * LINE_HEIGHT_PX)}px`;
-  }, [value, fill, lineCount]);
+  }, [value, lineCount]);
 
   return (
     <div style={fill ? s.shellFill : s.shell}>

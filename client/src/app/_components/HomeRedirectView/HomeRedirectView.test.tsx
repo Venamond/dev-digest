@@ -16,7 +16,7 @@ vi.mock("@/lib/hooks", () => ({
 }));
 
 vi.mock("@/components/app-shell", () => ({
-  AppShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  useSetCrumb: () => undefined,
 }));
 
 vi.mock("@/components/page-shell", () => ({

@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 
 export const s = {
-  wrap: { maxWidth: 760 } satisfies CSSProperties,
+  wrap: { width: "100%" } satisfies CSSProperties,
   header: { marginBottom: 8 } satisfies CSSProperties,
   titleRow: {
     display: "flex",

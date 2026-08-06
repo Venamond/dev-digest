@@ -13,6 +13,13 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Codebase Patterns
 
+- `AppShell` is mounted once under `lib/providers.tsx` (`CrumbProvider` +
+  `AppShell`). Pages must NOT wrap themselves in `<AppShell>` — that remounted
+  the sidebar on every route change and made Skills Lab nav feel multi-second.
+  Publish breadcrumbs with `useSetCrumb([...])` from `@/components/app-shell`
+  instead (`useSetCrumb` no-ops outside the provider so unit tests stay simple).
+  (2026-08-07, slow left-nav switching)
+
 - TanStack Query keys previously were inline string literals with cross-file
   invalidation by raw string (e.g. `useTestConnection` → `["provider-models"]`).
   Fixed 2026-08-04: every key / invalidation goes through

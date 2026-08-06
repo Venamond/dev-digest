@@ -5,7 +5,7 @@ import React from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Skeleton, ErrorState } from "@devdigest/ui";
-import { AppShell } from "@/components/app-shell";
+import { useSetCrumb } from "@/components/app-shell";
 import { RepoNotFound } from "@/components/repo-not-found";
 import { PrDetailHeader } from "../PrDetailHeader/PrDetailHeader";
 import { OverviewTab } from "../OverviewTab/OverviewTab";
@@ -69,51 +69,43 @@ export function PrDetailView() {
 
   const repoName = activeRepo?.full_name ?? repoId;
   const repoFullName = activeRepo?.full_name ?? null;
-  const crumb = [
+  useSetCrumb([
     { label: repoName, mono: true, href: `/repos/${repoId}/pulls` },
     { label: t("list.breadcrumb"), href: `/repos/${repoId}/pulls` },
     { label: `#${number}`, mono: true },
-  ];
+  ]);
 
   if (repoNotFound) {
-    return (
-      <AppShell crumb={crumb}>
-        <RepoNotFound />
-      </AppShell>
-    );
+    return <RepoNotFound />;
   }
 
   if (isLoading) {
     return (
-      <AppShell crumb={crumb}>
-        <div style={{ padding: "28px 32px", display: "flex", flexDirection: "column", gap: 16, maxWidth: 1080, margin: "0 auto" }}>
-          <Skeleton height={28} width={420} />
-          <Skeleton height={16} width={300} />
-          <Skeleton height={200} />
-        </div>
-      </AppShell>
+      <div style={{ padding: "28px 32px", display: "flex", flexDirection: "column", gap: 16, maxWidth: 1080, margin: "0 auto" }}>
+        <Skeleton height={28} width={420} />
+        <Skeleton height={16} width={300} />
+        <Skeleton height={200} />
+      </div>
     );
   }
 
   if (isError || !pr) {
     return (
-      <AppShell crumb={crumb}>
-        <ErrorState
-          fullScreen
-          title={t("detail.loadErrorTitle")}
-          body={
-            error instanceof ApiError
-              ? error.message
-              : t("detail.loadErrorBody", { number })
-          }
-          onRetry={() => refetch()}
-        />
-      </AppShell>
+      <ErrorState
+        fullScreen
+        title={t("detail.loadErrorTitle")}
+        body={
+          error instanceof ApiError
+            ? error.message
+            : t("detail.loadErrorBody", { number })
+        }
+        onRetry={() => refetch()}
+      />
     );
   }
 
   return (
-    <AppShell crumb={crumb}>
+    <>
       <PrDetailHeader
         pr={pr}
         prId={prId}
@@ -172,6 +164,6 @@ export function PrDetailView() {
           onClose={() => setParam("trace", null)}
         />
       )}
-    </AppShell>
+    </>
   );
 }

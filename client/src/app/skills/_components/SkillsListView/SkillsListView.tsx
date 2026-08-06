@@ -5,7 +5,7 @@ import React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button, Dropdown, EmptyState, ErrorState, Skeleton, Icon } from "@devdigest/ui";
-import { AppShell } from "@/components/app-shell";
+import { useSetCrumb } from "@/components/app-shell";
 import { useSkills, useSkill, useUpdateSkill } from "@/lib/hooks/skills";
 import { SkillCard } from "../SkillCard/SkillCard";
 import { SkillEditor } from "../../[id]/_components/SkillEditor/SkillEditor";
@@ -77,8 +77,10 @@ export function SkillsListView({ selectedId }: { selectedId?: string }) {
     router.push(`/skills/${id}${buildQs(search, tab)}`);
   };
 
+  useSetCrumb([{ label: t("page.crumbLab") }, { label: t("page.crumbSkills") }]);
+
   return (
-    <AppShell crumb={[{ label: t("page.crumbLab") }, { label: t("page.crumbSkills") }]}>
+    <>
       {creating && <CreateSkillModal onClose={() => setCreating(false)} />}
       {importing && <ImportSkillDrawer onClose={() => setImporting(false)} />}
       <div style={s.page}>
@@ -160,6 +162,6 @@ export function SkillsListView({ selectedId }: { selectedId?: string }) {
           </div>
         )}
       </div>
-    </AppShell>
+    </>
   );
 }

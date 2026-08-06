@@ -5,7 +5,7 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useRepos } from "@/lib/hooks";
-import { AppShell } from "@/components/app-shell";
+import { useSetCrumb } from "@/components/app-shell";
 import { PageContainer } from "@/components/page-shell";
 import { EmptyState, Button, Skeleton } from "@devdigest/ui";
 
@@ -20,32 +20,32 @@ export function HomeRedirectView() {
     }
   }, [repos, router]);
 
+  useSetCrumb([{ label: t("brand") }]);
+
   return (
-    <AppShell crumb={[{ label: t("brand") }]}>
-      <PageContainer title={t("welcome.title")} subtitle={t("welcome.subtitle")}>
-        {isLoading ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 480 }}>
-            <Skeleton height={20} width={240} />
-            <Skeleton height={48} />
-            <Skeleton height={48} />
-          </div>
-        ) : isError || !repos || repos.length === 0 ? (
-          <EmptyState
-            icon="GitBranch"
-            title={t("welcome.emptyTitle")}
-            body={t("welcome.emptyBody")}
-            cta={t("welcome.emptyCta")}
-            onCta={() => router.push("/onboarding")}
-          />
-        ) : (
-          <div>
-            <p style={{ color: "var(--text-secondary)", marginBottom: 14 }}>{t("welcome.redirecting")}</p>
-            <Button kind="primary" onClick={() => router.push(`/repos/${repos[0]!.id}/pulls`)}>
-              {t("welcome.openRepo", { name: repos[0]!.full_name })}
-            </Button>
-          </div>
-        )}
-      </PageContainer>
-    </AppShell>
+    <PageContainer title={t("welcome.title")} subtitle={t("welcome.subtitle")}>
+      {isLoading ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 480 }}>
+          <Skeleton height={20} width={240} />
+          <Skeleton height={48} />
+          <Skeleton height={48} />
+        </div>
+      ) : isError || !repos || repos.length === 0 ? (
+        <EmptyState
+          icon="GitBranch"
+          title={t("welcome.emptyTitle")}
+          body={t("welcome.emptyBody")}
+          cta={t("welcome.emptyCta")}
+          onCta={() => router.push("/onboarding")}
+        />
+      ) : (
+        <div>
+          <p style={{ color: "var(--text-secondary)", marginBottom: 14 }}>{t("welcome.redirecting")}</p>
+          <Button kind="primary" onClick={() => router.push(`/repos/${repos[0]!.id}/pulls`)}>
+            {t("welcome.openRepo", { name: repos[0]!.full_name })}
+          </Button>
+        </div>
+      )}
+    </PageContainer>
   );
 }

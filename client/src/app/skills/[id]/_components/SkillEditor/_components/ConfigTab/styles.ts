@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 
 /** Co-located styles for ConfigTab. */
 export const s = {
-  wrap: { maxWidth: 760 } satisfies CSSProperties,
+  wrap: { width: "100%" } satisfies CSSProperties,
   header: { display: "flex", alignItems: "center", marginBottom: 20, gap: 10 } satisfies CSSProperties,
   h2: { fontSize: 18, fontWeight: 700 } satisfies CSSProperties,
   enabledLabel: {

@@ -1,4 +1,4 @@
-/* providers.tsx — client provider stack: React Query + Theme + active Repo. */
+/* providers.tsx — client provider stack: React Query + Theme + Repo + persistent shell. */
 "use client";
 
 import React from "react";
@@ -8,6 +8,7 @@ import {
   QueryCache,
   MutationCache,
 } from "@tanstack/react-query";
+import { AppShell, CrumbProvider } from "../components/app-shell";
 import { ThemeProvider } from "./theme";
 import { RepoProvider } from "./repo-context";
 import { ToastProvider, notify } from "./toast";
@@ -47,7 +48,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={qc}>
       <ThemeProvider>
         <ToastProvider>
-          <RepoProvider>{children}</RepoProvider>
+          <RepoProvider>
+            <CrumbProvider>
+              <AppShell>{children}</AppShell>
+            </CrumbProvider>
+          </RepoProvider>
         </ToastProvider>
       </ThemeProvider>
     </QueryClientProvider>

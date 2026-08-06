@@ -57,7 +57,7 @@ export const s = {
     flexDirection: "column",
     borderRadius: 8,
     border: "1px solid var(--border)",
-    background: "var(--bg)",
+    background: "var(--bg-primary)",
     overflow: "hidden",
   } satisfies CSSProperties,
   evidenceRow: {

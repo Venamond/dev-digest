@@ -7,7 +7,7 @@ import React from "react";
 import { useTranslations } from "next-intl";
 import { EmptyState, type IconName } from "@devdigest/ui";
 import type { Crumb } from "@devdigest/ui";
-import { AppShell } from "../app-shell";
+import { useSetCrumb } from "../app-shell";
 import { s } from "./styles";
 
 export function PageContainer({
@@ -52,15 +52,14 @@ export function FeaturePlaceholder({
   body?: string;
 }) {
   const t = useTranslations("shell");
+  useSetCrumb(crumb);
   return (
-    <AppShell crumb={crumb}>
-      <PageContainer>
-        <EmptyState
-          icon={icon}
-          title={title}
-          body={body ?? t("featurePlaceholder.defaultBody", { owner })}
-        />
-      </PageContainer>
-    </AppShell>
+    <PageContainer>
+      <EmptyState
+        icon={icon}
+        title={title}
+        body={body ?? t("featurePlaceholder.defaultBody", { owner })}
+      />
+    </PageContainer>
   );
 }

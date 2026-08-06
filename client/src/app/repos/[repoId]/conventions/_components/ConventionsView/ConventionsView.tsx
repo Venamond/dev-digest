@@ -4,7 +4,7 @@ import React from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button, EmptyState, ErrorState, Skeleton } from "@devdigest/ui";
-import { AppShell } from "@/components/app-shell";
+import { useSetCrumb } from "@/components/app-shell";
 import { RepoNotFound } from "@/components/repo-not-found";
 import { ApiError } from "@/lib/api";
 import {
@@ -32,6 +32,11 @@ export function ConventionsView() {
   const index = useRepoIntelStatus(repoId);
   const resync = useResyncRepoIntel(repoId);
   const [showModal, setShowModal] = React.useState(false);
+
+  useSetCrumb([
+    { label: t("page.crumbLab") },
+    { label: t("page.crumbConventions") },
+  ]);
 
   if (repoNotFound) return <RepoNotFound />;
 
@@ -70,12 +75,7 @@ export function ConventionsView() {
   };
 
   return (
-    <AppShell
-      crumb={[
-        { label: t("page.crumbLab") },
-        { label: t("page.crumbConventions") },
-      ]}
-    >
+    <>
       {showModal && (
         <CreateSkillModal
           repoId={repoId}
@@ -218,6 +218,6 @@ export function ConventionsView() {
           />
         )}
       </div>
-    </AppShell>
+    </>
   );
 }

@@ -40,13 +40,13 @@ export const s = {
   } satisfies CSSProperties,
   tokens: { marginLeft: "auto", fontSize: 11.5 } satisfies CSSProperties,
   pane: {
-    background: "var(--bg)",
+    background: "var(--bg-primary)",
   } satisfies CSSProperties,
   paneFill: {
     flex: 1,
     minHeight: 0,
     overflow: "auto",
-    background: "var(--bg)",
+    background: "var(--bg-primary)",
   } satisfies CSSProperties,
   editorRows: {
     display: "flex",
