@@ -9,6 +9,7 @@ import { useTranslations } from "next-intl";
 import { Button, Dropdown, type DropdownItemDef } from "@devdigest/ui";
 import { useAgents } from "../../../../../../../lib/hooks/agents";
 import { useRunReview } from "../../../../../../../lib/hooks/reviews";
+import { displayModelName } from "../../../../../../../lib/model-label";
 import { DROPDOWN_WIDTH } from "./constants";
 
 export function RunReviewDropdown({
@@ -55,7 +56,9 @@ export function RunReviewDropdown({
     ? all.map((a) => ({
         label: a.name,
         icon: "Cpu" as const,
-        hint: a.enabled ? a.model : `${a.model} · disabled`,
+        hint: a.enabled
+          ? displayModelName(a.model)
+          : `${displayModelName(a.model)} · disabled`,
         onClick: () => kick({ agentId: a.id }),
       }))
     : [{ label: t("runReview.noAgentsYet"), icon: "Plus", muted: true, onClick: () => router.push("/agents") }];

@@ -32,6 +32,13 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Tool & Library Notes
 
+- `apiFetch` used to set `Content-Type: application/json` whenever `init.body`
+  was non-null. Multipart skill import (`FormData` via `api.postForm`) needs the
+  browser to set the boundary — forcing JSON breaks Fastify multipart parsing.
+  Fixed 2026-08-05: skip the JSON content-type when `body instanceof FormData`
+  (`src/lib/api.ts`). Use `api.postForm(path, form)` for file uploads, not
+  `api.post`.
+
 - The `next-best-practices` skill's decision tree
   (`.claude/skills/next-best-practices/data-patterns.md`) actively conflicts
   with this package's architecture: it recommends fetching in Server
@@ -76,6 +83,13 @@ ground truth — wrap-ups can mischaracterize a session.
   under the same date.)
 
 ## Recurring Errors & Fixes
+
+- Mocking a TanStack Query hook that returns a fresh `data: [...]` array on
+  every call will infinite-loop any component whose `useEffect` depends on
+  that `data` identity (e.g. Agent → SkillsTab syncing editor rows into local
+  draft state). Hoist a stable array/object with `vi.hoisted` and return the
+  same reference from the mock. Regression: `AgentEditor.test.tsx` Skills tab.
+  (2026-08-05, Track C agent skills bind)
 
 - React DOM console warning "Updating a style property during rerender
   (borderColor) when a conflicting property is set (borderLeftColor)":

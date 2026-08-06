@@ -195,3 +195,16 @@ export async function getRunTrace(db: Db, runId: string): Promise<RunTrace | und
   const [row] = await db.select().from(t.runTraces).where(eq(t.runTraces.runId, runId));
   return row ? (row.trace as RunTrace) : undefined;
 }
+
+/** Record which skill versions were injected into a run's prompt (for stats). */
+export async function recordRunSkills(
+  db: Db,
+  runId: string,
+  refs: { skillId: string; skillVersion: number }[],
+): Promise<void> {
+  if (refs.length === 0) return;
+  await db
+    .insert(t.runSkills)
+    .values(refs.map((r) => ({ runId, skillId: r.skillId, skillVersion: r.skillVersion })))
+    .onConflictDoNothing();
+}

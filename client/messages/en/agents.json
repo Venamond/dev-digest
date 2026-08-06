@@ -2,6 +2,9 @@
   "card": {
     "noDescription": "No description",
     "skillCount": "{count} skills",
+    "runs": "{count} runs",
+    "accept": "{pct}% accept",
+    "avgCost": "${cost} avg",
     "deleteConfirm": "Delete agent \"{name}\"? This cannot be undone.",
     "deleteTitle": "Delete agent"
   },
@@ -93,7 +96,41 @@
     "title": "Skills",
     "enabledCount": "{linked} of {total} enabled",
     "filterPlaceholder": "Filter skills…",
-    "orderHint": "Order matters — earlier skills appear earlier in the assembled prompt. Toggle to attach."
+    "orderHint": "Order matters — earlier skills appear earlier in the assembled prompt. Drag to reorder.",
+    "loadError": "Could not load skills for this agent.",
+    "empty": "No skills in this workspace yet. Create skills in Skills Lab, then bind them here.",
+    "globallyOff": "globally off",
+    "dragHint": "Drag to reorder",
+    "savedToast": "Agent skills saved"
+  },
+  "stats": {
+    "loadError": "Could not load stats for this agent.",
+    "emptyTitle": "No runs yet",
+    "emptyBody": "Run this agent on a PR to populate accept-rate, findings, cost and latency.",
+    "kpi": {
+      "runs": "TOTAL RUNS",
+      "avgCost": "AVG COST / RUN",
+      "avgDuration": "AVG DURATION",
+      "acceptRate": "ACCEPT RATE"
+    },
+    "mostUsedSkills": "Most-used skills",
+    "mostPulledMemory": "Most-pulled memory",
+    "skillsLater": "Skill usage telemetry ships in a later lesson.",
+    "memoryLater": "Memory pull rates ship in a later lesson.",
+    "bySeverity": "Findings by severity",
+    "byCategory": "Findings by category",
+    "noFindings": "No findings yet.",
+    "runHistory": "Run history",
+    "noRuns": "No runs recorded.",
+    "viewTrace": "View trace",
+    "col": {
+      "timestamp": "Timestamp",
+      "pr": "PR",
+      "tokens": "Tokens",
+      "cost": "Cost",
+      "findings": "Findings",
+      "source": "Source"
+    }
   },
   "mount": {
     "body": "Mount point for {owner}. The Agent Editor shell + tab routing are wired by A2 — {owner} renders this tab."

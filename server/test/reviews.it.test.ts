@@ -436,4 +436,119 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
 
     await app.close();
   });
+
+  it('records run_skills for each doubly-enabled linked skill with current version', async () => {
+    const app = await appWith(REVIEW_FIXTURE);
+
+    const [agent] = await pg.handle.db
+      .insert(t.agents)
+      .values({
+        workspaceId,
+        name: `RunSkills On ${Date.now()}`,
+        description: 'run_skills test',
+        provider: 'openai',
+        model: 'gpt-4.1',
+        systemPrompt: 'You are a reviewer.',
+        enabled: true,
+        version: 1,
+      })
+      .returning();
+
+    const [skill] = await pg.handle.db
+      .insert(t.skills)
+      .values({
+        workspaceId,
+        name: `run-skills-on-${Date.now()}`,
+        description: 'enabled',
+        type: 'rubric',
+        source: 'manual',
+        body: 'SKILL_BODY_FOR_RUN_SKILLS',
+        enabled: true,
+        version: 3,
+      })
+      .returning();
+
+    await app.inject({
+      method: 'POST',
+      url: `/agents/${agent!.id}/skills`,
+      payload: { links: [{ skill_id: skill!.id, order: 0, enabled: true }] },
+    });
+
+    const { pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/pulls/${pr.id}/review`,
+      payload: { agentId: agent!.id },
+    });
+    expect(res.statusCode).toBe(200);
+    const runId = res.json().runs[0].run_id as string;
+    await waitForPrRuns(pg.handle.db, pr.id, { expected: 1 });
+
+    const rows = await pg.handle.db
+      .select()
+      .from(t.runSkills)
+      .where(eq(t.runSkills.runId, runId));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ skillId: skill!.id, skillVersion: 3 });
+
+    await app.close();
+  });
+
+  it('does not record run_skills when skill is globally disabled', async () => {
+    const app = await appWith(REVIEW_FIXTURE);
+
+    const [agent] = await pg.handle.db
+      .insert(t.agents)
+      .values({
+        workspaceId,
+        name: `RunSkills Off ${Date.now()}`,
+        description: 'run_skills test',
+        provider: 'openai',
+        model: 'gpt-4.1',
+        systemPrompt: 'You are a reviewer.',
+        enabled: true,
+        version: 1,
+      })
+      .returning();
+
+    const [skill] = await pg.handle.db
+      .insert(t.skills)
+      .values({
+        workspaceId,
+        name: `run-skills-off-${Date.now()}`,
+        description: 'global off',
+        type: 'rubric',
+        source: 'manual',
+        body: 'SKILL_BODY_GLOBAL_OFF',
+        enabled: false,
+        version: 2,
+      })
+      .returning();
+
+    await app.inject({
+      method: 'POST',
+      url: `/agents/${agent!.id}/skills`,
+      payload: { links: [{ skill_id: skill!.id, order: 0, enabled: true }] },
+    });
+
+    const { pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/pulls/${pr.id}/review`,
+      payload: { agentId: agent!.id },
+    });
+    expect(res.statusCode).toBe(200);
+    const runId = res.json().runs[0].run_id as string;
+    await waitForPrRuns(pg.handle.db, pr.id, { expected: 1 });
+
+    const rows = await pg.handle.db
+      .select()
+      .from(t.runSkills)
+      .where(eq(t.runSkills.runId, runId));
+    expect(rows).toHaveLength(0);
+
+    await app.close();
+  });
 });

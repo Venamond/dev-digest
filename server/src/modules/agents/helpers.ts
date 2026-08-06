@@ -1,6 +1,23 @@
-import type { Agent, AgentVersion, CiFailOn, Provider, ReviewStrategy } from '@devdigest/shared';
+import type {
+  Agent,
+  AgentSkillEditorRow,
+  AgentVersion,
+  CiFailOn,
+  Provider,
+  ReviewStrategy,
+  Skill,
+  SkillSource,
+  SkillType,
+} from '@devdigest/shared';
 import { AgentVersionConfig } from '@devdigest/shared';
-import type { AgentRow, AgentVersionRow } from '../../db/rows.js';
+import type { AgentRow, AgentVersionRow, SkillRow } from '../../db/rows.js';
+
+/** Link shape used by prompt assembly + editor-row builders (no I/O). */
+export interface LinkedSkillView {
+  skill: SkillRow;
+  order: number;
+  enabled: boolean;
+}
 
 /**
  * Pure helpers for the agents module — DB row ⇄ DTO mapping and the
@@ -9,7 +26,7 @@ import type { AgentRow, AgentVersionRow } from '../../db/rows.js';
  */
 
 /** Map a persisted agent row to the public `Agent` DTO. */
-export function toAgentDto(row: AgentRow): Agent {
+export function toAgentDto(row: AgentRow, skillCount?: number): Agent {
   return {
     id: row.id,
     name: row.name,
@@ -23,7 +40,83 @@ export function toAgentDto(row: AgentRow): Agent {
     strategy: row.strategy as ReviewStrategy,
     ci_fail_on: row.ciFailOn as CiFailOn,
     repo_intel: row.repoIntel,
+    skill_count: skillCount ?? null,
   };
+}
+
+/** Map a persisted skill row to the public `Skill` DTO. */
+export function toSkillDto(row: SkillRow): Skill {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    type: row.type as SkillType,
+    source: row.source as SkillSource,
+    body: row.body,
+    enabled: row.enabled,
+    version: row.version,
+    evidence_files: row.evidenceFiles ?? null,
+  };
+}
+
+/** Skill identity + version at prompt-assembly time (for run_skills stats). */
+export interface PromptSkillRef {
+  skillId: string;
+  skillVersion: number;
+}
+
+/**
+ * Skill bodies for `reviewPullRequest({ skills })`: both global and per-agent
+ * enabled, ordered by link order ASC. Disabled at either layer are omitted.
+ */
+export function promptSkillBodies(links: LinkedSkillView[]): string[] {
+  return links
+    .filter((l) => l.enabled && l.skill.enabled)
+    .map((l) => l.skill.body);
+}
+
+/**
+ * Skill refs for `run_skills` recording: same filter as `promptSkillBodies`,
+ * projecting `{ skillId, skillVersion }` in link order ASC.
+ */
+export function promptSkillRefs(links: LinkedSkillView[]): PromptSkillRef[] {
+  return links
+    .filter((l) => l.enabled && l.skill.enabled)
+    .map((l) => ({ skillId: l.skill.id, skillVersion: l.skill.version }));
+}
+
+/**
+ * Build Agent → Skills editor rows: every workspace skill with link state.
+ * Linked skills sort by `order` ASC; unlinked follow by name ASC (`order` = -1).
+ */
+export function buildEditorRows(
+  pool: SkillRow[],
+  links: LinkedSkillView[],
+): AgentSkillEditorRow[] {
+  const byId = new Map(links.map((l) => [l.skill.id, l]));
+  const linked: AgentSkillEditorRow[] = [];
+  const unlinked: AgentSkillEditorRow[] = [];
+  for (const skill of pool) {
+    const link = byId.get(skill.id);
+    if (link) {
+      linked.push({
+        skill: toSkillDto(skill),
+        linked: true,
+        enabled: link.enabled,
+        order: link.order,
+      });
+    } else {
+      unlinked.push({
+        skill: toSkillDto(skill),
+        linked: false,
+        enabled: false,
+        order: -1,
+      });
+    }
+  }
+  linked.sort((a, b) => a.order - b.order);
+  unlinked.sort((a, b) => a.skill.name.localeCompare(b.skill.name));
+  return [...linked, ...unlinked];
 }
 
 /**

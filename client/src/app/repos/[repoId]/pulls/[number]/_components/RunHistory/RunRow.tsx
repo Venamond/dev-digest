@@ -6,6 +6,7 @@ import type { FindingRecord, RunSummary } from "@devdigest/shared";
 import { CostBadge } from "@/components/cost-badge";
 import { HoverPreviewAnchor } from "@/components/findings-preview/HoverPreviewAnchor";
 import { FindingsPreviewPanel } from "@/components/findings-preview/FindingsPreviewPanel";
+import { displayModelName } from "@/lib/model-label";
 import { outcomeOf, SEVERITY_LEVELS } from "./helpers";
 import { iconBtnStyle, rowStyle } from "./styles";
 
@@ -60,7 +61,7 @@ export function RunRow({
             {r.agent_name ?? t("reviewRun.agentTitle")}
           </button>{" "}
           <span className="mono" style={{ fontSize: 12, fontWeight: 400, color: "var(--text-muted)" }}>
-            {r.provider}/{r.model}
+            {displayModelName(r.model ?? "")}
           </span>
         </div>
         {r.status === "failed" && r.error && (

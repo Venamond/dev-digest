@@ -12,6 +12,17 @@ export const queryKeys = {
 
   agents: ["agents"] as const,
   agent: (id: string | null | undefined) => ["agent", id] as const,
+  agentSkills: (id: string | null | undefined) => ["agent-skills", id] as const,
+  agentStats: (id: string | null | undefined) => ["agent-stats", id] as const,
+
+  skills: ["skills"] as const,
+  skill: (id: string | null | undefined) => ["skill", id] as const,
+  skillVersions: (id: string | null | undefined) => ["skill-versions", id] as const,
+  skillStats: (id: string | null | undefined) => ["skill-stats", id] as const,
+
+  conventions: (repoId: string | null | undefined) => ["conventions", repoId] as const,
+  conventionSkillDraft: (repoId: string | null | undefined) =>
+    ["convention-skill-draft", repoId] as const,
   providerModels: (provider: Provider | null | undefined) =>
     ["provider-models", provider] as const,
   /** Prefix invalidation for every provider's model list. */

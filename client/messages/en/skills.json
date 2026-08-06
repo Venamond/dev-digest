@@ -3,7 +3,9 @@
     "crumbLab": "Skills Lab",
     "crumbSkills": "Skills",
     "heading": "Skills",
+    "subtitle": "Reusable markdown config blocks. Bound to agents with order + enable state.",
     "addSkill": "Add Skill",
+    "createSkill": "Create skill",
     "searchPlaceholder": "Search skills…",
     "loadError": "Could not load skills.",
     "menu": {
@@ -13,32 +15,147 @@
     },
     "empty": {
       "title": "No skills yet",
-      "body": "Import a skill from a file, a URL, or the community catalog.",
-      "cta": "Import from file"
+      "body": "Create a skill or import one from a .md / .zip file. Skills are text-only configuration — never executed.",
+      "cta": "Create skill"
     },
     "selectPrompt": {
       "title": "Select a skill",
-      "body": "Pick a skill on the left to preview its body."
+      "body": "Pick a skill on the left to edit its markdown body."
+    }
+  },
+  "card": {
+    "noDescription": "No description",
+    "agentCount": "{count, plural, =0 {0 agents} one {# agent} other {# agents}}",
+    "pull": "{pct}% pull",
+    "accept": "{pct}% accept",
+    "statUnknown": "—",
+    "deleteConfirm": "Delete skill \"{name}\" and all of its versions? Agents using it lose it immediately. This cannot be undone.",
+    "deleteTitle": "Delete skill"
+  },
+  "create": {
+    "title": "Create skill",
+    "subtitle": "A skill is a reusable markdown block agents can bind and enable.",
+    "cancel": "Cancel",
+    "create": "Create skill",
+    "creating": "Creating…",
+    "defaultName": "New Skill",
+    "defaultBody": "# Rule\n\nDescribe what the reviewing agent should check.\n",
+    "fields": {
+      "name": "Name",
+      "namePlaceholder": "happy-path-coverage-gap",
+      "description": "Description",
+      "descriptionHint": "Directive interface — agents and catalogs use this to decide when the skill applies.",
+      "descriptionPlaceholder": "Flag tests that only exercise the success path",
+      "type": "Type",
+      "body": "Body (Markdown)"
     }
   },
   "detail": {
     "crumbSkill": "Skill",
     "back": "← All skills",
     "loadError": "Could not load this skill.",
+    "loadErrorTitle": "Couldn’t load this skill",
+    "loadErrorBody": "The skill could not be loaded.",
     "notFound": {
       "title": "Skill not found",
       "body": "It may have been deleted."
+    },
+    "skillFallback": "Skill",
+    "listTitle": "Skills",
+    "add": "Add",
+    "disabled": "disabled",
+    "tabs": {
+      "config": "Config",
+      "preview": "Preview",
+      "versions": "Versions",
+      "stats": "Stats"
     }
   },
+  "editor": {
+    "versionChip": "v{version}"
+  },
+  "config": {
+    "title": "Configuration",
+    "enabled": "Enabled",
+    "name": "Name",
+    "description": "Description",
+    "type": "Type",
+    "body": "Skill body",
+    "bodyHint": "The only text sent to the model. Editing the body is the entire skill — everything else is metadata.",
+    "filename": "{name}.md",
+    "tokenEstimate": "{tokens} tokens",
+    "save": "Save skill",
+    "saving": "Saving…",
+    "saved": "Saved (v{version})",
+    "savedToast": "Skill saved (v{version})",
+    "cancel": "Cancel",
+    "unsaved": "unsaved",
+    "snapshotHint": "Saving snapshots the body as v{version}",
+    "dangerTitle": "Delete skill",
+    "dangerBody": "Removes it from all agents. This can't be undone.",
+    "delete": "Delete"
+  },
+  "preview": {
+    "title": "Preview",
+    "subtitle": "Rendered as the reviewing agent receives it.",
+    "empty": "This skill has no body yet."
+  },
+  "versions": {
+    "title": "Version history",
+    "count": "{count, plural, one {# version} other {# versions}}",
+    "subtitle": "Every save snapshots the body so past runs stay reproducible against the exact text they scored.",
+    "noteFallback": "Version {version}",
+    "empty": "No version history yet.",
+    "current": "Current",
+    "version": "v{version}",
+    "diff": "Diff",
+    "restore": "Restore",
+    "restoring": "Restoring…",
+    "restoreConfirm": "Restore v{version} as a new current version?",
+    "restoreToast": "Restored as v{version}",
+    "diffTitle": "Diff vs current",
+    "diffEmpty": "No differences.",
+    "diffError": "Could not load diff.",
+    "close": "Close"
+  },
+  "stats": {
+    "title": "Stats",
+    "usedBy": "USED BY",
+    "pullFrequency": "PULL FREQUENCY",
+    "acceptRate": "ACCEPT RATE",
+    "findings30d": "FINDINGS (30D)",
+    "agentSuffix": "{count, plural, one { agent} other { agents}}",
+    "agentsUsing": "Agents using this skill",
+    "byCategory": "Findings by category",
+    "attributionHint": "Findings from runs where this skill was in the prompt",
+    "open": "Open",
+    "noFindings": "No findings yet.",
+    "loadError": "Could not load stats for this skill.",
+    "emptyTitle": "No usage yet",
+    "emptyBody": "This skill isn't enabled on any agent. Add it to an agent to start collecting stats."
+  },
   "drawer": {
-    "title": "Add a skill",
-    "subtitle": "Import from a file, a URL, or search vetted community skills",
+    "title": "Import skill from file",
+    "subtitle": "Upload a .md or .zip (root SKILL.md). Content is stored as data — never executed.",
     "tabs": {
       "file": "From file",
       "url": "From URL",
       "community": "Community"
     },
-    "importFailed": "Import failed"
+    "importFailed": "Import failed",
+    "chooseFile": "Choose .md or .zip",
+    "orDrop": "or drop a file here",
+    "previewing": "Parsing…",
+    "confirm": "Confirm import",
+    "confirming": "Importing…",
+    "cancel": "Cancel",
+    "back": "Back",
+    "trustNote": "Foreign skill content becomes instructions in the agent prompt. Review the body before enabling.",
+    "draftName": "Name",
+    "draftDescription": "Description",
+    "draftType": "Type",
+    "draftBody": "Body",
+    "successToast": "Imported \"{name}\""
   },
   "file": {
     "nameLabel": "Skill name",
@@ -86,16 +203,5 @@
       "community": "Community",
       "imported_url": "Imported"
     }
-  },
-  "preview": {
-    "untrustedBadge": "untrusted source",
-    "enabled": "Enabled",
-    "disabled": "Disabled",
-    "save": "Save",
-    "edit": "Edit",
-    "untrustedNotice": "This skill came from an untrusted source. Its body is stored as data (delimiter-wrapped) and must be vetted before it is enabled for an agent.",
-    "bodyLabel": "Skill body (Markdown)",
-    "bodyHint": "Saving a changed body creates a new immutable version.",
-    "version": "v{version}"
   }
 }

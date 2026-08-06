@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { Badge } from "@devdigest/ui";
 import type { RunTrace, FindingRecord } from "@devdigest/shared";
 import { CostBadge } from "@/components/cost-badge";
+import { displayModelName } from "@/lib/model-label";
 import { PROMPT_COLORS } from "../../constants";
 import { formatSeconds, formatTokens } from "../../helpers";
 import { s } from "../../styles";
@@ -25,7 +26,7 @@ export function TraceBody({ trace, findings }: { trace: RunTrace; findings: Find
         <div style={s.configList}>
           <Row label={t("trace.config.model")}>
             <span className="mono" style={s.configModel}>
-              {trace.config.model}
+              {displayModelName(trace.config.model)}
             </span>
           </Row>
           <Row label={t("trace.config.provider")}>

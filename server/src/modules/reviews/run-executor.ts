@@ -7,6 +7,7 @@ import type { ReviewRepository, FindingRow, PullRow, ReviewRow } from './reposit
 import { REVIEW_STRATEGY } from './constants.js';
 import { taskLine } from './helpers.js';
 import { loadDiff } from './diff-loader.js';
+import { promptSkillBodies, promptSkillRefs } from '../agents/helpers.js';
 
 /** Thrown by a run when the user cancels it mid-flight (between map files). */
 export class RunCancelledError extends Error {
@@ -182,6 +183,21 @@ export class ReviewRunExecutor {
 
       const task = taskLine(pull) + rankNote;
 
+      // Skills: bodies where skills.enabled AND agent_skills.enabled, order ASC.
+      // Empty → assemblePrompt omits the Skills section (trace skills = null).
+      const linked = await this.agents.linkedSkills(agent.id);
+      const skillBodies = promptSkillBodies(linked);
+      if (skillBodies.length > 0) {
+        runLog.info(`Skills: ${skillBodies.length} body(ies) attached to prompt`);
+      }
+
+      const skillRefs = promptSkillRefs(linked);
+      try {
+        await this.repo.recordRunSkills(runId, skillRefs);
+      } catch (err) {
+        runLog.info(`run_skills recording failed (non-fatal): ${(err as Error).message}`);
+      }
+
       // ---- Engine: assemble → single-pass → grounding -----------------------
       // The pure review pipeline lives in @devdigest/reviewer-core (shared with
       // the CI runner). The service owns only I/O: repo-intel context resolution
@@ -194,6 +210,7 @@ export class ReviewRunExecutor {
         // Per-agent review strategy (configured in the Agent editor); falls back
         // to the studio default. single-pass = whole diff in one call.
         strategy: agent.strategy ?? REVIEW_STRATEGY,
+        ...(skillBodies.length > 0 ? { skills: skillBodies } : {}),
         // T1.3 — pass the callers digest only when we built one. assemblePrompt
         // omits the section when this is empty/undefined.
         ...(callersDigest ? { callers: callersDigest } : {}),

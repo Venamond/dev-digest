@@ -29,3 +29,6 @@ test-results/
 
 # pr-self-review verdict memoization (local state, not a shared report)
 .claude/pr-self-review.local.md
+
+# local brainstorm companion sessions
+.superpowers/

@@ -131,6 +131,37 @@ export const Skill = z.object({
 });
 export type Skill = z.infer<typeof Skill>;
 
+/** List-card enrichment — how many agents currently link this skill. */
+export const SkillListItem = Skill.extend({
+  agent_count: z.number().int().nonnegative(),
+  /** All-time share of eligible runs that pulled this skill; null when never ran. */
+  pull_rate: z.number().nullable(),
+  /** All-time accept/(accept+dismiss) over findings from pulled runs; null when none acted. */
+  accept_rate: z.number().nullable(),
+});
+export type SkillListItem = z.infer<typeof SkillListItem>;
+
+/** Immutable body snapshot in `skill_versions`. */
+export const SkillVersion = z.object({
+  skill_id: z.string(),
+  version: z.number().int(),
+  body: z.string(),
+  /** Server-generated English summary; null on pre-migration rows. */
+  note: z.string().nullable(),
+  created_at: z.string(),
+});
+export type SkillVersion = z.infer<typeof SkillVersion>;
+
+/** Parsed import draft before confirm (not persisted). */
+export const SkillImportDraft = z.object({
+  name: z.string(),
+  description: z.string(),
+  type: SkillType,
+  body: z.string(),
+  trust_note: z.string().optional(),
+});
+export type SkillImportDraft = z.infer<typeof SkillImportDraft>;
+
 export const CommunitySkill = z.object({
   name: z.string(),
   repo: z.string(),
@@ -141,15 +172,65 @@ export const CommunitySkill = z.object({
 export type CommunitySkill = z.infer<typeof CommunitySkill>;
 
 // ---- Conventions ----
+export const ConventionStatus = z.enum(['pending', 'accepted', 'rejected']);
+export type ConventionStatus = z.infer<typeof ConventionStatus>;
+
 export const ConventionCandidate = z.object({
   id: z.string(),
   rule: z.string(),
+  category: z.string().nullable(),
   evidence_path: z.string(),
   evidence_snippet: z.string(),
+  evidence_line_start: z.number().int().nullable(),
+  evidence_line_end: z.number().int().nullable(),
+  evidence_url: z.string().nullable(),
   confidence: z.number().min(0).max(1),
-  accepted: z.boolean(),
+  status: ConventionStatus,
 });
 export type ConventionCandidate = z.infer<typeof ConventionCandidate>;
+
+export const ConventionScan = z.object({
+  sampled_file_count: z.number().int(),
+  scanned_at: z.string(),
+  source_sha: z.string().nullable(),
+});
+export type ConventionScan = z.infer<typeof ConventionScan>;
+
+export const ConventionsList = z.object({
+  candidates: z.array(ConventionCandidate),
+  scan: ConventionScan.nullable(),
+});
+export type ConventionsList = z.infer<typeof ConventionsList>;
+
+export const ConventionsExtractResult = z.object({
+  candidates: z.array(ConventionCandidate),
+  scan: ConventionScan,
+  dropped: z.number().int(),
+});
+export type ConventionsExtractResult = z.infer<typeof ConventionsExtractResult>;
+
+export const ConventionUpdate = z.object({
+  status: ConventionStatus.optional(),
+  rule: z.string().min(1).optional(),
+});
+export type ConventionUpdate = z.infer<typeof ConventionUpdate>;
+
+/** Pre-filled skill draft from accepted conventions — type/source are server-set. */
+export const ConventionSkillDraft = z.object({
+  name: z.string(),
+  description: z.string(),
+  body: z.string(),
+});
+export type ConventionSkillDraft = z.infer<typeof ConventionSkillDraft>;
+
+/** Persist an edited draft as an extracted skill — type/source are server-set. */
+export const ConventionSkillCreate = z.object({
+  name: z.string().min(1),
+  description: z.string(),
+  body: z.string().min(1),
+  enabled: z.boolean().optional(),
+});
+export type ConventionSkillCreate = z.infer<typeof ConventionSkillCreate>;
 
 // ---- Agents ----
 // 'openrouter' routes through the OpenAI-compatible API (OpenAIProvider with a
@@ -188,6 +269,8 @@ export const Agent = z.object({
   // Inject repo-intel context (repo skeleton + callers + rank note) into this
   // agent's review prompt. Default on; gated again by the global flag.
   repo_intel: z.boolean().default(true),
+  /** Present on list responses — count of linked skills for card footers. */
+  skill_count: z.number().int().nonnegative().nullish(),
 });
 export type Agent = z.infer<typeof Agent>;
 
@@ -195,8 +278,18 @@ export const AgentSkillLink = z.object({
   agent_id: z.string(),
   skill_id: z.string(),
   order: z.number().int(),
+  enabled: z.boolean(),
 });
 export type AgentSkillLink = z.infer<typeof AgentSkillLink>;
+
+/** Agent → Skills editor row: full pool with link state for “N of M enabled”. */
+export const AgentSkillEditorRow = z.object({
+  skill: Skill,
+  linked: z.boolean(),
+  enabled: z.boolean(),
+  order: z.number().int(),
+});
+export type AgentSkillEditorRow = z.infer<typeof AgentSkillEditorRow>;
 
 // The immutable config snapshot captured in `agent_versions` whenever an agent's
 // config changes (everything but `enabled`). Mirrors the shape written by the

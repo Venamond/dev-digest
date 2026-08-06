@@ -1,7 +1,17 @@
-import { pgTable, uuid, text, integer, doublePrecision, jsonb, timestamp } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  text,
+  integer,
+  doublePrecision,
+  jsonb,
+  timestamp,
+  primaryKey,
+} from 'drizzle-orm/pg-core';
 import { workspaces } from './core';
 import { agents } from './agents';
 import { pullRequests } from './pulls';
+import { skills } from './skills';
 
 // ============================================================ Observability
 
@@ -50,3 +60,19 @@ export const multiAgentRuns = pgTable('multi_agent_runs', {
     .references(() => pullRequests.id, { onDelete: 'cascade' }),
   ranAt: timestamp('ran_at', { withTimezone: true }).defaultNow().notNull(),
 });
+
+/** Skills whose bodies were injected into a run's prompt (for per-skill stats). */
+export const runSkills = pgTable(
+  'run_skills',
+  {
+    runId: uuid('run_id')
+      .notNull()
+      .references(() => agentRuns.id, { onDelete: 'cascade' }),
+    skillId: uuid('skill_id')
+      .notNull()
+      .references(() => skills.id, { onDelete: 'cascade' }),
+    /** Skill version at prompt-assembly time — denormalised for reproducibility. */
+    skillVersion: integer('skill_version').notNull(),
+  },
+  (t) => ({ pk: primaryKey({ name: 'run_skills_pk', columns: [t.runId, t.skillId] }) }),
+);

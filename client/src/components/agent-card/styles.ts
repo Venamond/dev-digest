@@ -1,17 +1,25 @@
 import type { CSSProperties } from "react";
 
-/** Co-located styles for AgentCard (extracted from inline styles). */
+/** Co-located styles for AgentCard (design AgentCard in components2.jsx). */
 export const s = {
   card: (active: boolean, enabled: boolean): CSSProperties => ({
-    padding: 14,
+    padding: 13,
     borderRadius: 8,
     cursor: "pointer",
     border: "1px solid " + (active ? "var(--border-strong)" : "var(--border)"),
     background: active ? "var(--bg-hover)" : "var(--bg-elevated)",
     opacity: enabled ? 1 : 0.6,
-    marginBottom: 10,
+    marginBottom: 8,
+    minWidth: 0,
+    overflow: "hidden",
+    boxSizing: "border-box",
   }),
-  headerRow: { display: "flex", alignItems: "center", gap: 10 } satisfies CSSProperties,
+  headerRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    minWidth: 0,
+  } satisfies CSSProperties,
   iconBox: {
     width: 26,
     height: 26,
@@ -23,29 +31,69 @@ export const s = {
     flexShrink: 0,
   } satisfies CSSProperties,
   name: {
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: 600,
     flex: 1,
+    minWidth: 0,
     whiteSpace: "nowrap",
     overflow: "hidden",
     textOverflow: "ellipsis",
   } satisfies CSSProperties,
   description: {
-    fontSize: 13,
+    fontSize: 12,
     color: "var(--text-muted)",
-    margin: "8px 0",
+    margin: "7px 0",
     lineHeight: 1.4,
     whiteSpace: "nowrap",
     overflow: "hidden",
     textOverflow: "ellipsis",
   } satisfies CSSProperties,
-  metaRow: { display: "flex", alignItems: "center", gap: 8 } satisfies CSSProperties,
-  modelChip: (color: string): CSSProperties => ({
-    fontSize: 12,
+  metaRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 7,
+    minWidth: 0,
+    width: "100%",
+  } satisfies CSSProperties,
+  /** Hugs model name; shrinks with ellipsis only when the row would overflow. */
+  modelWrap: {
+    minWidth: 0,
+    flex: "0 1 auto",
+    maxWidth: "100%",
+    overflow: "hidden",
+  } satisfies CSSProperties,
+  modelChip: (color: string, bg: string): CSSProperties => ({
+    display: "block",
+    width: "fit-content",
+    maxWidth: "100%",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    fontSize: 10.5,
     fontWeight: 600,
     color,
-    background: color + "1a",
-    padding: "1px 8px",
+    background: bg,
+    padding: "1px 6px",
     borderRadius: 4,
+  }),
+  skillBadge: {
+    flexShrink: 0,
+    fontSize: 10.5,
+    padding: "1px 6px",
+    borderRadius: 4,
+  } satisfies CSSProperties,
+  statsRow: {
+    display: "flex",
+    gap: 10,
+    marginTop: 9,
+    paddingTop: 9,
+    borderTop: "1px solid var(--border)",
+    fontSize: 11,
+    color: "var(--text-muted)",
+    minWidth: 0,
+    flexWrap: "wrap",
+  } satisfies CSSProperties,
+  accept: (rate: number): CSSProperties => ({
+    color: rate >= 0.6 ? "var(--ok)" : "var(--warn)",
   }),
 } as const;

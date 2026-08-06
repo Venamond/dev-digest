@@ -4,7 +4,14 @@
 import { queryKeys } from "./keys";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api";
-import type { Agent, ModelInfo, Provider, ReviewStrategy } from "@devdigest/shared";
+import type {
+  Agent,
+  AgentSkillEditorRow,
+  AgentStats,
+  ModelInfo,
+  Provider,
+  ReviewStrategy,
+} from "@devdigest/shared";
 
 export function useAgents() {
   return useQuery({
@@ -88,5 +95,42 @@ export function useProviderModels(provider: Provider | null | undefined) {
     queryFn: () => api.get<ModelInfo[]>(`/providers/${provider}/models`),
     enabled: !!provider,
     staleTime: 5 * 60_000,
+  });
+}
+
+/** Agent → Skills editor rows (full workspace pool + link state). */
+export function useAgentSkills(agentId: string | null | undefined) {
+  return useQuery({
+    queryKey: queryKeys.agentSkills(agentId),
+    queryFn: () => api.get<AgentSkillEditorRow[]>(`/agents/${agentId}/skills`),
+    enabled: !!agentId,
+  });
+}
+
+/** Agent Editor → Stats tab aggregates. */
+export function useAgentStats(agentId: string | null | undefined) {
+  return useQuery({
+    queryKey: queryKeys.agentStats(agentId),
+    queryFn: () => api.get<AgentStats>(`/agents/${agentId}/stats`),
+    enabled: !!agentId,
+  });
+}
+
+export interface SetAgentSkillLink {
+  skill_id: string;
+  order: number;
+  enabled: boolean;
+}
+
+/** Full-replace bind/reorder/enable for an agent's skills. */
+export function useSetAgentSkills(agentId: string | null | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (links: SetAgentSkillLink[]) =>
+      api.post<AgentSkillEditorRow[]>(`/agents/${agentId}/skills`, { links }),
+    onSuccess: (rows) => {
+      qc.setQueryData(queryKeys.agentSkills(agentId), rows);
+      qc.invalidateQueries({ queryKey: queryKeys.agents });
+    },
   });
 }

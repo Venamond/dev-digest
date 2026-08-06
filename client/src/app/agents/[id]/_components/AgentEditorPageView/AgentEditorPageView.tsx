@@ -1,4 +1,5 @@
-/* /agents/:id — Agent Editor view. Tab state in ?tab=. */
+/* /agents/:id — Agent Editor view. Left vertical agent list + editor pane
+   (design ScreenAgents). Tab state in ?tab=. */
 "use client";
 
 import React from "react";
@@ -10,8 +11,10 @@ import { AgentCard } from "@/components/agent-card/AgentCard";
 import { AgentEditor } from "../AgentEditor/AgentEditor";
 import { useAgents, useAgent, useUpdateAgent } from "@/lib/hooks/agents";
 import { ApiError } from "@/lib/api";
-
-const VALID_TABS = ["config"];
+import { TEMPLATES } from "../../../_components/AgentsListView/constants";
+import { filterAgents } from "../../../_components/AgentsListView/helpers";
+import { CreateAgentModal } from "../../../_components/AgentsListView/_components/CreateAgentModal/CreateAgentModal";
+import { VALID_TABS } from "../AgentEditor/constants";
 
 export function AgentEditorPageView() {
   const params = useParams<{ id: string }>();
@@ -23,13 +26,18 @@ export function AgentEditorPageView() {
   const { data: agents } = useAgents();
   const { data: agent, isLoading, isError, error, refetch } = useAgent(id);
   const update = useUpdateAgent();
+  const [creating, setCreating] = React.useState(false);
+  const [q, setQ] = React.useState("");
 
-  const tab = VALID_TABS.includes(search.get("tab") ?? "") ? search.get("tab")! : "config";
+  const rawTab = search.get("tab") ?? "";
+  const tab = (VALID_TABS as readonly string[]).includes(rawTab) ? rawTab : "config";
   const setTab = (next: string) => {
     const sp = new URLSearchParams(search.toString());
     sp.set("tab", next);
     router.replace(`/agents/${id}?${sp.toString()}`);
   };
+
+  const list = filterAgents(agents ?? [], q);
 
   const crumb = [
     { label: t("list.breadcrumbLab") },
@@ -52,6 +60,7 @@ export function AgentEditorPageView() {
 
   return (
     <AppShell crumb={crumb}>
+      {creating && <CreateAgentModal onClose={() => setCreating(false)} />}
       <div style={{ display: "flex", height: "calc(100vh - 52px)" }}>
         <div
           style={{
@@ -63,33 +72,69 @@ export function AgentEditorPageView() {
             background: "var(--bg-surface)",
           }}
         >
-          <div style={{ padding: "16px 16px 12px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-              <h1 style={{ fontSize: 18, fontWeight: 700, flex: 1 }}>{t("editor.listTitle")}</h1>
+          <div style={{ padding: "14px 14px 10px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <h1 style={{ fontSize: 16, fontWeight: 700, flex: 1 }}>{t("editor.listTitle")}</h1>
               <Dropdown
                 width={210}
                 align="right"
                 trigger={
-                  <Button kind="primary" size="sm" icon="Plus">
-                    {t("editor.add")}
+                  <Button kind="primary" size="sm" icon="Plus" iconRight="ChevronDown">
+                    {t("list.addAgent")}
                   </Button>
                 }
                 items={[
                   {
                     label: t("editor.createFromScratch"),
                     icon: "Edit",
-                    onClick: () => router.push("/agents"),
+                    onClick: () => setCreating(true),
                   },
+                  { divider: true },
+                  ...TEMPLATES.map((tp) => ({
+                    label: tp,
+                    icon: "Cpu" as const,
+                    muted: true,
+                    onClick: () => setCreating(true),
+                  })),
                 ]}
               />
             </div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "6px 10px",
+                borderRadius: 7,
+                border: "1px solid var(--border)",
+                background: "var(--bg-primary)",
+                color: "var(--text-muted)",
+                fontSize: 12,
+              }}
+            >
+              <Icon.Search size={13} />
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder={t("list.searchPlaceholder")}
+                style={{
+                  flex: 1,
+                  fontSize: 12,
+                  background: "transparent",
+                  border: "none",
+                  outline: "none",
+                  color: "var(--text-primary)",
+                }}
+              />
+            </div>
           </div>
-          <div style={{ flex: 1, overflow: "auto", padding: "0 12px 12px" }}>
-            {(agents ?? []).map((a) => (
+          <div style={{ flex: 1, overflow: "auto", padding: "0 10px 10px" }}>
+            {list.map((a) => (
               <AgentCard
                 key={a.id}
                 ag={a}
                 active={a.id === id}
+                skillCount={a.skill_count ?? 0}
                 onClick={() => router.push(`/agents/${a.id}?tab=${tab}`)}
                 onToggle={(enabled) => update.mutate({ id: a.id, patch: { enabled } })}
               />
@@ -104,12 +149,9 @@ export function AgentEditorPageView() {
           </div>
         ) : (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "16px 28px 0", flexShrink: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 24px 0", flexShrink: 0 }}>
               <Icon.Cpu size={18} style={{ color: "var(--accent)" }} />
-              <h1 style={{ fontSize: 18, fontWeight: 700 }}>{agent.name}</h1>
-              <Badge color="var(--text-secondary)" mono>
-                {agent.provider}/{agent.model}
-              </Badge>
+              <h1 style={{ fontSize: 17, fontWeight: 700 }}>{agent.name}</h1>
               {!agent.enabled && <Badge color="var(--text-muted)">{t("editor.disabled")}</Badge>}
               <div style={{ marginLeft: "auto" }}>
                 <Button kind="secondary" size="sm" icon="GitPullRequest" onClick={() => router.push("/")}>

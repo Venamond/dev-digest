@@ -67,6 +67,17 @@ ground truth — wrap-ups can mischaracterize a session.
   PR, asserts the list endpoint's `findings` counts both). (2026-07-31,
   PR-list Findings column / severity-counters merge)
 
+- Per-skill stats attribute findings through `run_skills` (run → skill version
+  at prompt assembly), not through a finding→skill foreign key — reviewer-core
+  has no per-rule skill id. `run-executor` records refs via `promptSkillRefs` +
+  `recordRunSkills` inside try/catch so a stats write never fails a review
+  (`RunLogger` has `info` only — use that, not `warn`). Pull/accept rates are
+  all-time; only findings use `SKILL_FINDINGS_WINDOW_DAYS` (30). List cards get
+  rates from `listUsageInputs` + `buildSkillUsageRates`; detail from
+  `GET /skills/:id/stats`. Do not backfill historical `run_skills`. Demo
+  numbers come from idempotent seed in `db/seed.ts`. (2026-08-06, Skills Lab
+  redesign)
+
 ## Tool & Library Notes
 
 - A JSDoc/block comment that contains the two-character sequence star-slash

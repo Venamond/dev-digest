@@ -14,6 +14,7 @@ import type { Finding, Intent, RunSummary, RunTrace } from '@devdigest/shared';
  */
 
 import type { FindingRow, PullRow } from '../../db/rows.js';
+import type { PromptSkillRef } from '../agents/helpers.js';
 export type { FindingRow, PullRow };
 
 export type ReviewRow = typeof t.reviews.$inferSelect;
@@ -188,5 +189,10 @@ export class ReviewRepository {
 
   getRunTrace(runId: string): Promise<RunTrace | undefined> {
     return runRepo.getRunTrace(this.db, runId);
+  }
+
+  /** Record which skill versions were injected into a run's prompt (for stats). */
+  recordRunSkills(runId: string, refs: PromptSkillRef[]): Promise<void> {
+    return runRepo.recordRunSkills(this.db, runId, refs);
   }
 }

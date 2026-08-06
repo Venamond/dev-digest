@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { FormField, SearchableSelect, Icon } from "@devdigest/ui";
 import { useSettings, useUpdateSettings } from "../../../../../../../lib/hooks";
 import { useProviderModels } from "../../../../../../../lib/hooks/agents";
-import { toModelOptions } from "../../../../../../../lib/model-label";
+import { modelLabel, toModelOptions } from "../../../../../../../lib/model-label";
 import { FEATURE_MODELS } from "../../../../../../../lib/feature-models";
 import type { FeatureModelChoice, FeatureModelId } from "../../../../../../../lib/types";
 import { SectionTitle } from "../SectionTitle/SectionTitle";
@@ -41,9 +41,9 @@ export function SettingsModels() {
         const isDefault = !chosen[f.id];
         // Ensure the current value is selectable even if it isn't in the live
         // OpenRouter list (e.g. an OpenAI registry default, or an empty list).
-        const options = baseOptions.some((o) => (typeof o === "string" ? o : o.value) === current)
+        const options = baseOptions.some((o) => o.value === current)
           ? baseOptions
-          : [current, ...baseOptions];
+          : [{ value: current, label: modelLabel({ id: current }) }, ...baseOptions];
         return (
           <div key={f.id} style={s.row}>
             <FormField

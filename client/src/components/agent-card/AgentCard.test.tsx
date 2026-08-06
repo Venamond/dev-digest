@@ -12,8 +12,8 @@ const AGENT: Agent = {
   id: "ag1",
   name: "Security Reviewer",
   description: "Flags secrets and injection",
-  provider: "openai",
-  model: "gpt-4.1",
+  provider: "openrouter",
+  model: "deepseek/deepseek-v4-flash",
   system_prompt: "You are a security reviewer.",
   output_schema: null,
   strategy: "single-pass",
@@ -35,11 +35,15 @@ function renderWithIntl(ui: React.ReactElement) {
 }
 
 describe("AgentCard (smoke)", () => {
-  it("renders the agent name, model chip and skill count", () => {
-    renderWithIntl(<AgentCard ag={AGENT} skillCount={3} />);
+  it("renders the agent name, model chip, skill count and stats footer", () => {
+    renderWithIntl(<AgentCard ag={AGENT} skillCount={3} stats={{ runs: 12, accept: 0.75, cost: 0.06 }} />);
     expect(screen.getByText("Security Reviewer")).toBeInTheDocument();
-    expect(screen.getByText("gpt-4.1")).toBeInTheDocument();
+    expect(screen.getByText("deepseek-v4-flash")).toBeInTheDocument();
+    expect(screen.queryByText("deepseek/deepseek-v4-flash")).not.toBeInTheDocument();
     expect(screen.getByText("3 skills")).toBeInTheDocument();
+    expect(screen.getByText("12 runs")).toBeInTheDocument();
+    expect(screen.getByText("75% accept")).toBeInTheDocument();
+    expect(screen.getByText("$0.06 avg")).toBeInTheDocument();
   });
 
   it("falls back to a translated placeholder when description is empty", () => {
