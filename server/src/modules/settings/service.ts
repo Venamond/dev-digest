@@ -39,9 +39,10 @@ export class SettingsService {
   /** Booleans only — never secret values. */
   async secretsStatus(): Promise<SecretsStatus> {
     const entries = await Promise.all(
-      (Object.entries(SECRET_KEY_BY_PROVIDER) as [keyof SecretsStatus, string][]).map(
+      Object.entries(SECRET_KEY_BY_PROVIDER).map(
         async ([provider, key]) =>
-          [provider, Boolean(await this.container.secrets.get(key))] as const,
+          // Renamed `github` -> `githubPat` for clarity (PAT, not an OAuth token).
+          [provider === GITHUB_PROVIDER ? 'githubPat' : provider, Boolean(await this.container.secrets.get(key))] as const,
       ),
     );
     return Object.fromEntries(entries) as SecretsStatus;
