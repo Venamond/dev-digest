@@ -13,6 +13,7 @@
     "loadError": "Could not load conventions.",
     "deselectAll": "Deselect all",
     "acceptedCount": "{accepted} of {total} accepted",
+    "droppedUngrounded": "{count, plural, one {# candidate dropped — no evidence found} other {# candidates dropped — no evidence found}}",
     "createSkill": "Create skill",
     "createSkillHint": "Accept at least one convention first",
     "empty": {

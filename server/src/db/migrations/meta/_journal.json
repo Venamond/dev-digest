@@ -99,6 +99,20 @@
       "when": 1786051200000,
       "tag": "0013_skill_stats_and_version_notes",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1786137600000,
+      "tag": "0014_convention_scans",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1786137660000,
+      "tag": "0015_snapshot_baseline",
+      "breakpoints": true
     }
   ]
 }

@@ -4,18 +4,26 @@ import {
   composeDraftMeta,
   composeSkillBody,
   dedupeCandidates,
+  dedupeUniqueCount,
+  defaultSkillName,
   evidenceUrl,
   expandEvidenceRange,
+  ExtractionResponseSchema,
   formatEvidenceRef,
   groundCandidate,
   normalizeWs,
-  parseCandidates,
-  ruleSlug,
   selectSamplePaths,
   type GroundedCandidate,
   type RawCandidate,
 } from './helpers.js';
-import { EVIDENCE_CONTEXT_PAD, EVIDENCE_MAX_LINES } from './constants.js';
+import {
+  EVIDENCE_CONTEXT_PAD,
+  EVIDENCE_MAX_LINES,
+  FALLBACK_SKILL_NAME,
+  MAX_CANDIDATES,
+  SKILL_NAME_SLUG_MAX,
+  SKILL_NAME_SUFFIX,
+} from './constants.js';
 
 function raw(partial: Partial<RawCandidate> = {}): RawCandidate {
   return {
@@ -42,28 +50,47 @@ describe('selectSamplePaths', () => {
   });
 });
 
-describe('parseCandidates', () => {
-  it('parses a wrapped candidates object', () => {
-    const text = JSON.stringify({
+// This is the real extraction path: the service calls `completeStructured`
+// with this schema, so validation happens here rather than in a text parser.
+describe('ExtractionResponseSchema', () => {
+  const candidate = {
+    category: 'imports',
+    rule: 'Use .js extensions',
+    evidence: { path: 'a.ts', line_start: 2, line_end: 4, snippet: 'import x' },
+    confidence: 0.8,
+  };
+
+  it('accepts a well-formed response', () => {
+    const r = ExtractionResponseSchema.safeParse({ candidates: [candidate] });
+    expect(r.success).toBe(true);
+  });
+
+  it('coerces numeric strings the model may emit', () => {
+    const r = ExtractionResponseSchema.safeParse({
       candidates: [
-        {
-          category: 'imports',
-          rule: 'Use .js extensions',
-          evidence: { path: 'a.ts', line_start: 2, line_end: 2, snippet: 'import x' },
-          confidence: 0.8,
-        },
+        { ...candidate, confidence: '0.8', evidence: { ...candidate.evidence, line_start: '2' } },
       ],
     });
-    expect(parseCandidates(text)).toHaveLength(1);
+    expect(r.success).toBe(true);
+    expect(r.success && r.data.candidates[0]!.confidence).toBe(0.8);
+    expect(r.success && r.data.candidates[0]!.evidence.line_start).toBe(2);
   });
 
-  it('drops malformed items and accepts fenced JSON', () => {
-    const text = '```json\n{"candidates":[{"rule":"ok","category":"c","evidence":{"path":"a","line_start":1,"line_end":1,"snippet":"x"},"confidence":0.5},{"bad":true}]}\n```';
-    expect(parseCandidates(text)).toHaveLength(1);
+  it('rejects a candidate missing evidence', () => {
+    const { evidence: _omitted, ...noEvidence } = candidate;
+    expect(ExtractionResponseSchema.safeParse({ candidates: [noEvidence] }).success).toBe(false);
   });
 
-  it('returns [] on garbage', () => {
-    expect(parseCandidates('not json')).toEqual([]);
+  it('rejects confidence outside 0..1 and non-positive line numbers', () => {
+    expect(
+      ExtractionResponseSchema.safeParse({ candidates: [{ ...candidate, confidence: 1.5 }] })
+        .success,
+    ).toBe(false);
+    expect(
+      ExtractionResponseSchema.safeParse({
+        candidates: [{ ...candidate, evidence: { ...candidate.evidence, line_start: 0 } }],
+      }).success,
+    ).toBe(false);
   });
 });
 
@@ -165,51 +192,175 @@ describe('dedupeCandidates', () => {
   });
 });
 
-describe('ruleSlug / composeSkillBody / evidenceUrl', () => {
-  it('slugs rules like the mockup', () => {
-    expect(ruleSlug('Always use async/await instead of .then() chains')).toBe(
-      'always-use-async-await-instead-of-then-chains',
-    );
+describe('dedupeUniqueCount', () => {
+  const base: GroundedCandidate = {
+    category: 'c',
+    rule: 'Always await',
+    evidence_path: 'a.ts',
+    evidence_snippet: 'x',
+    evidence_line_start: 1,
+    evidence_line_end: 1,
+    confidence: 0.5,
+  };
+
+  it('counts distinct rules, ignoring case and whitespace', () => {
+    const same = { ...base, rule: '  always   AWAIT ' };
+    const other = { ...base, rule: 'Never use any' };
+    expect(dedupeUniqueCount([base, same, other])).toBe(2);
   });
 
-  it('does not leave a trailing hyphen when truncating long rules', () => {
-    const long =
-      'Domain tables must carry a workspace_id foreign key referencing workspaces.id and never omit it';
-    expect(ruleSlug(long).endsWith('-')).toBe(false);
-    expect(ruleSlug(long).length).toBeLessThanOrEqual(64);
+  // The point of this helper: it lets the caller separate "lost to duplicates"
+  // from "lost to the MAX_CANDIDATES cap" instead of reporting one total.
+  it('reports uniques before the cap, so cap losses stay distinguishable', () => {
+    const many = Array.from({ length: MAX_CANDIDATES + 4 }, (_, i) => ({
+      ...base,
+      rule: `Rule number ${i}`,
+    }));
+    const withDupes = [...many, { ...base, rule: 'Rule number 0' }];
+
+    const unique = dedupeUniqueCount(withDupes);
+    const kept = dedupeCandidates(withDupes);
+
+    expect(withDupes.length - unique).toBe(1); // duplicate
+    expect(unique - kept.length).toBe(4); // truncated by the cap
+  });
+});
+
+describe('defaultSkillName', () => {
+  it('derives the name from the repo so two repos never collide', () => {
+    expect(defaultSkillName('payments-api')).toBe('payments-api-conventions');
+    expect(defaultSkillName('billing-worker')).toBe('billing-worker-conventions');
+    expect(defaultSkillName('payments-api')).not.toBe(defaultSkillName('billing-worker'));
   });
 
-  it('composes a skill body with rule + path only (no code, no line range)', () => {
-    const body = composeSkillBody('repo-conventions', 'payments-api', [
+  it('slugifies names that are not already slug-shaped', () => {
+    expect(defaultSkillName('Payments API')).toBe('payments-api-conventions');
+    expect(defaultSkillName('acme/payments_api')).toBe('acme-payments-api-conventions');
+  });
+
+  it('falls back when the repo name slugifies to nothing', () => {
+    expect(defaultSkillName('///')).toBe(FALLBACK_SKILL_NAME);
+    expect(defaultSkillName('')).toBe(FALLBACK_SKILL_NAME);
+  });
+
+  it('caps the prefix and never leaves a trailing hyphen before the suffix', () => {
+    const long = 'a'.repeat(SKILL_NAME_SLUG_MAX + 20);
+    const name = defaultSkillName(long);
+    expect(name.endsWith(`-${SKILL_NAME_SUFFIX}`)).toBe(true);
+    expect(name).not.toContain('--');
+
+    // A name whose cap boundary lands on a separator must not yield `x--conventions`.
+    const boundary = `${'b'.repeat(SKILL_NAME_SLUG_MAX - 1)} tail`;
+    expect(defaultSkillName(boundary)).not.toContain('--');
+  });
+});
+
+describe('composeSkillBody / evidenceUrl', () => {
+  it('composes rule + path only when there is no snippet — no line range either', () => {
+    const body = composeSkillBody('payments-api-conventions', 'payments-api', [
       {
         rule: 'Always use async/await instead of .then() chains',
         evidence_path: 'src/api/users.ts',
+        category: 'async',
+        confidence: 0.9,
         evidence_line_start: 23,
         evidence_line_end: 31,
       },
     ]);
-    expect(body).toContain('# repo-conventions');
+    expect(body).toContain('# payments-api-conventions');
     expect(body).toContain('House conventions for `payments-api`');
-    expect(body).toContain('## always-use-async-await-instead-of-then-chains');
-    expect(body).toContain('Source: `src/api/users.ts`');
+    expect(body).toContain('## async');
+    expect(body).toContain('- Always use async/await instead of .then() chains (seen in `src/api/users.ts`)');
+    // Stored ranges are padded UI windows — they would misdirect the agent.
     expect(body).not.toContain('23-31');
-    expect(body).not.toContain('Detected in');
-    expect(body).not.toContain('await fetchUser');
   });
 
-  it('merges every accepted convention into the skill body', () => {
-    const body = composeSkillBody('repo-conventions', 'payments-api', [
-      { rule: 'Always await', evidence_path: 'a.ts' },
-      { rule: 'Prefer named exports', evidence_path: 'b.ts' },
-      { rule: 'Keep handlers thin', evidence_path: 'c.ts' },
+  it('renders the already-grounded snippet as a fenced example under the rule', () => {
+    const body = composeSkillBody('s', 'r', [
+      {
+        rule: 'Repositories own their table',
+        evidence_path: 'src/modules/repos/repository.ts',
+        category: 'layering',
+        confidence: 0.9,
+        evidence_snippet: 'export class ReposRepository {\n  constructor(private db: Db) {}\n}',
+      },
     ]);
-    expect(body).toContain('## always-await');
-    expect(body).toContain('## prefer-named-exports');
-    expect(body).toContain('## keep-handlers-thin');
-    expect(body).toContain('Source: `a.ts`');
-    expect(body).toContain('Source: `b.ts`');
-    expect(body).toContain('Source: `c.ts`');
-    expect(body.match(/^## /gm)?.length).toBe(3);
+    expect(body).toContain('- Repositories own their table');
+    expect(body).toContain('  Detected in `src/modules/repos/repository.ts`:');
+    // Nested under the bullet (2-space indent) so it stays part of the list item.
+    expect(body).toContain(
+      '  ```\n  export class ReposRepository {\n    constructor(private db: Db) {}\n  }\n  ```',
+    );
+    // No duplicate "(seen in ...)" once there's a fenced example.
+    expect(body).not.toContain('seen in');
+  });
+
+  it('widens the fence when the snippet itself contains a code fence', () => {
+    const snippet = 'Use ```ts blocks in docs, never ~~~ or other markers.';
+    const body = composeSkillBody('s', 'r', [
+      { rule: 'x', evidence_path: 'a.md', category: 'docs', evidence_snippet: snippet },
+    ]);
+    expect(body).toContain(`  \`\`\`\`\n  ${snippet}\n  \`\`\`\``);
+  });
+
+  it('falls back to (seen in path) when a candidate has no snippet', () => {
+    const body = composeSkillBody('s', 'r', [
+      { rule: 'no snippet here', evidence_path: 'a.ts', category: 'x', evidence_snippet: null },
+    ]);
+    expect(body).toContain('- no snippet here (seen in `a.ts`)');
+    expect(body).not.toContain('```');
+  });
+
+  // The old format printed a slug heading followed by the same sentence in
+  // prose, doubling the tokens of every rule in every prompt.
+  it('does not repeat the rule text as a heading', () => {
+    const rule = 'Always use async/await instead of .then() chains';
+    const body = composeSkillBody('s', 'r', [
+      { rule, evidence_path: 'a.ts', category: 'async', confidence: 0.9 },
+    ]);
+    expect(body).not.toContain('always-use-async-await');
+    expect(body.match(/Always use async\/await/g)).toHaveLength(1);
+  });
+
+  it('groups rules by category, one heading per category', () => {
+    const body = composeSkillBody('s', 'payments-api', [
+      { rule: 'Always await', evidence_path: 'a.ts', category: 'async', confidence: 0.9 },
+      { rule: 'Prefer named exports', evidence_path: 'b.ts', category: 'imports', confidence: 0.8 },
+      { rule: 'Keep handlers thin', evidence_path: 'c.ts', category: 'async', confidence: 0.7 },
+    ]);
+    expect(body.match(/^## /gm)).toHaveLength(2);
+    expect(body).toContain('## async');
+    expect(body).toContain('## imports');
+    expect(body).toContain('- Always await (seen in `a.ts`)');
+    expect(body).toContain('- Keep handlers thin (seen in `c.ts`)');
+  });
+
+  it('orders categories by their strongest rule and rules by confidence', () => {
+    const body = composeSkillBody('s', 'r', [
+      { rule: 'weak rule', evidence_path: 'a.ts', category: 'naming', confidence: 0.4 },
+      { rule: 'strong rule', evidence_path: 'b.ts', category: 'layering', confidence: 0.95 },
+      { rule: 'mid rule', evidence_path: 'c.ts', category: 'layering', confidence: 0.6 },
+    ]);
+    expect(body.indexOf('## layering')).toBeLessThan(body.indexOf('## naming'));
+    expect(body.indexOf('strong rule')).toBeLessThan(body.indexOf('mid rule'));
+  });
+
+  it("buckets uncategorised rules under 'other' and puts them last", () => {
+    const body = composeSkillBody('s', 'r', [
+      { rule: 'no category', evidence_path: 'a.ts', category: null, confidence: 0.99 },
+      { rule: 'has category', evidence_path: 'b.ts', category: 'imports', confidence: 0.1 },
+    ]);
+    expect(body).toContain('## other');
+    // Highest confidence, but `other` is a fallback bucket — still last.
+    expect(body.indexOf('## imports')).toBeLessThan(body.indexOf('## other'));
+  });
+
+  it('omits the source suffix when a rule has no evidence path', () => {
+    const body = composeSkillBody('s', 'r', [
+      { rule: 'bare rule', evidence_path: '  ', category: 'misc', confidence: 0.5 },
+    ]);
+    expect(body).toContain('- bare rule');
+    expect(body).not.toContain('seen in');
   });
 
   it('builds a pinned GitHub blob URL', () => {
@@ -219,7 +370,7 @@ describe('ruleSlug / composeSkillBody / evidenceUrl', () => {
     expect(formatEvidenceRef('src/a.ts', 2, 2)).toBe('src/a.ts:2');
   });
 
-  it('composeDraftMeta uses repo-conventions + count description', () => {
+  it('composeDraftMeta uses the repo-scoped name + count description', () => {
     const draft = composeDraftMeta('payments-api', [
       {
         rule: 'x',
@@ -228,8 +379,10 @@ describe('ruleSlug / composeSkillBody / evidenceUrl', () => {
         evidence_line_end: 1,
       },
     ]);
-    expect(draft.name).toBe('repo-conventions');
+    expect(draft.name).toBe('payments-api-conventions');
     expect(draft.description).toBe('1 house convention extracted from payments-api');
+    // The body's H1 must match the name the skill is saved under.
+    expect(draft.body).toContain('# payments-api-conventions');
   });
 });
 

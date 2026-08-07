@@ -109,14 +109,14 @@
     "current": "Current",
     "version": "v{version}",
     "diff": "Diff",
+    "hide": "Hide",
     "restore": "Restore",
     "restoring": "Restoring…",
     "restoreConfirm": "Restore v{version} as a new current version?",
     "restoreToast": "Restored as v{version}",
     "diffTitle": "Diff vs current",
     "diffEmpty": "No differences.",
-    "diffError": "Could not load diff.",
-    "close": "Close"
+    "diffError": "Could not load diff."
   },
   "stats": {
     "title": "Stats",

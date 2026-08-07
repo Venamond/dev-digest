@@ -54,6 +54,22 @@ export function useUpdateConvention(repoId: string | null | undefined) {
   });
 }
 
+/**
+ * Clear every accepted candidate in one request. The per-candidate PATCH was
+ * previously fanned out N times from the view, which was neither atomic nor
+ * cheap once a scan produced a full list.
+ */
+export function useDeselectAllConventions(repoId: string | null | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<ConventionsList>(`/repos/${repoId}/conventions/deselect-all`),
+    onSuccess: (data) => {
+      qc.setQueryData(queryKeys.conventions(repoId), data);
+      qc.invalidateQueries({ queryKey: queryKeys.conventionSkillDraft(repoId) });
+    },
+  });
+}
+
 export function useConventionSkillDraft(repoId: string | null | undefined, enabled: boolean) {
   return useQuery({
     queryKey: queryKeys.conventionSkillDraft(repoId),

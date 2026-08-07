@@ -37,5 +37,9 @@ export const s = {
     fontSize: 12.5,
     color: "var(--text-secondary)",
   } satisfies CSSProperties,
+  droppedCount: {
+    fontSize: 12.5,
+    color: "var(--text-tertiary, var(--text-secondary))",
+  } satisfies CSSProperties,
   list: { display: "flex", flexDirection: "column", gap: 12 } satisfies CSSProperties,
 } as const;

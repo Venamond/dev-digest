@@ -39,13 +39,18 @@ export const s = {
     color: "var(--text-primary)",
   } satisfies CSSProperties,
   tokens: { marginLeft: "auto", fontSize: 11.5 } satisfies CSSProperties,
+  // overflowX hidden in both modes: lines soft-wrap, so there is nothing to
+  // scroll sideways — and a horizontal scrollbar would drag the line-number
+  // gutter out of view with it.
   pane: {
     background: "var(--bg-primary)",
+    overflowX: "hidden",
   } satisfies CSSProperties,
   paneFill: {
     flex: 1,
     minHeight: 0,
-    overflow: "auto",
+    overflowY: "auto",
+    overflowX: "hidden",
     background: "var(--bg-primary)",
   } satisfies CSSProperties,
   editorRows: {
@@ -80,7 +85,29 @@ export const s = {
     fontSize: 12.5,
     lineHeight: "21px",
     padding: "10px 12px 10px 0",
-    whiteSpace: "pre",
+    // Soft-wrap instead of running off the right edge. `anywhere` also breaks
+    // unbroken tokens (long paths, URLs) that no space would let wrap.
+    whiteSpace: "pre-wrap",
+    overflowWrap: "anywhere",
+    boxSizing: "border-box",
+  } satisfies CSSProperties,
+  /**
+   * Off-screen twin of the textarea's text box, used to measure how many
+   * visual rows each logical line occupies once wrapped. Every property that
+   * affects line breaking must match `textarea` exactly.
+   */
+  mirror: {
+    position: "absolute",
+    top: 0,
+    left: -99999,
+    visibility: "hidden",
+    pointerEvents: "none",
+    height: "auto",
+    fontFamily: "var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace)",
+    fontSize: 12.5,
+    lineHeight: "21px",
+    whiteSpace: "pre-wrap",
+    overflowWrap: "anywhere",
     boxSizing: "border-box",
   } satisfies CSSProperties,
 } as const;

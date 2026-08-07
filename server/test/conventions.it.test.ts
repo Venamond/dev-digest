@@ -185,10 +185,15 @@ d('conventions extractor', () => {
     });
     expect(extracted.statusCode).toBe(200);
     const body = extracted.json();
-    expect(body.dropped).toBeGreaterThanOrEqual(1);
+    // The hallucinated candidate cites a file outside the sample — it must be
+    // counted as ungrounded specifically, not as a generic "dropped".
+    expect(body.dropped.ungrounded).toBeGreaterThanOrEqual(1);
+    expect(body.dropped.duplicate).toBe(0);
+    expect(body.dropped.truncated).toBe(0);
     expect(body.candidates).toHaveLength(1);
     expect(body.candidates[0].rule).toMatch(/\.js/);
-    expect(body.candidates[0].status).toBe('pending');
+    // Default is accepted, not pending — review-and-deselect UX.
+    expect(body.candidates[0].status).toBe('accepted');
     expect(body.candidates[0].evidence_url).toContain('deadbeef');
     expect(body.scan.sampled_file_count).toBeGreaterThan(0);
 
@@ -198,11 +203,63 @@ d('conventions extractor', () => {
     await app.close();
   });
 
+  it('a scan that grounds nothing is still remembered as a scan', async () => {
+    // Regression: scan metadata used to live only on candidate rows, so a
+    // zero-result scan came back as scan:null and the UI showed "never
+    // scanned" after a reload.
+    const app = await makeApp({ structured: { candidates: [] } });
+    const extracted = await app.inject({
+      method: 'POST',
+      url: `/repos/${repoId}/conventions/extract`,
+    });
+    expect(extracted.statusCode).toBe(200);
+    expect(extracted.json().candidates).toHaveLength(0);
+
+    const list = (await app.inject({ method: 'GET', url: `/repos/${repoId}/conventions` })).json();
+    expect(list.candidates).toHaveLength(0);
+    expect(list.scan).not.toBeNull();
+    expect(list.scan.sampled_file_count).toBeGreaterThan(0);
+    expect(list.scan.source_sha).toBe('deadbeef');
+    await app.close();
+  });
+
+  it('deselect-all clears every accepted candidate in one call', async () => {
+    const app = await makeApp({ structured: goodCompletion });
+    await app.inject({ method: 'POST', url: `/repos/${repoId}/conventions/extract` });
+    const list = (await app.inject({ method: 'GET', url: `/repos/${repoId}/conventions` })).json();
+
+    await app.inject({
+      method: 'PATCH',
+      url: `/conventions/${list.candidates[0].id}`,
+      payload: { status: 'accepted' },
+    });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/repos/${repoId}/conventions/deselect-all`,
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().candidates.every((c: { status: string }) => c.status !== 'accepted')).toBe(
+      true,
+    );
+    await app.close();
+  });
+
   it('PATCH accept/reject and skill create with extracted source', async () => {
     const app = await makeApp({ structured: goodCompletion });
     await app.inject({ method: 'POST', url: `/repos/${repoId}/conventions/extract` });
     const list = (await app.inject({ method: 'GET', url: `/repos/${repoId}/conventions` })).json();
     const id = list.candidates[0].id as string;
+
+    // Default is accepted — reject the only candidate to exercise the
+    // "no accepted conventions" 409 path.
+    const rejected = await app.inject({
+      method: 'PATCH',
+      url: `/conventions/${id}`,
+      payload: { status: 'rejected' },
+    });
+    expect(rejected.statusCode).toBe(200);
+    expect(rejected.json().status).toBe('rejected');
 
     const rejectedDraft = await app.inject({
       method: 'GET',
@@ -221,8 +278,13 @@ d('conventions extractor', () => {
     const draft = (
       await app.inject({ method: 'GET', url: `/repos/${repoId}/conventions/skill-draft` })
     ).json();
-    expect(draft.name).toBe('repo-conventions');
-    expect(draft.body).toContain('## relative-imports-must-carry-the-js-extension');
+    // Named per repo so a second repo cannot upsert onto this same skill row.
+    expect(draft.name).toBe('payments-api-conventions');
+    // Rules are grouped under their category and listed verbatim — no slug
+    // heading duplicating the rule text.
+    expect(draft.body).toContain('## imports');
+    expect(draft.body).toContain('- Relative imports must carry the .js extension');
+    expect(draft.body).not.toContain('relative-imports-must-carry');
 
     const created = await app.inject({
       method: 'POST',
@@ -237,7 +299,7 @@ d('conventions extractor', () => {
     expect(created.statusCode).toBe(201);
     const createdSkill = created.json();
     expect(createdSkill).toMatchObject({
-      name: 'repo-conventions',
+      name: 'payments-api-conventions',
       type: 'convention',
       source: 'extracted',
       version: 1,
@@ -257,7 +319,7 @@ d('conventions extractor', () => {
     expect(updated.statusCode).toBe(201);
     expect(updated.json()).toMatchObject({
       id: createdSkill.id,
-      name: 'repo-conventions',
+      name: 'payments-api-conventions',
       version: 2,
     });
     await app.close();

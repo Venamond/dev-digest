@@ -202,10 +202,25 @@ export const ConventionsList = z.object({
 });
 export type ConventionsList = z.infer<typeof ConventionsList>;
 
+/**
+ * Why a model candidate did not survive. Kept as three counters rather than
+ * one `dropped` total: "no evidence in the repo" is the signal that proves
+ * grounding worked, while duplicate/truncated are housekeeping.
+ */
+export const ConventionDropped = z.object({
+  /** Evidence check failed — path outside the sample, or snippet not in the file. */
+  ungrounded: z.number().int(),
+  /** Same rule proposed more than once; the lower-confidence copy was discarded. */
+  duplicate: z.number().int(),
+  /** Grounded and unique, but beyond the per-scan candidate cap. */
+  truncated: z.number().int(),
+});
+export type ConventionDropped = z.infer<typeof ConventionDropped>;
+
 export const ConventionsExtractResult = z.object({
   candidates: z.array(ConventionCandidate),
   scan: ConventionScan,
-  dropped: z.number().int(),
+  dropped: ConventionDropped,
 });
 export type ConventionsExtractResult = z.infer<typeof ConventionsExtractResult>;
 

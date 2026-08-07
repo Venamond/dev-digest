@@ -1,17 +1,19 @@
 import { and, asc, eq } from 'drizzle-orm';
 import type { Db } from '../../db/client.js';
 import * as t from '../../db/schema.js';
-import type { ConventionRow, RepoRow, SkillRow } from '../../db/rows.js';
+import type { ConventionRow, ConventionScanRow, RepoRow, SkillRow } from '../../db/rows.js';
 import type { ConventionStatus } from '@devdigest/shared';
+import { NotFoundError } from '../../platform/errors.js';
 import type { GroundedCandidate } from './helpers.js';
 
 /**
- * Conventions data-access. Owns `conventions`. Also reads `repos` for
- * workspace scoping and writes extracted `skills` (+ version snapshot) so this
- * module never imports another module's repository (no-cross-module-internals).
+ * Conventions data-access. Owns `conventions` and `convention_scans`. Also
+ * reads `repos` for workspace scoping and writes extracted `skills` (+ version
+ * snapshot) so this module never imports another module's repository
+ * (no-cross-module-internals).
  */
 
-export type { ConventionRow };
+export type { ConventionRow, ConventionScanRow };
 
 export interface InsertConventionBatch {
   workspaceId: string;
@@ -47,13 +49,17 @@ export class ConventionsRepository {
 
   /**
    * Workspace-scoped lookup by exact skill name (for upsert).
-   * Prefers an existing `source: extracted` row when duplicates already exist.
+   * `skills` has no unique constraint on (workspace_id, name), so duplicates
+   * are possible: prefer an existing `source: extracted` row, and break
+   * remaining ties by oldest-first so repeated upserts keep hitting the same
+   * row instead of drifting with unordered scan output.
    */
   async findSkillByName(workspaceId: string, name: string): Promise<SkillRow | undefined> {
     const rows = await this.db
       .select()
       .from(t.skills)
-      .where(and(eq(t.skills.workspaceId, workspaceId), eq(t.skills.name, name)));
+      .where(and(eq(t.skills.workspaceId, workspaceId), eq(t.skills.name, name)))
+      .orderBy(asc(t.skills.createdAt), asc(t.skills.id));
     return rows.find((r) => r.source === 'extracted') ?? rows[0];
   }
 
@@ -78,13 +84,14 @@ export class ConventionsRepository {
           version: 1,
         })
         .returning();
+      if (!row) throw new NotFoundError('Skill insert returned no row');
       await this.db.insert(t.skillVersions).values({
-        skillId: row!.id,
+        skillId: row.id,
         version: 1,
-        body: row!.body,
+        body: row.body,
         note: 'Extracted from codebase scan',
       });
-      return row!;
+      return row;
     }
 
     const configChanged =
@@ -104,7 +111,11 @@ export class ConventionsRepository {
       .where(and(eq(t.skills.workspaceId, values.workspaceId), eq(t.skills.id, existing.id)))
       .returning();
 
-    if (configChanged && row) {
+    // The row was read a statement ago; a concurrent delete can leave the
+    // UPDATE matching nothing. Fail loudly instead of asserting with `row!`.
+    if (!row) throw new NotFoundError('Skill disappeared while saving');
+
+    if (configChanged) {
       await this.db
         .insert(t.skillVersions)
         .values({
@@ -115,15 +126,52 @@ export class ConventionsRepository {
         })
         .onConflictDoNothing();
     }
-    return row!;
+    return row;
   }
 
-  /** Replace all rows for a repo with a fresh scan (atomic delete + insert). */
-  async replaceForRepo(input: InsertConventionBatch): Promise<ConventionRow[]> {
+  /**
+   * Replace all rows for a repo with a fresh scan, and record the scan itself.
+   * One transaction: the scan row and the candidates it produced must never
+   * disagree. The scan row is written even when zero candidates survive
+   * grounding — that is how "scanned, found nothing" stays distinguishable
+   * from "never scanned".
+   */
+  async replaceForRepo(
+    input: InsertConventionBatch,
+  ): Promise<{ rows: ConventionRow[]; scan: ConventionScanRow }> {
     const now = new Date();
     return this.db.transaction(async (tx) => {
-      await tx.delete(t.conventions).where(eq(t.conventions.repoId, input.repoId));
-      if (input.candidates.length === 0) return [];
+      await tx
+        .delete(t.conventions)
+        .where(
+          and(
+            eq(t.conventions.workspaceId, input.workspaceId),
+            eq(t.conventions.repoId, input.repoId),
+          ),
+        );
+
+      const [scan] = await tx
+        .insert(t.conventionScans)
+        .values({
+          repoId: input.repoId,
+          workspaceId: input.workspaceId,
+          sourceSha: input.sourceSha,
+          sampleFileCount: input.sampleFileCount,
+          createdAt: now,
+        })
+        .onConflictDoUpdate({
+          target: t.conventionScans.repoId,
+          set: {
+            workspaceId: input.workspaceId,
+            sourceSha: input.sourceSha,
+            sampleFileCount: input.sampleFileCount,
+            createdAt: now,
+          },
+        })
+        .returning();
+      if (!scan) throw new NotFoundError('Failed to record convention scan');
+
+      if (input.candidates.length === 0) return { rows: [], scan };
 
       const rows = await tx
         .insert(t.conventions)
@@ -138,8 +186,12 @@ export class ConventionsRepository {
             evidenceLineStart: c.evidence_line_start,
             evidenceLineEnd: c.evidence_line_end,
             confidence: c.confidence,
-            status: 'pending' as const,
-            accepted: false,
+            // Default to accepted: the UX is review-and-deselect, not
+            // review-and-select — the LLM's candidates are pre-checked and
+            // the user unchecks the ones they don't want (see the "Deselect
+            // all" flow, which was otherwise dead on a fresh scan).
+            status: 'accepted' as const,
+            accepted: true,
             sourceSha: input.sourceSha,
             sampleFileCount: input.sampleFileCount,
             position: i,
@@ -147,8 +199,22 @@ export class ConventionsRepository {
           })),
         )
         .returning();
-      return rows;
+      return { rows, scan };
     });
+  }
+
+  /** Last scan for a repo, or undefined if this repo was never scanned. */
+  async getScan(workspaceId: string, repoId: string): Promise<ConventionScanRow | undefined> {
+    const [row] = await this.db
+      .select()
+      .from(t.conventionScans)
+      .where(
+        and(
+          eq(t.conventionScans.workspaceId, workspaceId),
+          eq(t.conventionScans.repoId, repoId),
+        ),
+      );
+    return row;
   }
 
   async listByRepo(workspaceId: string, repoId: string): Promise<ConventionRow[]> {

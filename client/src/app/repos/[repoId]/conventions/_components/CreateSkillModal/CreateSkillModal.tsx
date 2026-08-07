@@ -39,13 +39,18 @@ export function CreateSkillModal({
   const [touched, setTouched] = React.useState(false);
   const appliedDraftAt = React.useRef<number | null>(null);
 
+  // The server names the draft per repo (`<repo>-conventions`) so two repos
+  // cannot upsert onto the same skill row — fall back to that, never to a
+  // repo-independent literal.
+  const defaultName = draftQ.data?.name ?? "";
+  const effectiveName = name.trim() || defaultName;
+
   // Upsert bumps when a skill with this name already exists — show the version
   // that will be written (v1 for a new name, else current + 1).
   const nextVersion = React.useMemo(() => {
-    const trimmed = name.trim() || "repo-conventions";
-    const existing = skillsQ.data?.find((sk) => sk.name === trimmed);
+    const existing = skillsQ.data?.find((sk) => sk.name === effectiveName);
     return existing ? existing.version + 1 : 1;
-  }, [name, skillsQ.data]);
+  }, [effectiveName, skillsQ.data]);
 
   // Re-apply draft whenever the server payload changes (e.g. more Accepts),
   // unless the user has already edited the form.
@@ -82,7 +87,7 @@ export function CreateSkillModal({
 
   const submit = async () => {
     const skill = await create.mutateAsync({
-      name: name.trim() || "repo-conventions",
+      name: effectiveName,
       description,
       body,
       enabled,
@@ -95,7 +100,7 @@ export function CreateSkillModal({
     <Modal
       width={MODAL_WIDTH}
       title={t("modal.title")}
-      subtitle={name || "repo-conventions"}
+      subtitle={name || defaultName}
       onClose={onClose}
       bodyScroll={false}
       footer={
@@ -172,7 +177,7 @@ export function CreateSkillModal({
             <MarkdownEditor
               value={body}
               onChange={setBodyTouched}
-              fileName={`${name.trim() || "repo-conventions"}.md`}
+              fileName={`${effectiveName}.md`}
               tokensLabel={t("modal.tokens", { tokens: estimateTokens(body) })}
               unsavedLabel={t("modal.unsaved")}
               dirty={dirty}

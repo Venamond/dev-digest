@@ -13,14 +13,14 @@ export const s = {
     fontSize: 13,
     color: "var(--text-secondary)",
   } satisfies CSSProperties,
-  actions: {
+  // Save/Cancel live in the header now, at the same level as the Enabled
+  // toggle — not a footer row below the form.
+  headerActions: {
     display: "flex",
     gap: 10,
-    marginTop: 10,
     alignItems: "center",
   } satisfies CSSProperties,
   snapshotHint: {
-    marginLeft: "auto",
     fontSize: 12,
     color: "var(--text-muted)",
   } satisfies CSSProperties,

@@ -9,6 +9,7 @@ import { RepoNotFound } from "@/components/repo-not-found";
 import { ApiError } from "@/lib/api";
 import {
   useConventions,
+  useDeselectAllConventions,
   useExtractConventions,
   useUpdateConvention,
   useRepoIntelStatus,
@@ -29,6 +30,7 @@ export function ConventionsView() {
   const { data, isLoading, isError, refetch } = useConventions(repoId);
   const extract = useExtractConventions(repoId);
   const update = useUpdateConvention(repoId);
+  const deselect = useDeselectAllConventions(repoId);
   const index = useRepoIntelStatus(repoId);
   const resync = useResyncRepoIntel(repoId);
   const [showModal, setShowModal] = React.useState(false);
@@ -67,12 +69,14 @@ export function ConventionsView() {
   const showExtractButton =
     !isLoading && (scan != null || extract.isPending || (!notCloned && !notIndexed));
 
-  const deselectAll = async () => {
-    const acceptedRows = candidates.filter((c) => c.status === "accepted");
-    await Promise.all(
-      acceptedRows.map((c) => update.mutateAsync({ id: c.id, patch: { status: "pending" } })),
-    );
+  const deselectAll = () => {
+    if (deselect.isPending) return;
+    deselect.mutate();
   };
+
+  // Only the ungrounded count is worth surfacing: it is the evidence check
+  // doing its job. Dedupe/cap losses are housekeeping, not a trust signal.
+  const ungrounded = extract.data?.dropped.ungrounded ?? 0;
 
   return (
     <>
@@ -169,13 +173,24 @@ export function ConventionsView() {
               <Button
                 kind="ghost"
                 onClick={deselectAll}
-                disabled={accepted === 0 || update.isPending || extract.isPending}
+                loading={deselect.isPending}
+                disabled={
+                  accepted === 0 ||
+                  update.isPending ||
+                  extract.isPending ||
+                  deselect.isPending
+                }
               >
                 {t("page.deselectAll")}
               </Button>
               <span style={s.acceptedCount}>
                 {t("page.acceptedCount", { accepted, total: candidates.length })}
               </span>
+              {ungrounded > 0 && (
+                <span style={s.droppedCount}>
+                  {t("page.droppedUngrounded", { count: ungrounded })}
+                </span>
+              )}
               <div style={{ marginLeft: "auto" }}>
                 <Button
                   kind="primary"

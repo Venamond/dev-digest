@@ -18,8 +18,19 @@ export const EVIDENCE_MAX_LINES = 12;
 /** Per-file character budget when building the LLM prompt. */
 export const PER_FILE_CHAR_BUDGET = 6_000;
 
-/** Default skill name for an extracted conventions skill. */
-export const DEFAULT_SKILL_NAME = 'repo-conventions';
+/**
+ * Suffix for the default extracted-skill name; the repo slug is prefixed
+ * (`payments-api-conventions`). `skills` is keyed by (workspace, name) with no
+ * repo column, so a repo-independent default would make the second repo's save
+ * silently overwrite the first repo's skill.
+ */
+export const SKILL_NAME_SUFFIX = 'conventions';
+
+/** Fallback when a repo name slugifies to nothing. */
+export const FALLBACK_SKILL_NAME = 'repo-conventions';
+
+/** Cap on the slugified repo prefix, so names stay readable. */
+export const SKILL_NAME_SLUG_MAX = 40;
 
 /**
  * Config filenames probed at the clone root. Presence is checked with CloneFs;

@@ -291,4 +291,103 @@ d('Agent skills bind + prompt wiring', () => {
 
     await app.close();
   });
+
+  it('agent card skill_count reflects effective (enabled) links only', async () => {
+    const app = await makeApp();
+
+    const [agent] = await pg.handle.db
+      .insert(t.agents)
+      .values({
+        workspaceId,
+        name: `Skill Count ${Date.now()}`,
+        description: 'card count test',
+        provider: 'openai',
+        model: 'gpt-4.1',
+        systemPrompt: 'You are a reviewer.',
+        enabled: true,
+        version: 1,
+      })
+      .returning();
+
+    const [onSkill] = await pg.handle.db
+      .insert(t.skills)
+      .values({
+        workspaceId,
+        name: `count-on-${Date.now()}`,
+        description: 'on',
+        type: 'rubric',
+        source: 'manual',
+        body: 'x',
+        enabled: true,
+        version: 1,
+      })
+      .returning();
+    const [linkOffSkill] = await pg.handle.db
+      .insert(t.skills)
+      .values({
+        workspaceId,
+        name: `count-link-off-${Date.now()}`,
+        description: 'link disabled',
+        type: 'rubric',
+        source: 'manual',
+        body: 'x',
+        enabled: true,
+        version: 1,
+      })
+      .returning();
+    const [globalOffSkill] = await pg.handle.db
+      .insert(t.skills)
+      .values({
+        workspaceId,
+        name: `count-global-off-${Date.now()}`,
+        description: 'globally disabled',
+        type: 'rubric',
+        source: 'manual',
+        body: 'x',
+        enabled: false,
+        version: 1,
+      })
+      .returning();
+
+    await app.inject({
+      method: 'POST',
+      url: `/agents/${agent!.id}/skills`,
+      payload: {
+        links: [
+          { skill_id: onSkill!.id, order: 0, enabled: true },
+          { skill_id: linkOffSkill!.id, order: 1, enabled: false },
+          { skill_id: globalOffSkill!.id, order: 2, enabled: true },
+        ],
+      },
+    });
+
+    // All three links exist in agent_skills — only one is effective.
+    const listRes = await app.inject({ method: 'GET', url: '/agents' });
+    expect(listRes.statusCode).toBe(200);
+    const found = (listRes.json() as Array<{ id: string; skill_count: number }>).find(
+      (a) => a.id === agent!.id,
+    );
+    expect(found?.skill_count).toBe(1);
+
+    // Toggling the per-agent link back on brings the count to 2 — the
+    // regression this test guards: the card must move when activity changes.
+    await app.inject({
+      method: 'POST',
+      url: `/agents/${agent!.id}/skills`,
+      payload: {
+        links: [
+          { skill_id: onSkill!.id, order: 0, enabled: true },
+          { skill_id: linkOffSkill!.id, order: 1, enabled: true },
+          { skill_id: globalOffSkill!.id, order: 2, enabled: true },
+        ],
+      },
+    });
+    const listRes2 = await app.inject({ method: 'GET', url: '/agents' });
+    const found2 = (listRes2.json() as Array<{ id: string; skill_count: number }>).find(
+      (a) => a.id === agent!.id,
+    );
+    expect(found2?.skill_count).toBe(2);
+
+    await app.close();
+  });
 });

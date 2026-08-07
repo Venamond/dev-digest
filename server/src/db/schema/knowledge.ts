@@ -66,3 +66,21 @@ export const conventions = pgTable(
   },
   (t) => ({ repoIdx: index('conventions_repo_idx').on(t.repoId) }),
 );
+
+/**
+ * One row per repo — the last extraction run. Separate from `conventions`
+ * because a scan that grounds zero candidates still happened: keeping scan
+ * metadata only on candidate rows makes "scanned, found nothing"
+ * indistinguishable from "never scanned".
+ */
+export const conventionScans = pgTable('convention_scans', {
+  repoId: uuid('repo_id')
+    .primaryKey()
+    .references(() => repos.id, { onDelete: 'cascade' }),
+  workspaceId: uuid('workspace_id')
+    .notNull()
+    .references(() => workspaces.id, { onDelete: 'cascade' }),
+  sourceSha: text('source_sha'),
+  sampleFileCount: integer('sample_file_count').notNull().default(0),
+  createdAt: now(),
+});

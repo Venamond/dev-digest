@@ -211,8 +211,11 @@ export class AgentsRepository {
   }
 
   /**
-   * Linked-skill counts per agent in a workspace (for agent-card footers).
-   * Counts rows in `agent_skills` regardless of enabled flags.
+   * Effective-skill counts per agent in a workspace (for agent-card
+   * footers). A skill only reaches the agent's prompt when BOTH the
+   * per-agent link (`agent_skills.enabled`) AND the skill itself
+   * (`skills.enabled`) are on — this counts exactly that set, not raw
+   * `agent_skills` row count, so the card matches what actually runs.
    */
   async linkedSkillCounts(workspaceId: string): Promise<Map<string, number>> {
     const rows = await this.db
@@ -222,7 +225,14 @@ export class AgentsRepository {
       })
       .from(t.agentSkills)
       .innerJoin(t.agents, eq(t.agentSkills.agentId, t.agents.id))
-      .where(eq(t.agents.workspaceId, workspaceId));
+      .innerJoin(t.skills, eq(t.agentSkills.skillId, t.skills.id))
+      .where(
+        and(
+          eq(t.agents.workspaceId, workspaceId),
+          eq(t.agentSkills.enabled, true),
+          eq(t.skills.enabled, true),
+        ),
+      );
     const counts = new Map<string, number>();
     for (const r of rows) {
       counts.set(r.agentId, (counts.get(r.agentId) ?? 0) + 1);

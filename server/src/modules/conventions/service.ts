@@ -18,11 +18,13 @@ import {
   buildPrompt,
   composeDraftMeta,
   dedupeCandidates,
+  dedupeUniqueCount,
   EXTRACTION_SCHEMA_NAME,
   ExtractionResponseSchema,
   groundCandidate,
   selectSamplePaths,
   toCandidateDto,
+  toScanDto,
   type GroundedCandidate,
   type RawCandidate,
   type SampleFile,
@@ -51,19 +53,24 @@ export class ConventionsService {
 
   async list(workspaceId: string, repoId: string): Promise<ConventionsList> {
     const repo = await this.requireRepo(workspaceId, repoId);
-    const rows = await this.repo.listByRepo(workspaceId, repoId);
-    const candidates = rows.map((r) => toCandidateDto(r, repo.fullName));
-    if (rows.length === 0) return { candidates: [], scan: null };
+    const [rows, scan] = await Promise.all([
+      this.repo.listByRepo(workspaceId, repoId),
+      this.repo.getScan(workspaceId, repoId),
+    ]);
 
-    const first = rows[0]!;
     return {
-      candidates,
-      scan: {
-        sampled_file_count: first.sampleFileCount ?? 0,
-        scanned_at: first.createdAt.toISOString(),
-        source_sha: first.sourceSha,
-      },
+      candidates: rows.map((r) => toCandidateDto(r, repo.fullName)),
+      // Read from `convention_scans`, not from the candidate rows: a scan that
+      // grounded nothing has no candidate rows but did happen.
+      scan: scan ? toScanDto(scan) : null,
     };
+  }
+
+  /** Move every accepted candidate for a repo back to pending, in one statement. */
+  async deselectAll(workspaceId: string, repoId: string): Promise<ConventionsList> {
+    await this.requireRepo(workspaceId, repoId);
+    await this.repo.deselectAllAccepted(workspaceId, repoId);
+    return this.list(workspaceId, repoId);
   }
 
   async extract(workspaceId: string, repoId: string): Promise<ConventionsExtractResult> {
@@ -134,16 +141,20 @@ export class ConventionsService {
     }));
     const sampledSet = new Set(fileContents.keys());
     const grounded: GroundedCandidate[] = [];
-    let dropped = 0;
+    let ungrounded = 0;
     for (const c of raw) {
       const g = groundCandidate(c, sampledSet, fileContents);
       if (g) grounded.push(g);
-      else dropped += 1;
+      else ungrounded += 1;
     }
+    // Count dedupe and cap separately — "no evidence in the repo" is the number
+    // that proves grounding worked; the other two are housekeeping.
+    const deduped = dedupeUniqueCount(grounded);
     const kept = dedupeCandidates(grounded);
-    dropped += grounded.length - kept.length;
+    const duplicate = grounded.length - deduped;
+    const truncated = deduped - kept.length;
 
-    const rows = await this.repo.replaceForRepo({
+    const { rows, scan } = await this.repo.replaceForRepo({
       workspaceId,
       repoId,
       sourceSha: index.lastIndexedSha,
@@ -151,17 +162,10 @@ export class ConventionsService {
       candidates: kept,
     });
 
-    const candidates = rows.map((r) => toCandidateDto(r, repo.fullName));
-    const scannedAt = rows[0]?.createdAt.toISOString() ?? new Date().toISOString();
-
     return {
-      candidates,
-      scan: {
-        sampled_file_count: samples.length,
-        scanned_at: scannedAt,
-        source_sha: index.lastIndexedSha,
-      },
-      dropped,
+      candidates: rows.map((r) => toCandidateDto(r, repo.fullName)),
+      scan: toScanDto(scan),
+      dropped: { ungrounded, duplicate, truncated },
     };
   }
 
@@ -194,6 +198,11 @@ export class ConventionsService {
       accepted.map((r) => ({
         rule: r.rule,
         evidence_path: r.evidencePath ?? '',
+        // Category and confidence drive grouping/ordering; snippet renders as
+        // the rule's fenced example. All already persisted — nothing new.
+        category: r.category,
+        confidence: r.confidence,
+        evidence_snippet: r.evidenceSnippet,
         evidence_line_start: r.evidenceLineStart,
         evidence_line_end: r.evidenceLineEnd,
       })),

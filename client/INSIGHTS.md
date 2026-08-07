@@ -72,6 +72,32 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Tool & Library Notes
 
+- **The Playwright MCP browser tool's `browser_type` (and `.fill()` generally)
+  REPLACES an `<input>`/`<textarea>`'s entire value — it does not append.**
+  Used against a real running dev server + real Postgres data (not a test
+  fixture), calling it on the Skill body textarea to "add a character" wiped
+  the whole 2000+-char body to one space, live, before Save was clicked.
+  Recovered only because the change was still client-side (reload discarded
+  it; verified via `GET /skills/:id` that the DB body was untouched) — had
+  Save been clicked first, that would have been a real, saved data loss. When
+  verifying UI behavior live against this app's dev server: use
+  `browser_press_key` (`End` then a single key, or `Backspace`) for
+  incremental edits to existing content, never `browser_type`/fill, unless
+  you intend to replace the field's entire value. (2026-08-07)
+
+- **The local dev server (`localhost:3000`/`:3001`) and its Postgres are
+  live, shared state — a real user's own browser session can mutate the same
+  rows an agent is live-testing against, mid-investigation, with no warning.**
+  Observed twice in one session: a skill's version jumped from v2 to v6
+  between two browser-tool checks (a real conventions-extractor re-run
+  happened concurrently), and an unrelated agent's `skill_count` changed
+  1→3 while verifying a fix on a *different* agent's card. Neither was
+  caused by the agent's own actions. When live-verifying a fix here: assert
+  on the specific row/field the fix targets (re-fetch it explicitly before
+  and after your own action), never assume an unrelated row's value stayed
+  constant just because you didn't touch it — cross-checking against a
+  snapshot taken seconds earlier can show a false regression. (2026-08-07)
+
 - `apiFetch` used to set `Content-Type: application/json` whenever `init.body`
   was non-null. Multipart skill import (`FormData` via `api.postForm`) needs the
   browser to set the boundary — forcing JSON breaks Fastify multipart parsing.

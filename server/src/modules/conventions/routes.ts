@@ -10,6 +10,7 @@ import { ConventionsService } from './service.js';
  *   POST  /repos/:id/conventions/extract
  *   GET   /repos/:id/conventions
  *   PATCH /conventions/:id
+ *   POST  /repos/:id/conventions/deselect-all
  *   GET   /repos/:id/conventions/skill-draft
  *   POST  /repos/:id/conventions/skill
  */
@@ -34,6 +35,15 @@ export default async function conventionsRoutes(appBase: FastifyInstance) {
     async (req) => {
       const { workspaceId } = await getContext(app.container, req);
       return service.update(workspaceId, req.params.id, req.body);
+    },
+  );
+
+  app.post(
+    '/repos/:id/conventions/deselect-all',
+    { schema: { params: IdParams } },
+    async (req) => {
+      const { workspaceId } = await getContext(app.container, req);
+      return service.deselectAll(workspaceId, req.params.id);
     },
   );
 

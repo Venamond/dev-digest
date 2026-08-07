@@ -90,6 +90,20 @@ export function ConfigTab({ skill }: { skill: Skill }) {
           {t("config.enabled")}
           <Toggle on={enabled} onChange={setEnabled} size={16} />
         </label>
+        <div style={s.headerActions}>
+          <Button kind="primary" icon="Check" onClick={save} disabled={update.isPending || !dirty}>
+            {update.isPending ? t("config.saving") : t("config.save")}
+          </Button>
+          <Button kind="ghost" onClick={reset} disabled={!dirty || update.isPending}>
+            {t("config.cancel")}
+          </Button>
+          {update.isSuccess && !dirty && (
+            <span style={s.savedNote}>{t("config.saved", { version: update.data?.version })}</span>
+          )}
+          <span style={s.snapshotHint}>
+            {t("config.snapshotHint", { version: skill.version + 1 })}
+          </span>
+        </div>
       </div>
       <FormField label={t("config.name")} required>
         <TextInput value={name} onChange={setName} />
@@ -112,20 +126,6 @@ export function ConfigTab({ skill }: { skill: Skill }) {
           minLines={14}
         />
       </FormField>
-      <div style={s.actions}>
-        <Button kind="primary" icon="Check" onClick={save} disabled={update.isPending || !dirty}>
-          {update.isPending ? t("config.saving") : t("config.save")}
-        </Button>
-        <Button kind="ghost" onClick={reset} disabled={!dirty || update.isPending}>
-          {t("config.cancel")}
-        </Button>
-        {update.isSuccess && !dirty && (
-          <span style={s.savedNote}>{t("config.saved", { version: update.data?.version })}</span>
-        )}
-        <span style={s.snapshotHint}>
-          {t("config.snapshotHint", { version: skill.version + 1 })}
-        </span>
-      </div>
       <div style={s.danger}>
         <div style={s.dangerCopy}>
           <div style={s.dangerTitle}>{t("config.dangerTitle")}</div>

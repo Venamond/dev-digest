@@ -1,12 +1,19 @@
 import { z } from 'zod';
-import type { ConventionCandidate, ConventionSkillDraft, ConventionStatus } from '@devdigest/shared';
-import type { ConventionRow } from '../../db/rows.js';
+import type {
+  ConventionCandidate,
+  ConventionScan,
+  ConventionSkillDraft,
+  ConventionStatus,
+} from '@devdigest/shared';
+import type { ConventionRow, ConventionScanRow } from '../../db/rows.js';
 import {
-  DEFAULT_SKILL_NAME,
   EVIDENCE_CONTEXT_PAD,
   EVIDENCE_MAX_LINES,
+  FALLBACK_SKILL_NAME,
   MAX_CANDIDATES,
   PER_FILE_CHAR_BUDGET,
+  SKILL_NAME_SLUG_MAX,
+  SKILL_NAME_SUFFIX,
 } from './constants.js';
 
 /**
@@ -106,56 +113,6 @@ export function buildPrompt(files: SampleFile[]): string {
     '## Sampled files',
     ...parts,
   ].join('\n');
-}
-
-/**
- * Parse model text into raw candidates. Tolerant: wraps bare arrays, drops
- * malformed items, never throws on bad JSON (returns []).
- */
-export function parseCandidates(raw: string): RawCandidate[] {
-  const trimmed = raw.trim();
-  if (!trimmed) return [];
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(extractJson(trimmed));
-  } catch {
-    return [];
-  }
-
-  let items: unknown[];
-  if (Array.isArray(parsed)) {
-    items = parsed;
-  } else if (parsed && typeof parsed === 'object' && Array.isArray((parsed as { candidates?: unknown }).candidates)) {
-    items = (parsed as { candidates: unknown[] }).candidates;
-  } else {
-    return [];
-  }
-
-  const out: RawCandidate[] = [];
-  for (const item of items) {
-    const r = RawCandidateSchema.safeParse(item);
-    if (!r.success) continue;
-    const { line_start, line_end } = r.data.evidence;
-    out.push({
-      ...r.data,
-      evidence: {
-        ...r.data.evidence,
-        line_start: Math.min(line_start, line_end),
-        line_end: Math.max(line_start, line_end),
-      },
-    });
-  }
-  return out;
-}
-
-/** Strip markdown fences / leading prose so JSON.parse can succeed. */
-function extractJson(text: string): string {
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  if (fenced?.[1]) return fenced[1].trim();
-  const start = text.search(/[\[{]/);
-  if (start < 0) return text;
-  return text.slice(start);
 }
 
 /** Whitespace-normalise for snippet comparison. */
@@ -271,11 +228,16 @@ function findSnippetLines(
   return null;
 }
 
+/** Normalised rule text — the dedupe identity of a candidate. */
+function ruleKey(c: GroundedCandidate): string {
+  return normalizeWs(c.rule).toLowerCase();
+}
+
 /** Keep highest-confidence copy of each normalised rule; cap at MAX_CANDIDATES. */
 export function dedupeCandidates(candidates: GroundedCandidate[]): GroundedCandidate[] {
   const best = new Map<string, GroundedCandidate>();
   for (const c of candidates) {
-    const key = normalizeWs(c.rule).toLowerCase();
+    const key = ruleKey(c);
     const prev = best.get(key);
     if (!prev || c.confidence > prev.confidence) best.set(key, c);
   }
@@ -284,15 +246,13 @@ export function dedupeCandidates(candidates: GroundedCandidate[]): GroundedCandi
     .slice(0, MAX_CANDIDATES);
 }
 
-/** Slug a rule for markdown `##` headings (mockup: async-await-then-chains). */
-export function ruleSlug(rule: string): string {
-  const slug = rule
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 64)
-    .replace(/-+$/g, '');
-  return slug || 'convention';
+/**
+ * How many distinct rules survive dedupe, before the MAX_CANDIDATES cap.
+ * Lets the caller report "lost to duplicates" and "lost to the cap" as two
+ * separate numbers instead of one opaque total.
+ */
+export function dedupeUniqueCount(candidates: GroundedCandidate[]): number {
+  return new Set(candidates.map(ruleKey)).size;
 }
 
 /** Format evidence path for display / skill body: `path:23-31` or `path:23`. */
@@ -320,31 +280,125 @@ export function evidenceUrl(
   return `${base}#L${lineStart}-L${lineEnd}`;
 }
 
+/** An accepted candidate, as far as skill-body composition is concerned. */
+export interface AcceptedForBody {
+  rule: string;
+  evidence_path: string;
+  category?: string | null;
+  confidence?: number | null;
+  /** Already-grounded excerpt (padded UI window, ≤ EVIDENCE_MAX_LINES). No new storage needed — reused as-is. */
+  evidence_snippet?: string | null;
+  evidence_line_start?: number | null;
+  evidence_line_end?: number | null;
+}
+
+/** Category bucket for candidates the model left uncategorised. */
+const UNCATEGORISED = 'other';
+
+function bodyCategory(c: AcceptedForBody): string {
+  const raw = (c.category ?? '').trim().toLowerCase();
+  return raw ? raw.replace(/\s+/g, '-') : UNCATEGORISED;
+}
+
+/** Indent every line of `text` by `prefix` — used to nest a snippet under a bullet. */
+function indent(text: string, prefix: string): string {
+  return text
+    .split('\n')
+    .map((line) => (line ? `${prefix}${line}` : prefix.trimEnd()))
+    .join('\n');
+}
+
+/**
+ * A fence long enough that it can't be closed early by the snippet's own
+ * content. Snippets are real repo code — a file that happens to contain a
+ * markdown fence (docs, a template literal) must not be able to break out of
+ * the block and inject structure into the rest of the prompt.
+ */
+function fenceFor(snippet: string): string {
+  let longest = 2;
+  for (const run of snippet.match(/`+/g) ?? []) {
+    if (run.length > longest) longest = run.length;
+  }
+  return '`'.repeat(longest + 1);
+}
+
+/** Render one accepted rule: the sentence, and — when available — its evidence. */
+function ruleBlock(c: AcceptedForBody): string {
+  const path = c.evidence_path.trim();
+  const snippet = (c.evidence_snippet ?? '').trimEnd();
+
+  if (!path || !snippet) {
+    return path ? `- ${c.rule} (seen in \`${path}\`)` : `- ${c.rule}`;
+  }
+
+  const fence = fenceFor(snippet);
+  return [
+    `- ${c.rule}`,
+    `  Detected in \`${path}\`:`,
+    `  ${fence}`,
+    indent(snippet, '  '),
+    `  ${fence}`,
+  ].join('\n');
+}
+
 /**
  * Compose the skill markdown body from accepted candidates.
- * Rule text + source path only — never the evidence snippet/code (UI-only).
- * Line ranges are omitted: padded UI windows (e.g. 1–12) must not land in the skill.
+ *
+ * This text is injected verbatim into the reviewing agent's prompt (as the
+ * `## Skills / rules` section), so it is written for a model, not a reader:
+ *
+ * - Rules are grouped under their `category`, which the extractor already
+ *   captures per candidate. Grouping lets the agent scan the rules relevant to
+ *   the files it is looking at.
+ * - Strongest categories first (by their best-confidence rule), rules ordered
+ *   by confidence inside each — ties broken alphabetically so the body is
+ *   deterministic for a given input set.
+ * - No per-rule slug heading. The previous format emitted
+ *   `## always-use-async-await-...` immediately followed by the same sentence
+ *   in prose — duplicate tokens in every prompt, for a heading nothing reads.
+ * - Each rule carries its already-grounded excerpt (`evidence_snippet`) as a
+ *   fenced code block — a concrete instance beats a bare sentence for a model
+ *   deciding whether new code matches. No new storage: this excerpt is
+ *   grounded and persisted per candidate already; composition just stops
+ *   discarding it. Line ranges are still never emitted — the stored range is
+ *   a padded UI window (e.g. 1–12) and would point at the wrong lines.
  */
 export function composeSkillBody(
   skillName: string,
   repoName: string,
-  accepted: Array<{
-    rule: string;
-    evidence_path: string;
-    evidence_line_start?: number | null;
-    evidence_line_end?: number | null;
-  }>,
+  accepted: AcceptedForBody[],
 ): string {
-  const sections = accepted.map((c) => {
-    const slug = ruleSlug(c.rule);
-    const path = c.evidence_path.trim() || 'unknown';
-    return [`## ${slug}`, c.rule, '', `Source: \`${path}\``].join('\n');
+  const byCategory = new Map<string, AcceptedForBody[]>();
+  for (const c of accepted) {
+    const key = bodyCategory(c);
+    const bucket = byCategory.get(key);
+    if (bucket) bucket.push(c);
+    else byCategory.set(key, [c]);
+  }
+
+  const conf = (c: AcceptedForBody) => c.confidence ?? 0;
+  const ordered = [...byCategory.entries()]
+    .map(([category, items]) => ({
+      category,
+      items: [...items].sort((a, b) => conf(b) - conf(a) || a.rule.localeCompare(b.rule)),
+    }))
+    .sort((a, b) => {
+      // `other` always last — it is a fallback bucket, not a real category.
+      if (a.category === UNCATEGORISED) return 1;
+      if (b.category === UNCATEGORISED) return -1;
+      const best = conf(b.items[0]!) - conf(a.items[0]!);
+      return best || a.category.localeCompare(b.category);
+    });
+
+  const sections = ordered.map(({ category, items }) => {
+    const blocks = items.map((c) => ruleBlock(c));
+    return [`## ${category}`, blocks.join('\n\n')].join('\n');
   });
 
   return [
     `# ${skillName}`,
     '',
-    `House conventions for \`${repoName}\`. Flag changes that violate any rule below and cite the offending \`file:line\`.`,
+    `House conventions for \`${repoName}\`. Flag any change that violates a rule below and cite the offending \`file:line\`.`,
     '',
     sections.join('\n\n'),
   ]
@@ -353,22 +407,40 @@ export function composeSkillBody(
     .concat('\n');
 }
 
+/**
+ * Default skill name for a repo: `<repo-slug>-conventions`.
+ * Repo-scoped on purpose — see SKILL_NAME_SUFFIX.
+ */
+export function defaultSkillName(repoName: string): string {
+  const slug = repoName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, SKILL_NAME_SLUG_MAX)
+    .replace(/-+$/g, '');
+  return slug ? `${slug}-${SKILL_NAME_SUFFIX}` : FALLBACK_SKILL_NAME;
+}
+
 /** Default name / description / body for the create-skill modal. */
 export function composeDraftMeta(
   repoName: string,
-  accepted: Array<{
-    rule: string;
-    evidence_path: string;
-    evidence_line_start: number | null;
-    evidence_line_end: number | null;
-  }>,
+  accepted: AcceptedForBody[],
 ): ConventionSkillDraft {
-  const name = DEFAULT_SKILL_NAME;
+  const name = defaultSkillName(repoName);
   const n = accepted.length;
   return {
     name,
     description: `${n} house convention${n === 1 ? '' : 's'} extracted from ${repoName}`,
     body: composeSkillBody(name, repoName, accepted),
+  };
+}
+
+/** Map a scan row to the public ConventionScan DTO. */
+export function toScanDto(row: ConventionScanRow): ConventionScan {
+  return {
+    sampled_file_count: row.sampleFileCount,
+    scanned_at: row.createdAt.toISOString(),
+    source_sha: row.sourceSha,
   };
 }
 

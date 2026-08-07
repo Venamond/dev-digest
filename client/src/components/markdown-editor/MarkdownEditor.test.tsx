@@ -86,4 +86,50 @@ describe("MarkdownEditor", () => {
     expect(screen.getByText("1,234 tokens")).toBeInTheDocument();
     expect(screen.getByText("unsaved")).toBeInTheDocument();
   });
+
+  // A long rule used to run off the right edge of the working area instead of
+  // wrapping, which made the body hard to edit. jsdom has no layout, so these
+  // assert the wrapping setup rather than measured line breaks.
+  describe("soft wrapping", () => {
+    function renderLong() {
+      const long = `- ${"a very long house convention sentence ".repeat(10)}`;
+      return render(
+        <MarkdownEditor
+          value={long}
+          onChange={vi.fn()}
+          fileName="skill.md"
+          tokensLabel="99 tokens"
+          ariaLabel="Skill body"
+        />,
+      );
+    }
+
+    it("wraps text instead of extending the line horizontally", () => {
+      renderLong();
+      const textarea = screen.getByRole("textbox", { name: "Skill body" });
+      expect(textarea).toHaveStyle({ whiteSpace: "pre-wrap" });
+      // Long unbroken tokens (paths, URLs) must break too.
+      expect(textarea).toHaveStyle({ overflowWrap: "anywhere" });
+    });
+
+    it("does not scroll the pane sideways", () => {
+      const { container } = renderLong();
+      const pane = container.querySelector('[data-testid="markdown-editor-gutter"]')
+        ?.parentElement?.parentElement;
+      expect(pane).toHaveStyle({ overflowX: "hidden" });
+    });
+
+    it("keeps one gutter number per logical line, not per visual row", () => {
+      const { container } = renderLong();
+      // One logical line, however many rows it wraps into.
+      expect(gutterLines(container)).toHaveLength(1);
+    });
+
+    it("renders a hidden mirror used to measure wrapped line heights", () => {
+      const { container } = renderLong();
+      const mirror = container.querySelector('div[aria-hidden][style*="visibility"]');
+      expect(mirror).toBeTruthy();
+      expect(mirror).toHaveStyle({ visibility: "hidden" });
+    });
+  });
 });

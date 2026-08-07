@@ -196,6 +196,26 @@ ground truth — wrap-ups can mischaracterize a session.
   provider/bare suffix match; ambiguous matches fall through to the static
   `estimateCost` table. See `server/test/price-book.test.ts`.
 
+- **`pnpm db:generate` works — but only because `0015_snapshot_baseline`
+  repaired a snapshot drift; don't delete that migration.** Migrations
+  `0011`–`0014` were hand-written, so drizzle-kit's snapshots in
+  `src/db/migrations/meta/` stopped at `0010` and every `db:generate` re-emitted
+  *everything* added since (`CREATE TABLE run_skills`, the `conventions`
+  columns, …) — SQL that fails with `column ... already exists` on any
+  already-migrated database, in a file that looks perfectly plausible. The fix
+  pattern, should this ever recur: run `db:generate`, keep the produced
+  `meta/NNNN_snapshot.json` (it captures the real current schema and becomes
+  the new diff baseline), and replace the produced `.sql` with a no-op
+  (`SELECT 1;`) since those statements are already applied. Confirm with a
+  second `db:generate` — it must print "No schema changes, nothing to
+  migrate". A hand-written migration still needs its own `meta/_journal.json`
+  entry (copy the previous entry's `version`, bump `idx`/`tag`, keep `when`
+  monotonically increasing) and should be idempotent (`IF NOT EXISTS`, inline
+  `REFERENCES`, no `--> statement-breakpoint`). Verify any migration with
+  `pnpm exec vitest run <name>.it.test`: testcontainers applies the whole
+  chain to a fresh Postgres, which is the only cheap proof it actually runs.
+  (2026-08-07, conventions extractor review)
+
 ## Recurring Errors & Fixes
 
 - Deleting a run (timeline trash icon → `deleteAgentRun`) while its LLM call
@@ -236,3 +256,19 @@ ground truth — wrap-ups can mischaracterize a session.
 ## Session Notes
 
 ## Open Questions
+
+- **`diffBodies` (`server/src/modules/skills/helpers.ts:210`) never returns an
+  empty string for two non-empty bodies — even identical ones.** For equal
+  lines it pushes `` `line` `` (a *space*-prefixed line), not nothing; it
+  only omits a line when one side is `undefined` (bodies of different
+  length). Consequence: `client/.../VersionsTab.tsx`'s
+  `result.diff || t("versions.diffEmpty")` fallback ("No differences.") is
+  dead code — `result.diff` is truthy whenever both bodies are non-empty,
+  identical or not, so that message can never render. Surfaced 2026-08-07
+  diffing a skill's current version against itself (every line comes back
+  space-prefixed, which reads as "just the body" — the caller there
+  suppresses the misleading "vs current" caption instead of fixing
+  `diffBodies`). Unresolved: either make `diffBodies` return `''` when
+  `fromBody === toBody`, or drop the now-unreachable `diffEmpty` i18n key
+  and fallback on the client. Flagged, not fixed — out of scope for the UI
+  change that surfaced it.

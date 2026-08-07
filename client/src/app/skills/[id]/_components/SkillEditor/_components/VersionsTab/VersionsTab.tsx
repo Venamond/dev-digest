@@ -21,20 +21,34 @@ function formatDate(iso: string): string {
   }
 }
 
-/** Versions tab — list snapshots; Diff + Restore for non-current. */
+/**
+ * Versions tab — list snapshots; Diff + Restore for non-current.
+ * Diff expands inline under its own row (Diff → Hide toggles it), pushing
+ * later rows down — not a single shared panel below the whole list.
+ */
 export function VersionsTab({ skill }: { skill: Skill }) {
   const t = useTranslations("skills");
   const toast = useToast();
   const { data: versions, isLoading, isError, refetch } = useSkillVersions(skill.id);
   const restore = useRestoreSkillVersion();
   const diffMut = useSkillVersionDiff();
+  const [openVersion, setOpenVersion] = React.useState<number | null>(null);
   const [diffText, setDiffText] = React.useState<string | null>(null);
-  const [diffVersion, setDiffVersion] = React.useState<number | null>(null);
   const [diffError, setDiffError] = React.useState<string | null>(null);
 
-  const onDiff = async (version: number) => {
+  // Only one row's diff is ever open — reusing this single mutation instance
+  // is safe because a second Diff click can't fire while the panel it would
+  // affect is being replaced.
+  const onToggleDiff = async (version: number) => {
+    if (openVersion === version) {
+      setOpenVersion(null);
+      setDiffText(null);
+      setDiffError(null);
+      return;
+    }
+    setOpenVersion(version);
+    setDiffText(null);
     setDiffError(null);
-    setDiffVersion(version);
     try {
       const result = await diffMut.mutateAsync({ id: skill.id, version });
       setDiffText(result.diff || t("versions.diffEmpty"));
@@ -84,68 +98,74 @@ export function VersionsTab({ skill }: { skill: Skill }) {
         <div style={s.list}>
           {versions.map((v) => {
             const isCurrent = v.version === skill.version;
+            const isOpen = openVersion === v.version;
             const note = v.note ?? t("versions.noteFallback", { version: v.version });
             return (
-              <div key={v.version} style={s.row}>
-                <span className="mono" style={s.versionChip}>
-                  {t("versions.version", { version: v.version })}
-                </span>
-                <div style={s.meta}>
-                  <div style={s.noteTitle}>{note}</div>
-                  <div style={s.date}>{formatDate(v.created_at)}</div>
-                </div>
-                {isCurrent ? (
-                  <Badge color="var(--ok)" dot>
-                    {t("versions.current")}
-                  </Badge>
-                ) : (
+              <div key={v.version}>
+                <div style={s.row}>
+                  <span className="mono" style={s.versionChip}>
+                    {t("versions.version", { version: v.version })}
+                  </span>
+                  <div style={s.meta}>
+                    <div style={s.noteTitle}>{note}</div>
+                    <div style={s.date}>{formatDate(v.created_at)}</div>
+                  </div>
                   <div style={s.actions}>
                     <Button
                       kind="ghost"
                       size="sm"
-                      icon="Eye"
-                      onClick={() => void onDiff(v.version)}
-                      disabled={diffMut.isPending && diffVersion === v.version}
+                      icon={isOpen ? "EyeOff" : "Eye"}
+                      onClick={() => void onToggleDiff(v.version)}
+                      disabled={diffMut.isPending && isOpen}
                     >
-                      {t("versions.diff")}
+                      {isOpen ? t("versions.hide") : t("versions.diff")}
                     </Button>
-                    <Button
-                      kind="secondary"
-                      size="sm"
-                      icon="History"
-                      onClick={() => onRestore(v.version)}
-                      disabled={restore.isPending}
-                    >
-                      {restore.isPending ? t("versions.restoring") : t("versions.restore")}
-                    </Button>
+                    {/* Fixed-width slot so Diff/Hide lands at the same x on
+                        every row — Current's badge and Restore's button are
+                        different widths, so this side must not resize. */}
+                    <div style={s.statusSlot}>
+                      {isCurrent ? (
+                        <Badge color="var(--ok)" dot>
+                          {t("versions.current")}
+                        </Badge>
+                      ) : (
+                        <Button
+                          kind="secondary"
+                          size="sm"
+                          icon="History"
+                          onClick={() => onRestore(v.version)}
+                          disabled={restore.isPending}
+                        >
+                          {restore.isPending ? t("versions.restoring") : t("versions.restore")}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {isOpen && (
+                  <div style={s.diffPanel}>
+                    {diffError ? (
+                      <div style={s.error}>{diffError}</div>
+                    ) : diffText != null ? (
+                      <>
+                        {/* Diffing current against itself is a no-op — the
+                            "vs current" caption would be misleading here. */}
+                        {!isCurrent && (
+                          <div style={s.diffTitle}>
+                            {t("versions.diffTitle")} (v{v.version})
+                          </div>
+                        )}
+                        <pre style={s.diffPre}>{diffText}</pre>
+                      </>
+                    ) : (
+                      <Skeleton height={80} />
+                    )}
                   </div>
                 )}
               </div>
             );
           })}
-        </div>
-      )}
-
-      {diffError && <div style={s.error}>{diffError}</div>}
-      {diffText != null && (
-        <div style={s.diffPanel}>
-          <div style={s.diffHeader}>
-            <span style={s.diffTitle}>
-              {t("versions.diffTitle")}
-              {diffVersion != null ? ` (v${diffVersion})` : ""}
-            </span>
-            <Button
-              kind="ghost"
-              size="sm"
-              onClick={() => {
-                setDiffText(null);
-                setDiffVersion(null);
-              }}
-            >
-              {t("versions.close")}
-            </Button>
-          </div>
-          <pre style={s.diffPre}>{diffText}</pre>
         </div>
       )}
     </div>
