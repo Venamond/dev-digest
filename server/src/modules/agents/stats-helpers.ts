@@ -118,4 +118,74 @@ export function buildAgentStats(
   };
 }
 
+/** Raw run row for the agents-list card footer aggregate (windowed, all agents at once). */
+export interface CardStatsRunInput {
+  agentId: string | null;
+  costUsd: number | null;
+}
+
+/** Raw finding row for the agents-list card footer aggregate. */
+export interface CardStatsFindingInput {
+  agentId: string | null;
+  acceptedAt: Date | null;
+  dismissedAt: Date | null;
+}
+
+export interface CardStats {
+  runs: number;
+  /** 0-1 accept rate; 0 when no finding has been accepted or dismissed yet. */
+  accept: number;
+  /** Average cost in USD; 0 when no run in the window has a known cost. */
+  cost: number;
+}
+
+/**
+ * Per-agent card-footer stats (runs / accept rate / avg cost) for a whole
+ * workspace's agent list in one pass — `AgentsRepository.cardStats` windows
+ * both inputs to the same period (e.g. last 7 days) before calling this.
+ * Rows with a null `agentId` (agent_runs.agent_id is nullable — set null on
+ * agent delete) are excluded.
+ */
+export function buildCardStats(
+  runs: CardStatsRunInput[],
+  findings: CardStatsFindingInput[],
+): Map<string, CardStats> {
+  const byAgent = new Map<string, { runs: number; costs: number[]; accepted: number; acted: number }>();
+  const entry = (agentId: string) => {
+    let e = byAgent.get(agentId);
+    if (!e) {
+      e = { runs: 0, costs: [], accepted: 0, acted: 0 };
+      byAgent.set(agentId, e);
+    }
+    return e;
+  };
+
+  for (const r of runs) {
+    if (!r.agentId) continue;
+    const e = entry(r.agentId);
+    e.runs += 1;
+    if (r.costUsd != null) e.costs.push(r.costUsd);
+  }
+  for (const f of findings) {
+    if (!f.agentId) continue;
+    const e = entry(f.agentId);
+    if (f.acceptedAt) {
+      e.accepted += 1;
+      e.acted += 1;
+    } else if (f.dismissedAt) {
+      e.acted += 1;
+    }
+  }
+
+  const result = new Map<string, CardStats>();
+  for (const [agentId, e] of byAgent) {
+    result.set(agentId, {
+      runs: e.runs,
+      accept: e.acted === 0 ? 0 : e.accepted / e.acted,
+      cost: e.costs.length === 0 ? 0 : e.costs.reduce((a, b) => a + b, 0) / e.costs.length,
+    });
+  }
+  return result;
+}
+
 export { SEVERITIES };

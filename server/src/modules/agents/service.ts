@@ -25,6 +25,9 @@ import { buildAgentStats } from './stats-helpers.js';
 // Re-exported for backwards compatibility; implementation lives in ./helpers.
 export { toAgentDto } from './helpers.js';
 
+/** Card-footer stats window: last 7 days, matching the "7d" label on `AgentCard`. */
+const CARD_STATS_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
 export interface CreateAgentInput {
   name: string;
   description?: string;
@@ -58,11 +61,20 @@ export class AgentsService {
     this.repo = new AgentsRepository(container.db);
   }
 
-  /** Workspace agents with `skill_count` (linked skills) for card footers. */
+  /**
+   * Workspace agents with `skill_count` and 7-day run/accept/cost stats for
+   * card footers.
+   */
   async list(workspaceId: string): Promise<Agent[]> {
     const rows = await this.repo.list(workspaceId);
-    const counts = await this.repo.linkedSkillCounts(workspaceId);
-    return rows.map((r) => toAgentDto(r, counts.get(r.id) ?? 0));
+    const since = new Date(Date.now() - CARD_STATS_WINDOW_MS);
+    const [counts, cardStats] = await Promise.all([
+      this.repo.linkedSkillCounts(workspaceId),
+      this.repo.cardStats(workspaceId, since),
+    ]);
+    return rows.map((r) =>
+      toAgentDto(r, counts.get(r.id) ?? 0, cardStats.get(r.id) ?? { runs: 0, accept: 0, cost: 0 }),
+    );
   }
 
   async get(workspaceId: string, id: string): Promise<Agent | undefined> {

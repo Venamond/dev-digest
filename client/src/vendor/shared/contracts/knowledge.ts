@@ -286,6 +286,12 @@ export const Agent = z.object({
   repo_intel: z.boolean().default(true),
   /** Present on list responses — count of linked skills for card footers. */
   skill_count: z.number().int().nonnegative().nullish(),
+  /** Present on list responses — run count in the last 7 days, for card footers. */
+  runs_7d: z.number().int().nonnegative().nullish(),
+  /** Present on list responses — accept rate (0-1) over the last 7 days. */
+  accept_rate_7d: z.number().min(0).max(1).nullish(),
+  /** Present on list responses — average run cost (USD) over the last 7 days. */
+  avg_cost_usd_7d: z.number().nonnegative().nullish(),
 });
 export type Agent = z.infer<typeof Agent>;
 

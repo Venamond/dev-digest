@@ -1,10 +1,10 @@
-import { and, asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, gte } from 'drizzle-orm';
 import type { Db } from '../../db/client.js';
 import * as t from '../../db/schema.js';
 import type { CiFailOn, Provider, ReviewStrategy } from '@devdigest/shared';
 import { DEFAULT_AGENT_DESCRIPTION, INITIAL_AGENT_VERSION } from './constants.js';
 import { isConfigChange } from './helpers.js';
-import type { StatsFindingInput, StatsRunInput } from './stats-helpers.js';
+import { buildCardStats, type CardStats, type StatsFindingInput, type StatsRunInput } from './stats-helpers.js';
 
 /**
  * A2 — agents data-access. Owns `agents`, `agent_versions`, and the
@@ -351,5 +351,31 @@ export class AgentsRepository {
       acceptedAt: r.acceptedAt,
       dismissedAt: r.dismissedAt,
     }));
+  }
+
+  /**
+   * Per-agent runs/accept-rate/avg-cost for the whole workspace's agent list
+   * in one pass (card footers) — windowed to `since` so the card reflects
+   * recent activity, not the agent's entire history (that's the Stats tab's
+   * job via `listRunsForStats`/`buildAgentStats`).
+   */
+  async cardStats(workspaceId: string, since: Date): Promise<Map<string, CardStats>> {
+    const [runs, findings] = await Promise.all([
+      this.db
+        .select({ agentId: t.agentRuns.agentId, costUsd: t.agentRuns.costUsd })
+        .from(t.agentRuns)
+        .where(and(eq(t.agentRuns.workspaceId, workspaceId), gte(t.agentRuns.ranAt, since))),
+      this.db
+        .select({
+          agentId: t.agentRuns.agentId,
+          acceptedAt: t.findings.acceptedAt,
+          dismissedAt: t.findings.dismissedAt,
+        })
+        .from(t.findings)
+        .innerJoin(t.reviews, eq(t.findings.reviewId, t.reviews.id))
+        .innerJoin(t.agentRuns, eq(t.reviews.runId, t.agentRuns.id))
+        .where(and(eq(t.agentRuns.workspaceId, workspaceId), gte(t.agentRuns.ranAt, since))),
+    ]);
+    return buildCardStats(runs, findings);
   }
 }

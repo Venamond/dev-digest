@@ -11,6 +11,7 @@ import type {
 } from '@devdigest/shared';
 import { AgentVersionConfig } from '@devdigest/shared';
 import type { AgentRow, AgentVersionRow, SkillRow } from '../../db/rows.js';
+import type { CardStats } from './stats-helpers.js';
 
 /** Link shape used by prompt assembly + editor-row builders (no I/O). */
 export interface LinkedSkillView {
@@ -26,7 +27,7 @@ export interface LinkedSkillView {
  */
 
 /** Map a persisted agent row to the public `Agent` DTO. */
-export function toAgentDto(row: AgentRow, skillCount?: number): Agent {
+export function toAgentDto(row: AgentRow, skillCount?: number, cardStats?: CardStats): Agent {
   return {
     id: row.id,
     name: row.name,
@@ -41,6 +42,9 @@ export function toAgentDto(row: AgentRow, skillCount?: number): Agent {
     ci_fail_on: row.ciFailOn as CiFailOn,
     repo_intel: row.repoIntel,
     skill_count: skillCount ?? null,
+    runs_7d: cardStats?.runs ?? null,
+    accept_rate_7d: cardStats?.accept ?? null,
+    avg_cost_usd_7d: cardStats?.cost ?? null,
   };
 }
 

@@ -24,6 +24,47 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Codebase Patterns
 
+- **To manually test a reviewer agent against a chosen diff without a real
+  GitHub PR: insert `pull_requests` + `pr_files` rows directly (with a real
+  unified-diff string in `pr_files.patch`), no repo clone required.**
+  `GET /repos/:id/pulls` and `GET /pulls/:id` (`modules/pulls/service.ts`)
+  only sync from a real GitHub repo/token; there is no "create PR with an
+  arbitrary diff" endpoint. But `modules/reviews/diff-loader.ts`'s
+  `loadDiff()` tries `container.git.diff(base, headSha)` first and falls
+  back to `diffFromPrFiles()` (reconstructs a unified diff from persisted
+  `pr_files.patch`) when the clone/diff isn't available — exactly the path
+  the seed's `acme/payments-api` repo already takes (`clonePath: null`).
+  Insert via a one-off `tsx` script mirroring `db/seed.ts`'s pattern
+  (`createDb(DATABASE_URL)` → `db.insert(t.pullRequests)...` →
+  `db.insert(t.prFiles).values({ ..., patch: '<diff text>' })`), then open
+  `/repos/:repoId/pulls/:number` in the UI and click "Run Review" — the
+  diff renders and reviews exactly like a real PR. Same mechanism
+  `server/test/reviews.it.test.ts` uses for its fixtures. Delete the
+  one-off script after running it; do not commit it. (2026-08-08,
+  API Contract Reviewer experiment)
+
+- **`skills.name` has no unique constraint, and `db/seed.ts` pre-seeds
+  `breaking-change` / `response-schema` / `semver-discipline` for the
+  "API Contract Reviewer" course lab (`API_CONTRACT_SEED_SKILLS`,
+  `db/seed-skills.ts`).** Only the Conventions Extractor's
+  `upsertExtractedSkill` is name-aware (upserts in place, see the pattern
+  below). The plain `POST /skills` create path used by the Skills Lab UI is
+  a bare INSERT — it does not check for an existing skill with the same
+  name. If this same lab's instructions are followed literally (create
+  skills named exactly `breaking-change`/`response-schema`/
+  `semver-discipline` by hand), the result is a SECOND row per name sitting
+  next to the seeded one, both visible and both selectable in the Agent →
+  Skills tab with identical labels — indistinguishable in the UI, and
+  whichever one you just checked "jumps" to the linked section while its
+  same-named twin doesn't, which reads as random reordering but is actually
+  each row (distinct `skill_id`) behaving correctly on its own. Not a
+  reordering bug — `SkillsTab/helpers.ts`'s sort (`linked` first by
+  `order`, then unlinked alphabetically) is deterministic per `skill_id`.
+  Before re-running this lab, check `SELECT name, count(*) FROM skills
+  GROUP BY name HAVING count(*) > 1;` and delete the stale seed row (or
+  rename) rather than assuming the new UI-created skill replaced it.
+  (2026-08-08)
+
 - Conventions → skill persist is upsert-by-name
   (`modules/conventions/repository.ts` `upsertExtractedSkill`): same
   workspace + name updates the existing skill and bumps `version` (plus a
@@ -215,6 +256,26 @@ ground truth — wrap-ups can mischaracterize a session.
   `pnpm exec vitest run <name>.it.test`: testcontainers applies the whole
   chain to a fresh Postgres, which is the only cheap proof it actually runs.
   (2026-08-07, conventions extractor review)
+
+- **A per-workspace batch aggregate returned as `Map<id, Stats>` has no entry
+  for an entity with zero activity — `map.get(id)` is `undefined`, not a
+  zero-valued `Stats`.** Piping that straight into a DTO field written as
+  `agg?.field ?? null` (the existing pattern for `Agent.skill_count`) then
+  reports `null` for an idle entity on a LIST response, not `0` — even though
+  the field is documented/expected to always be a number there. `skill_count`
+  avoids this because `AgentsService.list()` explicitly does
+  `counts.get(r.id) ?? 0` before calling `toAgentDto`; the new
+  `runs_7d`/`accept_rate_7d`/`avg_cost_usd_7d` fields (added wiring
+  `AgentCard`'s stats footer to real data, `stats-helpers.ts`
+  `buildCardStats`) needed the identical `cardStats.get(r.id) ?? { runs: 0,
+  accept: 0, cost: 0 }` default in `AgentsService.list()` for the same
+  reason — caught by an integration test asserting an idle agent's list
+  response is `{ runs_7d: 0, accept_rate_7d: 0, avg_cost_usd_7d: 0 }`, not
+  `null`. When adding a new per-entity list-response aggregate backed by a
+  `Map`, default the map lookup to a zero-valued object in the service layer
+  BEFORE calling the DTO mapper — `?? null` inside the mapper is only correct
+  for the single-entity `get()` path where the stat was never computed at
+  all. (2026-08-08, Agents Lab card-stats fix)
 
 ## Recurring Errors & Fixes
 

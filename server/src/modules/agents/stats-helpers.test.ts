@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildAgentStats, buildTrend } from './stats-helpers.js';
+import { buildAgentStats, buildCardStats, buildTrend } from './stats-helpers.js';
 
 describe('buildTrend', () => {
   it('fills zero days and counts runs on matching UTC dates', () => {
@@ -115,5 +115,43 @@ describe('buildAgentStats', () => {
     expect(stats.avg_cost_usd).toBeNull();
     expect(stats.avg_latency_ms).toBeNull();
     expect(stats.recent_runs).toEqual([]);
+  });
+});
+
+describe('buildCardStats', () => {
+  it('groups runs and findings by agent, computing accept rate and avg cost per agent', () => {
+    const result = buildCardStats(
+      [
+        { agentId: 'a1', costUsd: 0.02 },
+        { agentId: 'a1', costUsd: 0.04 },
+        { agentId: 'a2', costUsd: null },
+      ],
+      [
+        { agentId: 'a1', acceptedAt: new Date(), dismissedAt: null },
+        { agentId: 'a1', acceptedAt: null, dismissedAt: new Date() },
+        { agentId: 'a1', acceptedAt: null, dismissedAt: null }, // pending — not "acted"
+        { agentId: 'a2', acceptedAt: null, dismissedAt: new Date() },
+      ],
+    );
+
+    expect(result.get('a1')).toEqual({ runs: 2, accept: 0.5, cost: 0.03 });
+    expect(result.get('a2')).toEqual({ runs: 1, accept: 0, cost: 0 });
+  });
+
+  it('drops rows with a null agentId (agent_runs.agent_id is nullable on delete)', () => {
+    const result = buildCardStats(
+      [{ agentId: null, costUsd: 5 }],
+      [{ agentId: null, acceptedAt: new Date(), dismissedAt: null }],
+    );
+    expect(result.size).toBe(0);
+  });
+
+  it('returns an empty map for no activity', () => {
+    expect(buildCardStats([], []).size).toBe(0);
+  });
+
+  it('an agent with runs but no acted-on findings gets accept=0, not NaN', () => {
+    const result = buildCardStats([{ agentId: 'a1', costUsd: 1 }], []);
+    expect(result.get('a1')).toEqual({ runs: 1, accept: 0, cost: 1 });
   });
 });

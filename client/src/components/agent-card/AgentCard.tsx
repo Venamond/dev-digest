@@ -1,5 +1,6 @@
 /* AgentCard — model chip, skills count, enabled toggle, 7d stats footer
-   (runs / accept / avg). Stats placeholders until A5 wires real aggregates. */
+   (runs / accept / avg). `stats` comes from `toCardStats(agent)` in the list
+   view — EMPTY_STATS below is only the fallback for callers that omit it. */
 "use client";
 
 import React from "react";

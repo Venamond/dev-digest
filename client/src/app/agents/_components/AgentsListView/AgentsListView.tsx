@@ -13,7 +13,7 @@ import { VALID_TABS } from "../../[id]/_components/AgentEditor/constants";
 import { useAgents, useAgent, useUpdateAgent } from "@/lib/hooks/agents";
 import { CreateAgentModal } from "./_components/CreateAgentModal/CreateAgentModal";
 import { TEMPLATES } from "./constants";
-import { filterAgents } from "./helpers";
+import { filterAgents, toCardStats } from "./helpers";
 import { s } from "./styles";
 
 function buildQs(tab: string, search: string): string {
@@ -142,6 +142,7 @@ export function AgentsListView({ selectedId }: { selectedId?: string }) {
                 ag={a}
                 active={a.id === activeId}
                 skillCount={a.skill_count ?? 0}
+                stats={toCardStats(a)}
                 onClick={() => select(a.id)}
                 onToggle={(enabled) => update.mutate({ id: a.id, patch: { enabled } })}
               />
