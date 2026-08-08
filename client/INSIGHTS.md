@@ -21,6 +21,32 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Codebase Patterns
 
+- **Rendered-markdown BLOCK styling lives in `app/globals.css` under `.dd-md`,
+  not in the Markdown primitive.** `vendor/ui/primitives/Markdown.tsx`
+  (react-markdown + remark-gfm) styles only inline nodes (`p`, `strong`,
+  `code`, `a`) and emits a `.dd-md` wrapper; every block element
+  (`h1..h4`, `ul/ol`, `pre`, `blockquote`, `hr`, GFM tables) is styled through
+  that class in `app/globals.css` — added 2026-08-08, before which the hook had
+  no rules at all and skill previews rendered headings with zero spacing and
+  fenced code with an inline-pill look. Extend those rules there; do NOT add
+  components to `Markdown.tsx` (`src/vendor/ui` is do-not-touch per root
+  `AGENTS.md`). Two traps that make a naive rule silently half-work:
+  (1) **`list-style` must be restated** (`.dd-md ul { list-style: disc }`) —
+  `styles.css` imports tailwindcss and its preflight resets `ul, ol` to
+  `list-style: none`, so bullets/numbers vanish and items read as plain
+  indented text; (2) **overriding the look of code inside `pre` needs
+  `!important`** — react-markdown routes fenced code through the same `code`
+  component as inline code, which applies its pill styling via a React
+  `style={}` attribute, and inline styles outrank class selectors. Also note
+  `vendor/ui/styles.css:205-211` resets `h1..h4, p { margin: 0 }` globally, so
+  heading margins must be set explicitly. Surfaces affected: skill editor
+  Preview tab, `FindingCard` rationale/suggestion, PR `CommentCard`.
+  Separately: markdown is rendered ONLY in the skill editor's Preview tab —
+  the skill Config tab and the conventions create-skill modal use
+  `MarkdownEditor` (a line-numbered textarea, not a renderer), and the **agent
+  editor has no preview at all** (tabs are Config/Skills/Stats; the system
+  prompt is a plain mono `<Textarea>`). (2026-08-08)
+
 - `AppShell` is mounted once under `lib/providers.tsx` (`CrumbProvider` +
   `AppShell`). Pages must NOT wrap themselves in `<AppShell>` — that remounted
   the sidebar on every route change and made Skills Lab nav feel multi-second.
@@ -71,6 +97,34 @@ ground truth — wrap-ups can mischaracterize a session.
   via DB if needed (`accepted_at`/`dismissed_at` = null).
 
 ## Tool & Library Notes
+
+- **A "sidebar nav takes ~5s, then is fine, then slow again" report is NOT
+  automatically a regression of the persistent-`AppShell` fix (see Codebase
+  Patterns, 2026-08-07) — measure the environment before touching code.**
+  Diagnosed 2026-08-08 on exactly that symptom: the app was innocent. API
+  endpoints (`/agents`, `/skills`, `/repos`) answered in **2-8 ms** and warm
+  Next dev pages in **37-311 ms**, but the machine was swap-thrashing —
+  `next-server` held **~6 GB RSS after 10 days 17 hours uptime** (it grows
+  through hot-reloads and never shrinks), leaving **~80 MB free of 48 GB**
+  with **19.4 GB of 20 GB swap used**. Clicking a nav item faulted the evicted
+  compiled-module pages back from SSD — multi-second block — then navigation
+  was instant until the next eviction, which is what makes the stall look
+  intermittent and code-shaped. CPU was NOT the tell (89 min total over 10
+  days ⇒ no recompile loop). Diagnose in this order, it takes a minute:
+  `curl -s -o /dev/null -w "%{time_total}" localhost:3001/agents` (API), the
+  same against `:3000` twice per route (cold vs warm), then
+  `ps -o pid,%cpu,rss,etime -p $(pgrep -f next-server)` and
+  `sysctl vm.swapusage`. Restart `pnpm dev` when free RAM is the scarce
+  thing — do not refactor navigation. Two calibration facts from the actual
+  restart: a **fresh** `next-server` here is already **~2.4 GB RSS after
+  compiling just 3 routes**, so RSS alone is a weak signal (multi-GB is
+  normal for this app) — judge by *free RAM*, and treat a many-day-old
+  process as suspect regardless of its number. And **`vm.swapusage` barely
+  moves after the restart** (19.4 → 19.3 GB — macOS doesn't reclaim swap
+  proactively), so it is useless as the after-check: verify with
+  `memory_pressure | grep "Pages free"` instead, which went
+  **5 116 → 173 172 pages (~80 MB → ~2.7 GB free)** and is what actually
+  fixed the stalls. (2026-08-08)
 
 - **The Playwright MCP browser tool's `browser_type` (and `.fill()` generally)
   REPLACES an `<input>`/`<textarea>`'s entire value — it does not append.**
