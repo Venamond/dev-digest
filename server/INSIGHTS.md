@@ -24,6 +24,70 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Codebase Patterns
 
+- **If an agent's system prompt enumerates the same detection rules its skills
+  carry, the skills become decorative — they can only reword findings, never
+  add a detection.** Diagnosed 2026-08-08 on `API Contract Reviewer`: its
+  prompt had a `# What counts as a problem` catalogue whose three items mapped
+  1:1 onto the four attached skills (item 1 = `breaking-change`, item 2 =
+  `response-schema`, item 3 = `semver-discipline` + `deprecation-policy`), so
+  the agent already detected everything with skills OFF and the skills could
+  only sharpen the wording — which reads to a user as "the skills do nothing".
+  The shipped prompt in `docs/agent-prompts/api-contract-reviewer.md` (seeded
+  via `db/seed-prompts.ts`) has the same shape: its "What to look for
+  (priority order)" section duplicates those same four skills. Note this is
+  the *documented* checklist pushing you there —
+  `docs/agent-prompts/README.md` requires "Role + concrete 'what to look for',
+  in priority order" in every prompt, which is right for an agent with NO
+  skills and wrong for one whose skills own those rules. When an agent is
+  meant to be skill-driven, keep the prompt to role + scope + analysis method
+  + the three mandatory blocks (severity rubric, verdict mapping, findings
+  discipline) and move every detection rule into the skills; state explicitly
+  what to do when no skills are attached (report only demonstrable defects,
+  cap severity) so the unskilled path degrades honestly instead of silently
+  duplicating the skills. **But verified the same day that trimming the
+  catalogue is NOT sufficient**, for two separate reasons: (a) residual
+  detection rules hide in other sections — a parenthetical left in `# Scope`
+  ("look for duplicated contract files — a change on one side without the
+  matching change on the other is itself a defect") kept handing the agent the
+  finding for free, because the test diff was exactly a one-sided
+  `vendor/shared` edit; (b) more fundamentally, a **structurally** self-evident
+  defect cannot be made skill-dependent at all — a field rename is
+  demonstrable beyond argument, which the prompt's own "report only what you
+  can demonstrate" fallback then *licenses* rather than suppresses. So to show
+  a skill earning its keep (or to build an eval that measures skills), pick a
+  defect whose breaking-ness is a matter of **policy, not structure**:
+  tightened request validation (adding `.regex()`/`.min()` to an existing
+  field) is *additive* in code shape and reads as hardening, so only
+  `breaking-change`'s "a request the API used to accept is now rejected …
+  stricter format" clause surfaces it. Keep both `vendor/shared` copies in
+  sync in such a diff, or the one-sidedness itself becomes the tell.
+  (2026-08-08)
+
+- **Linked skills change a finding's CONTENT, not the finding COUNT — a
+  one-defect diff yields one finding no matter how many skills are attached.**
+  Every reviewer prompt (`db/seed-prompts.ts`, `docs/agent-prompts/*`) carries
+  a mandatory findings-discipline rule — "report only DISTINCT issues, never
+  list the same problem twice, never pad toward a number" — so N skills all
+  describing one underlying defect correctly collapse into one finding, with
+  each skill's reasoning folded into its title/rationale/suggestion rather than
+  emitted separately. Observed 2026-08-08 on a 2-file diff renaming one
+  response field: with 4 API-contract skills and without, both runs returned
+  exactly 1 finding, which reads as "the skills did nothing". They had: the
+  skilled run's title followed the skill's prescribed
+  `Breaking change: <what changed>` format, named the concrete failure mode
+  ("receives `undefined`"), listed the skill's three escape hatches
+  ("dual-write, alias, or versioned path"), and proposed the two remediations
+  the skill bodies define — none of which the unskilled run produced. **To
+  evaluate skills, compare finding text, not counts; to demonstrate K skills
+  firing separately you need K independent defects in the diff.** Two skills
+  also correctly declined via their own "do not apply" clauses (semver
+  stood down because this API exposes no `/v1/`-style version scheme at all).
+  **Verify which skills actually reached a run's prompt** — don't assume from
+  the UI toggle state:
+  `SELECT s.name, rs.skill_version FROM run_skills rs JOIN skills s ON
+  s.id=rs.skill_id WHERE rs.run_id='<run>'` (empty ⇒ none were injected;
+  `agent_runs.cost_usd` also rises visibly when they are). (2026-08-08)
+
 - **To manually test a reviewer agent against a chosen diff without a real
   GitHub PR: insert `pull_requests` + `pr_files` rows directly (with a real
   unified-diff string in `pr_files.patch`), no repo clone required.**
@@ -56,10 +120,11 @@ ground truth — wrap-ups can mischaracterize a session.
   next to the seeded one, both visible and both selectable in the Agent →
   Skills tab with identical labels — indistinguishable in the UI, and
   whichever one you just checked "jumps" to the linked section while its
-  same-named twin doesn't, which reads as random reordering but is actually
-  each row (distinct `skill_id`) behaving correctly on its own. Not a
-  reordering bug — `SkillsTab/helpers.ts`'s sort (`linked` first by
-  `order`, then unlinked alphabetically) is deterministic per `skill_id`.
+  same-named twin doesn't, which reads as random reordering. Two separate
+  things were going on: the indistinguishable labels (this entry) **and** a
+  real row-reordering bug in the Skills tab, fixed 2026-08-08 by freezing the
+  display order — see `client/INSIGHTS.md` ("Agent → Skills row order is
+  frozen"). Do not re-derive the sort per render there.
   Before re-running this lab, check `SELECT name, count(*) FROM skills
   GROUP BY name HAVING count(*) > 1;` and delete the stale seed row (or
   rename) rather than assuming the new UI-created skill replaced it.

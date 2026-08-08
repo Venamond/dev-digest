@@ -21,6 +21,39 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Codebase Patterns
 
+- **Agent → Skills row order is frozen on load — never re-derive the sort per
+  render.** `SkillsTab` used to compute its order every render as "linked rows
+  first (by `order`), then unlinked (by name)". Ticking a checkbox links the
+  skill, so the row instantly left the lower unlinked group for the end of the
+  upper linked group — it jumped upward out from under the pointer, which
+  reads as random reordering. A second re-sort followed a beat later because
+  `useSetAgentSkills.onSuccess` does `qc.setQueryData(...)`, so fresh rows land
+  in the cache and the `[data]` effect reseeds the draft. Fixed 2026-08-08:
+  the order is state (`displayOrderIds` / `applyDisplayOrder` in
+  `SkillsTab/helpers.ts`), seeded from the first load per agent and reseeded on
+  exactly two events — switching agent, and a **drag** (where reordering is the
+  user's intent, so the drop handler calls `setOrder(displayOrderIds(next))`).
+  Ids absent from the frozen order (a skill created after the tab loaded) sort
+  last by name. Any checkbox list here that groups by a flag the checkbox
+  mutates needs this treatment; verify by ticking the LAST row and confirming
+  its index is unchanged. **`SkillsTab` has no `.test.tsx` — only
+  `helpers.test.ts` — so anything left inline in the component is untested.**
+  That is how a broken drag-reorder survived: the drop handler's swap loop
+  named `linked[i]` instead of the dragged row, so step 2 undid step 1 and a
+  2-position drag moved nothing while a 3-position drag shuffled unrelated
+  rows (only adjacent drags worked). Now `reorderLinked(rows, dragId,
+  targetId)` in `helpers.ts`, covered by tests that pin the old wrong results.
+  Put new SkillsTab logic in `helpers.ts`, not the JSX. **A second, independent
+  cause of "drag is broken" here was a false affordance**, so check it before
+  debugging reorder math: only linked rows are `draggable` (and only they accept
+  a drop — `order` is meaningless for a skill that never reaches the prompt),
+  yet the ☰ handle rendered with `cursor: grab` on every row, so dragging from
+  the unlinked rows at the bottom silently did nothing. `s.dragHandle` is now a
+  function of `canDrag`, dimmed with a `default` cursor and an explanatory
+  `title` when reordering is unavailable. When a drag bug is reported for
+  *specific* rows, first check whether those rows are draggable at all.
+  (2026-08-08)
+
 - **Rendered-markdown BLOCK styling lives in `app/globals.css` under `.dd-md`,
   not in the Markdown primitive.** `vendor/ui/primitives/Markdown.tsx`
   (react-markdown + remark-gfm) styles only inline nodes (`p`, `strong`,

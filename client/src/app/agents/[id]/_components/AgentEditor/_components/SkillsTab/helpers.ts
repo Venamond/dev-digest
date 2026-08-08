@@ -43,6 +43,36 @@ export function filterDraftRows(rows: SkillDraftRow[], q: string): SkillDraftRow
   );
 }
 
+/**
+ * Row ids in display order: linked first by `order`, then unlinked by name.
+ *
+ * The tab freezes this order instead of re-deriving it every render — ticking
+ * a checkbox links the skill, which would otherwise move the row from the
+ * unlinked group up into the linked one, out from under the pointer.
+ */
+export function displayOrderIds(rows: SkillDraftRow[]): string[] {
+  return [
+    ...rows.filter((r) => r.linked).sort((a, b) => a.order - b.order),
+    ...rows.filter((r) => !r.linked).sort((a, b) => a.name.localeCompare(b.name)),
+  ].map((r) => r.skill_id);
+}
+
+/**
+ * Apply a frozen id order to the visible rows. Ids missing from the frozen
+ * order (a skill created after the tab loaded) sort last, by name.
+ */
+export function applyDisplayOrder(rows: SkillDraftRow[], order: string[]): SkillDraftRow[] {
+  const rank = new Map(order.map((id, i) => [id, i]));
+  return [...rows].sort((a, b) => {
+    const ra = rank.get(a.skill_id);
+    const rb = rank.get(b.skill_id);
+    if (ra != null && rb != null) return ra - rb;
+    if (ra != null) return -1;
+    if (rb != null) return 1;
+    return a.name.localeCompare(b.name);
+  });
+}
+
 function reindexLinked(rows: SkillDraftRow[]): SkillDraftRow[] {
   const linked = rows.filter((r) => r.linked).sort((a, b) => a.order - b.order);
   const orderById = new Map(linked.map((r, i) => [r.skill_id, i]));
@@ -66,6 +96,32 @@ export function moveLinked(rows: SkillDraftRow[], skillId: string, dir: -1 | 1):
   return rows.map((r) =>
     r.linked ? { ...r, order: orderById.get(r.skill_id) ?? r.order } : r,
   );
+}
+
+/**
+ * Move `dragId` to `targetId`'s slot among the linked skills (drag & drop).
+ *
+ * Walks the DRAGGED skill one adjacent swap at a time — `moveLinked` re-finds
+ * its current index on each call, so naming any other row here would undo the
+ * previous step and leave multi-position drags off by one.
+ */
+export function reorderLinked(
+  rows: SkillDraftRow[],
+  dragId: string,
+  targetId: string,
+): SkillDraftRow[] {
+  if (dragId === targetId) return rows;
+  const linked = rows.filter((r) => r.linked).sort((a, b) => a.order - b.order);
+  const from = linked.findIndex((r) => r.skill_id === dragId);
+  const to = linked.findIndex((r) => r.skill_id === targetId);
+  if (from < 0 || to < 0) return rows;
+
+  const dir = to > from ? 1 : -1;
+  let next = rows;
+  for (let i = from; i !== to; i += dir) {
+    next = moveLinked(next, dragId, dir);
+  }
+  return next;
 }
 
 /** Toggle link; newly linked appends at end with enabled=true. */

@@ -267,7 +267,7 @@ describe('composeSkillBody / evidenceUrl', () => {
         evidence_line_end: 31,
       },
     ]);
-    expect(body).toContain('# payments-api-conventions');
+    expect(body).toContain('# Skill: payments-api-conventions');
     expect(body).toContain('House conventions for `payments-api`');
     expect(body).toContain('## async');
     expect(body).toContain('- Always use async/await instead of .then() chains (seen in `src/api/users.ts`)');
@@ -382,7 +382,7 @@ describe('composeSkillBody / evidenceUrl', () => {
     expect(draft.name).toBe('payments-api-conventions');
     expect(draft.description).toBe('1 house convention extracted from payments-api');
     // The body's H1 must match the name the skill is saved under.
-    expect(draft.body).toContain('# payments-api-conventions');
+    expect(draft.body).toContain('# Skill: payments-api-conventions');
   });
 });
 

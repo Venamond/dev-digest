@@ -101,6 +101,7 @@
     "empty": "No skills in this workspace yet. Create skills in Skills Lab, then bind them here.",
     "globallyOff": "globally off",
     "dragHint": "Drag to reorder",
+    "dragDisabledHint": "Only enabled skills are ordered — tick this one to reorder it",
     "savedToast": "Agent skills saved"
   },
   "stats": {

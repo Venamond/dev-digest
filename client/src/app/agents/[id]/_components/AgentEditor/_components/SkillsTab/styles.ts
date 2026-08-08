@@ -61,12 +61,19 @@ export const s = {
     width: "100%",
     boxSizing: "border-box",
   }),
-  dragHandle: {
-    color: "var(--text-muted)",
-    display: "inline-flex",
-    flexShrink: 0,
-    cursor: "grab",
-  } satisfies CSSProperties,
+  /**
+   * Only linked rows are `draggable`, so the handle must not advertise a grab
+   * on the unlinked ones at the bottom of the list — that read as "drag is
+   * broken down here". Dimmed + default cursor when reordering is unavailable.
+   */
+  dragHandle: (canDrag: boolean) =>
+    ({
+      color: "var(--text-muted)",
+      display: "inline-flex",
+      flexShrink: 0,
+      cursor: canDrag ? "grab" : "default",
+      opacity: canDrag ? 1 : 0.3,
+    }) satisfies CSSProperties,
   name: {
     fontSize: 12.5,
     fontWeight: 600,

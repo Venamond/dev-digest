@@ -7,9 +7,11 @@ import type { Agent } from "@devdigest/shared";
 import { useAgentSkills, useSetAgentSkills } from "../../../../../../../lib/hooks/agents";
 import { useToast } from "../../../../../../../lib/toast";
 import {
+  applyDisplayOrder,
+  displayOrderIds,
   enabledCount,
   filterDraftRows,
-  moveLinked,
+  reorderLinked,
   toggleEnabled,
   toDraftRows,
   toLinksPayload,
@@ -26,17 +28,25 @@ export function SkillsTab({ agent }: { agent: Agent }) {
   const [draft, setDraft] = React.useState<SkillDraftRow[] | null>(null);
   const [filter, setFilter] = React.useState("");
   const [dragId, setDragId] = React.useState<string | null>(null);
+  // Frozen row order — see `displayOrderIds`. Only reseeded on agent switch
+  // and after a drag, never on a checkbox toggle or a save round-trip
+  // (`useSetAgentSkills` writes fresh rows into the cache on success, which
+  // would otherwise re-sort the list a moment after the click).
+  const [order, setOrder] = React.useState<string[]>([]);
 
   React.useEffect(() => {
-    if (data) setDraft(toDraftRows(data));
+    setOrder([]);
+  }, [agent.id]);
+
+  React.useEffect(() => {
+    if (!data) return;
+    const next = toDraftRows(data);
+    setDraft(next);
+    setOrder((prev) => (prev.length > 0 ? prev : displayOrderIds(next)));
   }, [data, agent.id]);
 
   const rows = draft ?? [];
-  const shown = filterDraftRows(rows, filter);
-  const ordered = [
-    ...shown.filter((r) => r.linked).sort((a, b) => a.order - b.order),
-    ...shown.filter((r) => !r.linked).sort((a, b) => a.name.localeCompare(b.name)),
-  ];
+  const ordered = applyDisplayOrder(filterDraftRows(rows, filter), order);
 
   const persist = (next: SkillDraftRow[]) => {
     setDraft(next);
@@ -98,23 +108,20 @@ export function SkillsTab({ agent }: { agent: Agent }) {
                 }}
                 onDrop={() => {
                   if (!dragId || dragId === r.skill_id || !r.linked) return;
-                  const linked = rows.filter((x) => x.linked).sort((a, b) => a.order - b.order);
-                  const from = linked.findIndex((x) => x.skill_id === dragId);
-                  const to = linked.findIndex((x) => x.skill_id === r.skill_id);
-                  if (from < 0 || to < 0) return;
-                  let next = rows;
-                  const dir = to > from ? 1 : -1;
-                  let i = from;
-                  while (i !== to) {
-                    next = moveLinked(next, linked[i]!.skill_id, dir);
-                    i += dir;
-                  }
+                  const next = reorderLinked(rows, dragId, r.skill_id);
+                  if (next === rows) return;
+                  // A drag IS an explicit reorder — re-freeze on the new order.
                   persist(next);
+                  setOrder(displayOrderIds(next));
                   setDragId(null);
                 }}
                 style={s.row(on, dragId === r.skill_id)}
               >
-                <span style={s.dragHandle} title={t("skills.dragHint")} aria-hidden>
+                <span
+                  style={s.dragHandle(r.linked)}
+                  title={r.linked ? t("skills.dragHint") : t("skills.dragDisabledHint")}
+                  aria-hidden
+                >
                   <Icon.Menu size={14} />
                 </span>
                 <Checkbox

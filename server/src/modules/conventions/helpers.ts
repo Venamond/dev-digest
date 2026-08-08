@@ -396,7 +396,9 @@ export function composeSkillBody(
   });
 
   return [
-    `# ${skillName}`,
+    // `# Skill: <name>` — same opening line every skill body uses, so the
+    // model reads an extracted skill exactly like a hand-written one.
+    `# Skill: ${skillName}`,
     '',
     `House conventions for \`${repoName}\`. Flag any change that violates a rule below and cite the offending \`file:line\`.`,
     '',
