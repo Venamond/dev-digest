@@ -1,0 +1,14 @@
+-- No-op by design.
+--
+-- Migrations 0011-0014 were hand-written, so drizzle-kit's snapshots in
+-- meta/ stopped at 0010 and `pnpm db:generate` began re-emitting every
+-- change since (CREATE TABLE run_skills, the conventions columns, ...) —
+-- SQL that fails on any already-migrated database.
+--
+-- This migration carries no statements; its purpose is the accompanying
+-- meta/0015_snapshot.json, which captures the real current schema and
+-- becomes the baseline drizzle-kit diffs against. `pnpm db:generate` works
+-- normally from here on.
+--
+-- Do not delete: removing it would orphan the snapshot and reopen the drift.
+SELECT 1;

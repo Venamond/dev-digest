@@ -6,10 +6,11 @@
 "use client";
 
 import React from "react";
+import { useTranslations } from "next-intl";
 import { Icon, Badge } from "@devdigest/ui";
 import type { ReviewRecord, Verdict } from "@devdigest/shared";
-import { FindingsPanel } from "../FindingsPanel";
-import { VerdictBanner } from "../VerdictBanner";
+import { FindingsPanel } from "../FindingsPanel/FindingsPanel";
+import { VerdictBanner } from "../VerdictBanner/VerdictBanner";
 import { useDeleteReview } from "../../../../../../../lib/hooks/reviews";
 
 const VERDICT_COLOR: Record<string, string> = {
@@ -31,6 +32,7 @@ export function ReviewRunAccordion({
   headSha,
   targetRunId = null,
   targetNonce = 0,
+  severityFilter = null,
 }: {
   review: ReviewRecord;
   prId: string;
@@ -41,7 +43,10 @@ export function ReviewRunAccordion({
    *  (driven from the Timeline: clicking an agent name navigates here). */
   targetRunId?: string | null;
   targetNonce?: number;
+  /** PR-level severity counter filter — only this run's findings of this severity show. */
+  severityFilter?: string | null;
 }) {
+  const t = useTranslations("prReview");
   const [open, setOpen] = React.useState(defaultOpen);
   const rootRef = React.useRef<HTMLDivElement | null>(null);
   React.useEffect(() => {
@@ -87,15 +92,21 @@ export function ReviewRunAccordion({
         }}
       >
         <Icon.Cpu size={15} style={{ color: "var(--text-muted)" }} />
-        <span style={{ fontWeight: 600, fontSize: 14 }}>{review.agent_name ?? "Agent"}</span>
+        <span style={{ fontWeight: 600, fontSize: 14 }}>
+          {review.agent_name ?? t("reviewRun.agentTitle")}
+        </span>
         {review.verdict && (
           <Badge color={verdictColor} bg="transparent">
-            {review.verdict.replace("_", " ")}
+            {review.verdict === "request_changes"
+              ? t("verdict.requestChanges")
+              : review.verdict === "approve"
+                ? t("verdict.approve")
+                : t("verdict.comment")}
           </Badge>
         )}
         <span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-          {findings.length} finding{findings.length === 1 ? "" : "s"}
-          {blockers > 0 ? ` · ${blockers} blocker${blockers === 1 ? "" : "s"}` : ""}
+          {t("reviewRun.findingsCount", { count: findings.length })}
+          {blockers > 0 ? ` · ${t("reviewRun.blockersCount", { count: blockers })}` : ""}
         </span>
         <span style={{ flex: 1 }} />
         {review.score != null && (
@@ -109,13 +120,19 @@ export function ReviewRunAccordion({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            if (window.confirm(`Delete this "${review.agent_name ?? "agent"}" review run and its findings?`)) {
+            if (
+              window.confirm(
+                t("reviewRun.deleteConfirm", {
+                  agent: review.agent_name ?? t("reviewRun.agentFallback"),
+                }),
+              )
+            ) {
               del.mutate(review.id);
             }
           }}
           disabled={del.isPending}
-          title="Delete this review run"
-          aria-label="Delete this review run"
+          title={t("reviewRun.deleteTitle")}
+          aria-label={t("reviewRun.deleteTitle")}
           style={{
             background: "none",
             border: "none",
@@ -152,6 +169,7 @@ export function ReviewRunAccordion({
             prId={prId}
             repoFullName={repoFullName}
             headSha={headSha}
+            severityFilter={severityFilter}
           />
         </div>
       )}

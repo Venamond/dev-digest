@@ -21,13 +21,16 @@ export class ApiError extends Error {
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
+    // FormData must keep the browser-set multipart boundary — never force JSON.
+    const isFormData =
+      typeof FormData !== "undefined" && init?.body instanceof FormData;
     res = await fetch(`${API_BASE}${path}`, {
       ...init,
       headers: {
         // Only declare a JSON body when one is actually sent — otherwise a
         // body-less POST/PUT (e.g. tour generate, refresh, reindex) trips
         // Fastify's "Body cannot be empty when content-type is application/json".
-        ...(init?.body != null ? { "content-type": "application/json" } : {}),
+        ...(init?.body != null && !isFormData ? { "content-type": "application/json" } : {}),
         ...(init?.headers ?? {}),
       },
     });
@@ -71,4 +74,7 @@ export const api = {
   patch: <T>(path: string, body?: unknown) =>
     apiFetch<T>(path, { method: "PATCH", body: body ? JSON.stringify(body) : undefined }),
   del: <T>(path: string) => apiFetch<T>(path, { method: "DELETE" }),
+  /** Multipart upload (e.g. skill import preview). Leaves Content-Type to the browser. */
+  postForm: <T>(path: string, form: FormData) =>
+    apiFetch<T>(path, { method: "POST", body: form }),
 };

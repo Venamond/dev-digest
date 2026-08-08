@@ -14,6 +14,7 @@ import type { Finding, Intent, RunSummary, RunTrace } from '@devdigest/shared';
  */
 
 import type { FindingRow, PullRow } from '../../db/rows.js';
+import type { PromptSkillRef } from '../agents/helpers.js';
 export type { FindingRow, PullRow };
 
 export type ReviewRow = typeof t.reviews.$inferSelect;
@@ -85,6 +86,12 @@ export class ReviewRepository {
   /** Delete one agent run (+ its trace via FK cascade). Workspace-scoped. */
   deleteAgentRun(workspaceId: string, runId: string): Promise<boolean> {
     return runRepo.deleteAgentRun(this.db, workspaceId, runId);
+  }
+
+  /** Whether an agent_runs row still exists (not workspace-scoped — callers
+   *  already hold the runId from a job they started). */
+  agentRunExists(runId: string): Promise<boolean> {
+    return runRepo.agentRunExists(this.db, runId);
   }
 
   /** Mark a still-running run as cancelled (no-op if it already finished). */
@@ -161,6 +168,8 @@ export class ReviewRepository {
       score?: number | null;
       /** Findings that tripped the agent's gate; 0 on failed/cancelled runs. */
       blockers?: number | null;
+      /** USD cost of this run's LLM calls; null when unknown. */
+      costUsd?: number | null;
       /** Failure reason (status='failed') / cancellation note. Null clears it. */
       error?: string | null;
     },
@@ -180,5 +189,10 @@ export class ReviewRepository {
 
   getRunTrace(runId: string): Promise<RunTrace | undefined> {
     return runRepo.getRunTrace(this.db, runId);
+  }
+
+  /** Record which skill versions were injected into a run's prompt (for stats). */
+  recordRunSkills(runId: string, refs: PromptSkillRef[]): Promise<void> {
+    return runRepo.recordRunSkills(this.db, runId, refs);
   }
 }

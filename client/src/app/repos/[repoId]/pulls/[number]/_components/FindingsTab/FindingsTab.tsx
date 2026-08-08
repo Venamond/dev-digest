@@ -1,19 +1,26 @@
 "use client";
 
 import React, { useCallback } from "react";
-import { Icon, Badge, Button, SectionLabel, EmptyState } from "@devdigest/ui";
-import { RunStatus } from "../RunStatus";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { Icon, Badge, Button, SectionLabel, EmptyState, type Severity } from "@devdigest/ui";
+import { RunStatus } from "../RunStatus/RunStatus";
 import { RunHistory } from "../RunHistory/RunHistory";
-import { ReviewRunAccordion } from "../ReviewRunAccordion";
+import { ReviewRunAccordion } from "../ReviewRunAccordion/ReviewRunAccordion";
+import { SeverityCounters } from "../SeverityCounters/SeverityCounters";
 import { s } from "./styles";
 import type { FindingRecord, ReviewRecord, RunSummary, PrCommit } from "@devdigest/shared";
 import type { UseMutationResult } from "@tanstack/react-query";
+
+const SEVERITIES = new Set<Severity>(["CRITICAL", "WARNING", "SUGGESTION", "INFO"]);
 
 interface FindingsTabProps {
   prId: string | null;
   liveRunIds: string[];
   reviewRunning: boolean;
   lethalTrifecta: FindingRecord[];
+  /** Every finding across all runs of this PR — feeds the severity counters. */
+  allFindings: FindingRecord[];
   runs: ReviewRecord[];
   prRuns: RunSummary[] | undefined;
   prCommits: PrCommit[];
@@ -31,6 +38,7 @@ export function FindingsTab({
   liveRunIds,
   reviewRunning,
   lethalTrifecta,
+  allFindings,
   runs,
   prRuns,
   prCommits,
@@ -41,6 +49,7 @@ export function FindingsTab({
   onDelete,
   onRunDone,
 }: FindingsTabProps) {
+  const t = useTranslations("prReview");
   const handleCancelAll = useCallback(() => {
     liveRunIds.forEach((id) => cancelMutation.mutate(id));
   }, [liveRunIds, cancelMutation]);
@@ -71,6 +80,24 @@ export function FindingsTab({
     setTarget((p) => ({ runId, n: (p?.n ?? 0) + 1 }));
   }, []);
 
+  // Severity counters filter — URL-backed (?severity=) so the filter is shareable.
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
+  const rawSeverity = searchParams.get("severity");
+  const severityFilter: Severity | null =
+    rawSeverity && SEVERITIES.has(rawSeverity as Severity) ? (rawSeverity as Severity) : null;
+  const setSeverityFilter = useCallback(
+    (next: Severity | null) => {
+      const sp = new URLSearchParams(searchParams.toString());
+      if (next) sp.set("severity", next);
+      else sp.delete("severity");
+      const qs = sp.toString();
+      router.replace(`${pathname}${qs ? `?${qs}` : ""}`);
+    },
+    [pathname, router, searchParams],
+  );
+
   return (
     <section>
       {liveRunIds.length > 0 && (
@@ -86,15 +113,15 @@ export function FindingsTab({
                   loading={cancelMutation.isPending}
                   onClick={handleCancelAll}
                 >
-                  Cancel
+                  {t("findingsTab.cancel")}
                 </Button>
                 <Button kind="ghost" size="sm" icon="FileText" onClick={handleOpenFirstTrace}>
-                  Open run trace
+                  {t("findingsTab.openTrace")}
                 </Button>
               </div>
             }
           >
-            Live review
+            {t("findingsTab.liveReview")}
           </SectionLabel>
           <RunStatus runIds={liveRunIds} onDone={onRunDone} />
         </div>
@@ -103,19 +130,17 @@ export function FindingsTab({
       {reviewRunning && (
         <div style={s.reviewInProgress}>
           <Icon.RefreshCw size={16} style={{ color: "var(--accent)", animation: "ddspin 1s linear infinite" }} />
-          <span style={s.reviewInProgressText}>Review in progress…</span>
-          <span style={s.reviewInProgressSub}>
-            the agent is analyzing the diff — this can take a while on large PRs.
-          </span>
+          <span style={s.reviewInProgressText}>{t("findingsTab.inProgress")}</span>
+          <span style={s.reviewInProgressSub}>{t("findingsTab.inProgressSub")}</span>
         </div>
       )}
 
       {lethalTrifecta.length > 0 && (
         <div style={s.lethalTrifecta}>
           <Icon.Shield size={16} style={{ color: "var(--crit)" }} />
-          <span style={s.lethalTrifectaTitle}>Lethal Trifecta detected</span>
+          <span style={s.lethalTrifectaTitle}>{t("findingsTab.lethalTitle")}</span>
           <Badge color="var(--crit)" bg="transparent">
-            {lethalTrifecta.length} finding(s)
+            {t("findingsTab.findingsCount", { count: lethalTrifecta.length })}
           </Badge>
         </div>
       )}
@@ -124,12 +149,15 @@ export function FindingsTab({
         <div style={s.timelineSection}>
           <SectionLabel
             icon="Activity"
-            right={<span style={{ fontSize: 12, color: "var(--text-muted)" }}>runs &amp; commits · newest first</span>}
+            right={
+              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("findingsTab.timelineHint")}</span>
+            }
           >
-            Timeline
+            {t("findingsTab.timeline")}
           </SectionLabel>
           <RunHistory
             runs={prRuns ?? []}
+            reviews={runs}
             commits={prCommits}
             onOpenTrace={handleOpenTrace}
             onGoToReview={handleGoToReview}
@@ -138,18 +166,24 @@ export function FindingsTab({
         </div>
       )}
 
+      {allFindings.length > 0 && (
+        <SeverityCounters findings={allFindings} active={severityFilter} onSelect={setSeverityFilter} />
+      )}
+
       <SectionLabel
         icon="AlertOctagon"
-        right={<span style={{ fontSize: 12, color: "var(--text-muted)" }}>grouped by run · newest first</span>}
+        right={
+          <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("findingsTab.groupedHint")}</span>
+        }
       >
-        Review runs
+        {t("findingsTab.sectionLabel")}
       </SectionLabel>
       {runs.length === 0 ? (
         reviewRunning || liveRunIds.length > 0 ? null : (
           <EmptyState
             icon="Sparkles"
-            title="No findings yet"
-            body="Run a review to generate findings. Use Run Review ▾ above (run all enabled agents or a specific one)."
+            title={t("findingsTab.emptyTitle")}
+            body={t("findingsTab.emptyBody")}
           />
         )
       ) : (
@@ -164,6 +198,7 @@ export function FindingsTab({
             headSha={headSha}
             targetRunId={target?.runId ?? null}
             targetNonce={target?.n ?? 0}
+            severityFilter={severityFilter}
           />
         ))
       )}

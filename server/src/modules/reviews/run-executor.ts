@@ -2,12 +2,12 @@ import type { Container } from '../../platform/container.js';
 import type { Provider, Review, RunTrace, UnifiedDiff } from '@devdigest/shared';
 import { reviewPullRequest, countBlockers } from '@devdigest/reviewer-core';
 import { RunLogger } from '../../platform/run-logger.js';
-import * as schema from '../../db/schema.js';
-import type { AgentRow } from '../../db/rows.js';
+import type { AgentRow, RepoRow } from '../../db/rows.js';
 import type { ReviewRepository, FindingRow, PullRow, ReviewRow } from './repository.js';
 import { REVIEW_STRATEGY } from './constants.js';
 import { taskLine } from './helpers.js';
 import { loadDiff } from './diff-loader.js';
+import { promptSkillBodies, promptSkillRefs } from '../agents/helpers.js';
 
 /** Thrown by a run when the user cancels it mid-flight (between map files). */
 export class RunCancelledError extends Error {
@@ -55,7 +55,7 @@ export class ReviewRunExecutor {
   async executeRuns(
     workspaceId: string,
     pull: PullRow,
-    repo: typeof schema.repos.$inferSelect,
+    repo: RepoRow,
     jobs: { agent: AgentRow; runId: string }[],
     logger?: Logger,
   ): Promise<void> {
@@ -138,7 +138,7 @@ export class ReviewRunExecutor {
   private async runOneAgent(
     workspaceId: string,
     pull: PullRow,
-    repo: typeof schema.repos.$inferSelect,
+    repo: RepoRow,
     diff: UnifiedDiff,
     agent: AgentRow,
     runId: string,
@@ -183,6 +183,21 @@ export class ReviewRunExecutor {
 
       const task = taskLine(pull) + rankNote;
 
+      // Skills: bodies where skills.enabled AND agent_skills.enabled, order ASC.
+      // Empty → assemblePrompt omits the Skills section (trace skills = null).
+      const linked = await this.agents.linkedSkills(agent.id);
+      const skillBodies = promptSkillBodies(linked);
+      if (skillBodies.length > 0) {
+        runLog.info(`Skills: ${skillBodies.length} body(ies) attached to prompt`);
+      }
+
+      const skillRefs = promptSkillRefs(linked);
+      try {
+        await this.repo.recordRunSkills(runId, skillRefs);
+      } catch (err) {
+        runLog.info(`run_skills recording failed (non-fatal): ${(err as Error).message}`);
+      }
+
       // ---- Engine: assemble → single-pass → grounding -----------------------
       // The pure review pipeline lives in @devdigest/reviewer-core (shared with
       // the CI runner). The service owns only I/O: repo-intel context resolution
@@ -195,6 +210,7 @@ export class ReviewRunExecutor {
         // Per-agent review strategy (configured in the Agent editor); falls back
         // to the studio default. single-pass = whole diff in one call.
         strategy: agent.strategy ?? REVIEW_STRATEGY,
+        ...(skillBodies.length > 0 ? { skills: skillBodies } : {}),
         // T1.3 — pass the callers digest only when we built one. assemblePrompt
         // omits the section when this is empty/undefined.
         ...(callersDigest ? { callers: callersDigest } : {}),
@@ -210,9 +226,21 @@ export class ReviewRunExecutor {
           if (this.container.runBus.isCancelled(runId)) throw new RunCancelledError();
         },
       });
-      const { tokensIn, tokensOut, grounding } = outcome;
+      const { tokensIn, tokensOut, grounding, costUsd } = outcome;
 
       const keptFindings = outcome.review.findings;
+
+      // The user may have deleted this run (timeline trash icon) while the LLM
+      // call above was still in flight — `deleteAgentRun` only removes a
+      // `reviews` row that already exists, so it can't catch a review that
+      // hasn't been written yet. Treat a missing agent_runs row as a
+      // cancellation: persisting a review now would orphan it (and its
+      // findings) with no run to show it against in the timeline, while the
+      // PR-wide severity counters would still tally them — a source of the
+      // total/timeline mismatch.
+      if (!(await this.repo.agentRunExists(runId))) {
+        throw new RunCancelledError();
+      }
 
       // ---- Persist review + findings ----------------------------------------
       const review = await this.repo.insertReview({
@@ -249,6 +277,7 @@ export class ReviewRunExecutor {
         grounding,
         score: outcome.review.score,
         blockers,
+        costUsd,
         error: null,
       });
 
@@ -265,6 +294,7 @@ export class ReviewRunExecutor {
           duration_ms: durationMs,
           tokens_in: tokensIn,
           tokens_out: tokensOut,
+          cost_usd: costUsd,
           findings: findingRows.length,
           grounding,
         },
@@ -421,7 +451,7 @@ export class ReviewRunExecutor {
         pr: pull.number,
         source: 'local',
       },
-      stats: { duration_ms: durationMs, tokens_in: 0, tokens_out: 0, findings: 0, grounding },
+      stats: { duration_ms: durationMs, tokens_in: 0, tokens_out: 0, cost_usd: null, findings: 0, grounding },
       prompt_assembly: { system: agent.systemPrompt, skills: null, memory: null, specs: null, user: '' },
       tool_calls: [],
       raw_output: '',

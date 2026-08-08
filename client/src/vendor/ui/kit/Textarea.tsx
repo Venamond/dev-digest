@@ -7,12 +7,14 @@ export function Textarea({
   placeholder,
   rows = 5,
   mono,
+  style,
 }: {
   value: string;
   onChange?: (v: string) => void;
   placeholder?: string;
   rows?: number;
   mono?: boolean;
+  style?: React.CSSProperties;
 }) {
   return (
     <textarea
@@ -32,6 +34,8 @@ export function Textarea({
         fontSize: 14,
         lineHeight: 1.55,
         outline: "none",
+        boxSizing: "border-box",
+        ...style,
       }}
     />
   );

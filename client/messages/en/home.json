@@ -1,0 +1,28 @@
+{
+  "brand": "DevDigest",
+  "welcome": {
+    "title": "Welcome to DevDigest",
+    "subtitle": "Local-first AI PR review",
+    "emptyTitle": "No repositories yet",
+    "emptyBody": "Add a repository to start reviewing pull requests. Set your API keys once in Settings → API Keys.",
+    "emptyCta": "Add repository",
+    "redirecting": "Taking you to your repository…",
+    "openRepo": "Open {name}"
+  },
+  "addRepo": {
+    "title": "Add a repository",
+    "bodyBeforeLink": "Paste a GitHub repository URL — DevDigest clones it locally and imports open PRs. API keys aren’t needed here; set them once in",
+    "settingsLink": "Settings → API Keys",
+    "bodyAfterLink": ".",
+    "urlLabel": "Repository URL",
+    "urlHint": "e.g. https://github.com/acme/payments-api",
+    "urlPlaceholder": "https://github.com/owner/repo",
+    "cancel": "Cancel",
+    "submit": "Add repository",
+    "cloning": "Cloning…",
+    "close": "Close",
+    "footerBefore": "API keys live in Settings ·",
+    "footerEsc": "to close",
+    "errorFallback": "Could not add repository"
+  }
+}

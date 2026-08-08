@@ -37,7 +37,57 @@
     "running": "Running…",
     "runReview": "Run Review",
     "mergedWarning": "Already merged — review is informational",
-    "mergedTooltip": "This PR is already merged; running a review won’t affect the merged code."
+    "mergedTooltip": "This PR is already merged; running a review won’t affect the merged code.",
+    "noAgentsYet": "No agents yet — create one"
+  },
+  "detail": {
+    "viewOnGithub": "View on GitHub",
+    "staleBanner": "This PR is already {status} — running a review is informational and won't affect the merged code.",
+    "loadErrorTitle": "Couldn't load this pull request",
+    "loadErrorBody": "PR #{number} could not be loaded.",
+    "tabs": {
+      "overview": "Overview",
+      "findings": "Agent runs",
+      "diff": "Files changed"
+    }
+  },
+  "findingsTab": {
+    "sectionLabel": "Review runs",
+    "groupedHint": "grouped by run · newest first",
+    "emptyTitle": "No findings yet",
+    "emptyBody": "Run a review to generate findings. Use Run Review ▾ above (run all enabled agents or a specific one).",
+    "cancel": "Cancel",
+    "openTrace": "Open run trace",
+    "liveReview": "Live review",
+    "inProgress": "Review in progress…",
+    "inProgressSub": "the agent is analyzing the diff — this can take a while on large PRs.",
+    "lethalTitle": "Lethal Trifecta detected",
+    "findingsCount": "{count} finding(s)",
+    "timeline": "Timeline",
+    "timelineHint": "runs & commits · newest first"
+  },
+  "overview": {
+    "description": "Description"
+  },
+  "severity": {
+    "CRITICAL": "CRITICAL",
+    "WARNING": "WARNING",
+    "SUGGESTION": "SUGGESTION",
+    "INFO": "INFO"
+  },
+  "reviewRun": {
+    "agentTitle": "Agent",
+    "findingsCount": "{count} finding(s)",
+    "blockersCount": "{count} blocker(s)",
+    "agentFallback": "agent",
+    "deleteConfirm": "Delete this \"{agent}\" review run and its findings?",
+    "deleteTitle": "Delete this review run"
+  },
+  "diffTab": {
+    "sectionLabel": "Files changed · {count} files",
+    "showComments": "Show comments ({count})",
+    "hideComments": "Hide comments ({count})",
+    "postError": "Couldn't post the comment to GitHub."
   },
   "runStatus": {
     "elapsed": "Running · {count} agent(s)",
@@ -91,8 +141,14 @@
       "author": "Author",
       "size": "Size",
       "score": "Score",
+      "findings": "Findings",
       "status": "Status",
+      "cost": "Cost",
       "updated": "Updated"
+    },
+    "findingsPreview": {
+      "title": "{count} FINDINGS",
+      "error": "Couldn't load findings"
     },
     "filesCount": "{count} files",
     "errorTitle": "Couldn’t load pull requests",
@@ -104,6 +160,7 @@
   "timeline": {
     "goToReview": "Jump to this run’s findings below",
     "openTrace": "Open run trace & logs",
-    "deleteRun": "Delete run"
+    "deleteRun": "Delete run",
+    "deleteConfirm": "Delete this run from history? (its logs are removed too)"
   }
 }

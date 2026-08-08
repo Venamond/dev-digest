@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Icon, Avatar, Badge, Button, Tabs } from "@devdigest/ui";
-import { RunReviewDropdown } from "../RunReviewDropdown";
+import { RunReviewDropdown } from "../RunReviewDropdown/RunReviewDropdown";
 import { s } from "./styles";
 import type { PrDetail } from "@/lib/types";
 
@@ -28,6 +29,7 @@ export function PrDetailHeader({
   onRunStart,
   onRunsStarted,
 }: PrDetailHeaderProps) {
+  const t = useTranslations("prReview");
   const handleRunStart = useCallback(() => {
     onRunStart();
   }, [onRunStart]);
@@ -73,7 +75,7 @@ export function PrDetailHeader({
               <span style={{ color: "var(--code-del-text)" }}>−{pr.deletions}</span>
             </span>
             <Badge dot bg="transparent" color={statusColor}>
-              {pr.status}
+              {t(`list.status.${pr.status}`)}
             </Badge>
           </div>
         </div>
@@ -87,7 +89,7 @@ export function PrDetailHeader({
               githubUrl && window.open(githubUrl, "_blank", "noopener,noreferrer")
             }
           >
-            View on GitHub
+            {t("detail.viewOnGithub")}
           </Button>
           {prId && (
             <RunReviewDropdown
@@ -103,8 +105,7 @@ export function PrDetailHeader({
         <div style={s.staleBanner}>
           <Icon.AlertTriangle size={13} style={{ color: "var(--warn)", flexShrink: 0 }} />
           <span>
-            This PR is already {pr.status} — running a review is informational and won't affect the
-            merged code.
+            {t("detail.staleBanner", { status: t(`list.status.${pr.status}`) })}
           </span>
         </div>
       )}
@@ -113,9 +114,19 @@ export function PrDetailHeader({
         onChange={onSetTab}
         pad="0"
         tabs={[
-          { key: "overview", label: "Overview", icon: "FileText" },
-          { key: "findings", label: "Agent runs", icon: "AlertOctagon", count: findingsCount || undefined },
-          { key: "diff", label: "Files changed", icon: "Code", count: pr.files_count },
+          { key: "overview", label: t("detail.tabs.overview"), icon: "FileText" },
+          {
+            key: "findings",
+            label: t("detail.tabs.findings"),
+            icon: "AlertOctagon",
+            count: findingsCount || undefined,
+          },
+          {
+            key: "diff",
+            label: t("detail.tabs.diff"),
+            icon: "Code",
+            count: pr.files_count,
+          },
         ]}
       />
     </div>

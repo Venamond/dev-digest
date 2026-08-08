@@ -6,13 +6,15 @@ import React from "react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@devdigest/ui";
 import type { RunTrace, FindingRecord } from "@devdigest/shared";
+import { CostBadge } from "@/components/cost-badge";
+import { displayModelName } from "@/lib/model-label";
 import { PROMPT_COLORS } from "../../constants";
 import { formatSeconds, formatTokens } from "../../helpers";
 import { s } from "../../styles";
-import { TraceSection } from "../TraceSection";
-import { ToolCallRow } from "../ToolCallRow";
-import { PromptBlock } from "../PromptBlock";
-import { FindingsSection } from "../FindingsSection";
+import { TraceSection } from "../TraceSection/TraceSection";
+import { ToolCallRow } from "../ToolCallRow/ToolCallRow";
+import { PromptBlock } from "../PromptBlock/PromptBlock";
+import { FindingsSection } from "../FindingsSection/FindingsSection";
 import { Row, Stat } from "../atoms";
 
 export function TraceBody({ trace, findings }: { trace: RunTrace; findings: FindingRecord[] }) {
@@ -24,7 +26,7 @@ export function TraceBody({ trace, findings }: { trace: RunTrace; findings: Find
         <div style={s.configList}>
           <Row label={t("trace.config.model")}>
             <span className="mono" style={s.configModel}>
-              {trace.config.model}
+              {displayModelName(trace.config.model)}
             </span>
           </Row>
           <Row label={t("trace.config.provider")}>
@@ -63,6 +65,7 @@ export function TraceBody({ trace, findings }: { trace: RunTrace; findings: Find
         <div style={s.statsRow}>
           <Stat label={t("trace.stat.duration")} val={formatSeconds(stats.duration_ms)} />
           <Stat label={t("trace.stat.tokens")} val={formatTokens(stats.tokens_in, stats.tokens_out)} />
+          <Stat label={t("trace.stat.cost")} val={<CostBadge usd={stats.cost_usd} />} />
           <Stat label={t("trace.stat.findings")} val={stats.findings} />
         </div>
       </TraceSection>

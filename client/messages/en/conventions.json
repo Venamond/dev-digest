@@ -5,22 +5,58 @@
     "headingPrefix": "Conventions in ",
     "repoFallback": "repo",
     "subtitle": "Scan the cloned repo to surface house-rules — each backed by evidence you can turn into a Skill.",
+    "scanMeta": "Detected from {count, plural, one {# sample file} other {# sample files}} · last scan {when}",
     "scanning": "Scanning…",
+    "scan": "Scan",
     "rescan": "Re-scan",
-    "runExtraction": "Run extraction",
-    "extractionFailed": "Extraction failed",
+    "extractionFailed": "Scan failed",
     "loadError": "Could not load conventions.",
+    "deselectAll": "Deselect all",
+    "acceptedCount": "{accepted} of {total} accepted",
+    "droppedUngrounded": "{count, plural, one {# candidate dropped — no evidence found} other {# candidates dropped — no evidence found}}",
+    "createSkill": "Create skill",
+    "createSkillHint": "Accept at least one convention first",
     "empty": {
       "title": "No conventions extracted yet",
-      "body": "Scan the repo to surface house-rules — naming, error handling, structure — each backed by evidence you can turn into a Skill.",
-      "cta": "Run extraction"
+      "body": "Use Scan (top right) to look for house-rules — naming, error handling, structure — each backed by evidence you can turn into a Skill."
     },
-    "candidateCount": "{count, plural, one {# candidate} other {# candidates}} · grounded against sampled files"
+    "precondition": {
+      "notClonedTitle": "Repository not cloned",
+      "notClonedBody": "Clone the repository from the switcher before running Conventions Extractor.",
+      "notIndexedTitle": "Repository not indexed",
+      "notIndexedBody": "Index the repository so we can sample its top files. Re-sync from Project Context or Pull Requests.",
+      "notIndexedCta": "Re-sync index",
+      "missingKeyTitle": "Provider API key missing",
+      "missingKeyBody": "Add the API key for the Conventions feature model in Settings → API Keys."
+    }
   },
   "card": {
     "confidence": "Confidence",
     "accepted": "Accepted",
-    "accepting": "Accepting…",
-    "acceptAsSkill": "Accept as Skill"
+    "accept": "Accept",
+    "reject": "Reject",
+    "copyPath": "Copy path",
+    "copied": "Copied",
+    "editRule": "Edit rule",
+    "saveRule": "Save",
+    "cancelEdit": "Cancel"
+  },
+  "modal": {
+    "title": "Create skill from conventions",
+    "banner": "Merged from {count, plural, one {# accepted convention} other {# accepted conventions}} in {repo}. Everything below is editable before you save.",
+    "name": "Name",
+    "description": "Description",
+    "type": "Type",
+    "typeConvention": "convention",
+    "enabled": "Enabled",
+    "enabledHint": "Whether this block is added to agents' prompts.",
+    "body": "Skill body",
+    "unsaved": "unsaved",
+    "tokens": "{tokens} tokens",
+    "footerHint": "Saved as v{version} · added to Skills Lab",
+    "footerSaved": "Saved as v{version} · added to Skills Lab",
+    "cancel": "Cancel",
+    "create": "Create skill",
+    "creating": "Creating…"
   }
 }

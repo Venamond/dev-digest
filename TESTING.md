@@ -39,9 +39,11 @@ If a test wouldn't catch a class of regression we care about, we don't write it.
 surface (list, diff, findings, run controls) and the agent editor.
 
 **server-unit** — the DB-free majority: adapters, prompt assembly, grounding,
-repo-intel ranking & indexing, pricing, route smoke. The `typecheck` job also
-runs on Windows, which doubles as the `@ast-grep/napi` prebuilt gate (install
-fails there if the win32 prebuilt is missing).
+repo-intel ranking & indexing, pricing, route smoke. Typecheck and
+`arch:check` / `arch:check:core` run on Linux only (the platform CI and the
+exported agent-runner both use). Windows/macOS are not CI ship targets —
+`@ast-grep/napi` is exact-pinned so its native binary only changes on a
+deliberate version bump.
 
 **server-integration** — the `*.it.test.ts` files. Each starts a real Postgres
 (pgvector) via testcontainers, builds the Fastify app, migrates + seeds, and

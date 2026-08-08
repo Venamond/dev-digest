@@ -15,10 +15,12 @@ on:
     branches: [main]
     paths:
       - 'server/**'
+      - 'reviewer-core/**'
       - '.github/workflows/server-integration.yml'
   pull_request:
     paths:
       - 'server/**'
+      - 'reviewer-core/**'
       - '.github/workflows/server-integration.yml'
 
 permissions:

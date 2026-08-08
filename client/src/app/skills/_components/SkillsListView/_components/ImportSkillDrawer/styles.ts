@@ -1,0 +1,47 @@
+import type { CSSProperties } from "react";
+
+export const s = {
+  drop: (active: boolean): CSSProperties => ({
+    border: `1px dashed ${active ? "var(--accent)" : "var(--border-strong)"}`,
+    borderRadius: 10,
+    padding: "36px 24px",
+    textAlign: "center",
+    background: active ? "var(--accent-bg)" : "var(--bg-primary)",
+    cursor: "pointer",
+  }),
+  dropHint: { fontSize: 13, color: "var(--text-muted)", marginTop: 8 } satisfies CSSProperties,
+  trust: {
+    marginTop: 16,
+    padding: "12px 14px",
+    borderRadius: 8,
+    background: "var(--bg-hover)",
+    border: "1px solid var(--border)",
+    fontSize: 13,
+    color: "var(--text-secondary)",
+    lineHeight: 1.45,
+  } satisfies CSSProperties,
+  error: { marginTop: 12, fontSize: 13, color: "var(--danger)" } satisfies CSSProperties,
+  draft: { display: "flex", flexDirection: "column", gap: 14 } satisfies CSSProperties,
+  draftLabel: {
+    fontSize: 12,
+    fontWeight: 600,
+    color: "var(--text-muted)",
+    marginBottom: 4,
+    letterSpacing: "0.04em",
+    textTransform: "uppercase",
+  } satisfies CSSProperties,
+  draftValue: { fontSize: 14, color: "var(--text-primary)" } satisfies CSSProperties,
+  bodyPreview: {
+    fontSize: 13,
+    fontFamily: "var(--font-mono, ui-monospace, monospace)",
+    whiteSpace: "pre-wrap",
+    maxHeight: 280,
+    overflow: "auto",
+    padding: 12,
+    borderRadius: 8,
+    background: "var(--bg-primary)",
+    border: "1px solid var(--border)",
+  } satisfies CSSProperties,
+  footer: { display: "flex", justifyContent: "flex-end", gap: 10 } satisfies CSSProperties,
+  fileName: { fontSize: 13, color: "var(--text-secondary)", marginTop: 12 } satisfies CSSProperties,
+} as const;
