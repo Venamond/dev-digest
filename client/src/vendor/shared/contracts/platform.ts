@@ -133,7 +133,11 @@ export type SecretsStatus = z.infer<typeof SecretsStatus>;
 
 // ---- Repos ----
 export const RepoInput = z.object({
-  url: z.string().url(),
+  /** Canonical GitHub repo URL — `https://github.com/<owner>/<repo>`. */
+  url: z
+    .string()
+    .url()
+    .regex(/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/),
 });
 export type RepoInput = z.infer<typeof RepoInput>;
 

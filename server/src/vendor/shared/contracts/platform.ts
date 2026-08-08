@@ -133,7 +133,11 @@ export type SecretsStatus = z.infer<typeof SecretsStatus>;
 
 // ---- Repos ----
 export const RepoInput = z.object({
-  url: z.string().url(),
+  /** Canonical GitHub repo URL — `https://github.com/<owner>/<repo>`. */
+  url: z
+    .string()
+    .url()
+    .regex(/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/),
 });
 export type RepoInput = z.infer<typeof RepoInput>;
 
@@ -143,7 +147,8 @@ export const Repo = z.object({
   owner: z.string(),
   name: z.string(),
   full_name: z.string(),
-  default_branch: z.string(),
+  /** An empty repository has no default branch until its first push. */
+  default_branch: z.string().nullable(),
   clone_path: z.string().nullable(),
   last_polled_at: z.string().nullable(),
   created_by: z.string().nullable(),
