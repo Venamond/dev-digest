@@ -127,7 +127,7 @@ export const SecretsStatus = z.object({
   openai: z.boolean(),
   anthropic: z.boolean(),
   openrouter: z.boolean(),
-  github: z.boolean(),
+  githubPat: z.boolean(),
 });
 export type SecretsStatus = z.infer<typeof SecretsStatus>;
 
