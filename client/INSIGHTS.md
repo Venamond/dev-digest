@@ -21,6 +21,22 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Codebase Patterns
 
+- **i18n namespace follows the component's location, not the feature it serves.**
+  Shared components under `client/src/components/**` call
+  `useTranslations("shell")` (10 of 13 call sites; the rest are `common` /
+  `agents`), while feature components under
+  `client/src/app/**/_components/**` call the feature namespace
+  (`prReview`, `runs`, `prReview.intent`). Consequence when a feature adds copy
+  to a *shared* component — e.g. a per-file badge inside
+  `components/diff-viewer/` for a PR-review feature: the string must go in
+  `client/messages/en/shell.json`, **not** in the feature's
+  `prReview.json`. A key added to the wrong file is unreachable at runtime —
+  `useTranslations` resolves only within the namespace the component itself
+  declared, so the component renders the raw key path instead of the text, and
+  `pnpm typecheck` does not catch it. A feature that touches both layers has to
+  split its copy across two message files on purpose.
+  (2026-08-14, Smart Diff planning)
+
 - **Agent → Skills row order is frozen on load — never re-derive the sort per
   render.** `SkillsTab` used to compute its order every render as "linked rows
   first (by `order`), then unlinked (by name)". Ticking a checkbox links the

@@ -203,6 +203,18 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Tool & Library Notes
 
+- A route `response` schema field typed `X.nullable()` is REQUIRED for the
+  handler to actually return `null` — dropping `.nullable()` from a
+  `response: { 200: X.nullable() }` schema makes `fastify-type-provider-zod`
+  serialize a `null` return value as a `500`, not a `200`. Proven by
+  red-proof mutation in `server/test/intent.it.test.ts` (removed
+  `.nullable()` from the `/pulls/:id/intent` GET response schema; the "no
+  row exists" test failed with `expected 500 to be 200`). Any `GET` route
+  that can legitimately return "no record yet" needs this on the response
+  schema, and a test that asserts the `200 null` case is the only thing that
+  catches it — `pnpm typecheck` does not, since the handler's return type is
+  still valid without it. (2026-08-14, intent-layer test-writer run)
+
 - A JSDoc/block comment that contains the two-character sequence star-slash
   (e.g. documenting a glob like "star-slash + bare") terminates the comment
   early; esbuild then fails with a cryptic "Expected ';' but found …" on a
