@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm';
 import type { Db } from '../../../db/client.js';
 import * as t from '../../../db/schema.js';
 import type { Intent } from '@devdigest/shared';
-import type { PullRow } from '../../../db/rows.js';
+import type { PrCommitRow, PrIntentRow, PullRow } from '../../../db/rows.js';
 
 // ---- PR lookup (workspace-scoped) -----------------------------------------
 
@@ -33,6 +33,10 @@ export async function getPrFiles(
   return db.select().from(t.prFiles).where(eq(t.prFiles.prId, prId));
 }
 
+export async function getPrCommits(db: Db, prId: string): Promise<PrCommitRow[]> {
+  return db.select().from(t.prCommits).where(eq(t.prCommits.prId, prId));
+}
+
 /**
  * Record the commit a review just ran against, so the PR list can derive
  * `reviewed` vs `needs_review` (head moved since the last review) vs `stale`.
@@ -46,7 +50,17 @@ export async function markReviewed(db: Db, prId: string, sha: string): Promise<v
 
 // ---- intent ---------------------------------------------------------------
 
-export async function upsertIntent(db: Db, prId: string, intent: Intent): Promise<void> {
+export async function upsertIntent(
+  db: Db,
+  prId: string,
+  input: {
+    intent: Intent;
+    headSha: string;
+    model: string;
+    classifiedAt: Date;
+  },
+): Promise<void> {
+  const { intent, headSha, model, classifiedAt } = input;
   await db
     .insert(t.prIntent)
     .values({
@@ -54,15 +68,32 @@ export async function upsertIntent(db: Db, prId: string, intent: Intent): Promis
       intent: intent.intent,
       inScope: intent.in_scope,
       outOfScope: intent.out_of_scope,
+      riskAreas: intent.risk_areas,
+      confidence: intent.confidence,
+      sources: intent.sources,
+      missingContext: intent.missing_context,
+      headSha,
+      model,
+      classifiedAt,
     })
     .onConflictDoUpdate({
       target: t.prIntent.prId,
-      set: { intent: intent.intent, inScope: intent.in_scope, outOfScope: intent.out_of_scope },
+      set: {
+        intent: intent.intent,
+        inScope: intent.in_scope,
+        outOfScope: intent.out_of_scope,
+        riskAreas: intent.risk_areas,
+        confidence: intent.confidence,
+        sources: intent.sources,
+        missingContext: intent.missing_context,
+        headSha,
+        model,
+        classifiedAt,
+      },
     });
 }
 
-export async function getIntent(db: Db, prId: string): Promise<Intent | undefined> {
+export async function getIntent(db: Db, prId: string): Promise<PrIntentRow | undefined> {
   const [row] = await db.select().from(t.prIntent).where(eq(t.prIntent.prId, prId));
-  if (!row) return undefined;
-  return { intent: row.intent, in_scope: row.inScope, out_of_scope: row.outOfScope };
+  return row;
 }

@@ -13,7 +13,7 @@ import type { Finding, Intent, RunSummary, RunTrace } from '@devdigest/shared';
  * composes them so its public API stays identical.
  */
 
-import type { FindingRow, PullRow } from '../../db/rows.js';
+import type { FindingRow, PrCommitRow, PrIntentRow, PullRow } from '../../db/rows.js';
 import type { PromptSkillRef } from '../agents/helpers.js';
 export type { FindingRow, PullRow };
 
@@ -38,6 +38,10 @@ export class ReviewRepository {
 
   getPrFiles(prId: string): Promise<(typeof t.prFiles.$inferSelect)[]> {
     return pullRepo.getPrFiles(this.db, prId);
+  }
+
+  getPrCommits(prId: string): Promise<PrCommitRow[]> {
+    return pullRepo.getPrCommits(this.db, prId);
   }
 
   // ---- reviews + findings -------------------------------------------------
@@ -134,11 +138,19 @@ export class ReviewRepository {
 
   // ---- intent -------------------------------------------------------------
 
-  upsertIntent(prId: string, intent: Intent): Promise<void> {
-    return pullRepo.upsertIntent(this.db, prId, intent);
+  upsertIntent(
+    prId: string,
+    input: {
+      intent: Intent;
+      headSha: string;
+      model: string;
+      classifiedAt: Date;
+    },
+  ): Promise<void> {
+    return pullRepo.upsertIntent(this.db, prId, input);
   }
 
-  getIntent(prId: string): Promise<Intent | undefined> {
+  getIntent(prId: string): Promise<PrIntentRow | undefined> {
     return pullRepo.getIntent(this.db, prId);
   }
 

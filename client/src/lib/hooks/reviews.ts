@@ -9,6 +9,7 @@ import { api, API_BASE } from "../api";
 import { notify } from "../toast";
 import type {
   FindingActionKind,
+  PrIntentRecord,
   PrReviewComment,
   ReviewRecord,
   ReviewRunResponse,
@@ -140,6 +141,26 @@ export function useRunReview() {
       }),
     onSuccess: (_d, { prId }) => {
       qc.invalidateQueries({ queryKey: queryKeys.reviews(prId) });
+      qc.invalidateQueries({ queryKey: queryKeys.prIntent(prId) });
+    },
+  });
+}
+
+export function usePrIntent(prId: string | null | undefined) {
+  return useQuery({
+    queryKey: queryKeys.prIntent(prId),
+    queryFn: () => api.get<PrIntentRecord | null>(`/pulls/${prId}/intent`),
+    enabled: !!prId,
+  });
+}
+
+export function useDeriveIntent(prId: string | null | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (opts?: { force?: boolean }) =>
+      api.post<PrIntentRecord>(`/pulls/${prId}/intent`, opts?.force ? { force: true } : {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.prIntent(prId) });
     },
   });
 }

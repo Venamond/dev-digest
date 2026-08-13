@@ -1,13 +1,25 @@
 import type { Container } from '../../platform/container.js';
-import type { Provider, Review, RunTrace, UnifiedDiff } from '@devdigest/shared';
-import { reviewPullRequest, countBlockers } from '@devdigest/reviewer-core';
+import type { PrIntentRecord, Provider, Review, RunTrace, UnifiedDiff } from '@devdigest/shared';
+import {
+  reviewPullRequest,
+  countBlockers,
+  scoreFromFindings,
+  summarizePromptAssembly,
+} from '@devdigest/reviewer-core';
 import { RunLogger } from '../../platform/run-logger.js';
+import {
+  emitPromptAssemblyLog,
+  omittedPromptSlots,
+  promptAssemblyFingerprints,
+} from '../../platform/prompt-log.js';
 import type { AgentRow, RepoRow } from '../../db/rows.js';
 import type { ReviewRepository, FindingRow, PullRow, ReviewRow } from './repository.js';
 import { REVIEW_STRATEGY } from './constants.js';
 import { taskLine } from './helpers.js';
 import { loadDiff } from './diff-loader.js';
 import { promptSkillBodies, promptSkillRefs } from '../agents/helpers.js';
+import { classify, type ClassifyResult } from './intent/classify.js';
+import { scopeFilter } from './intent/scope-filter.js';
 
 /** Thrown by a run when the user cancels it mid-flight (between map files). */
 export class RunCancelledError extends Error {
@@ -104,6 +116,50 @@ export class ReviewRunExecutor {
     }
     runLog.info(`Diff ready — ${diff.files.length} changed file(s); starting ${jobs.length} agent run(s)`);
 
+    let intentResult: ClassifyResult | null = null;
+    try {
+      intentResult = await runLog.step(
+        'Classifying PR intent',
+        () =>
+          classify({
+            container: this.container,
+            reviews: this.repo,
+            workspaceId,
+            pull,
+            repo,
+            force: false,
+          }),
+        { kind: 'tool' },
+      );
+      if (intentResult.reused) {
+        runLog.info(`Reusing intent for head_sha ${pull.headSha}`);
+      } else {
+        runLog.info('PR intent classified', {
+          model: intentResult.model,
+          sources: intentResult.record.sources,
+          tokensIn: intentResult.tokensIn,
+          tokensOut: intentResult.tokensOut,
+        });
+        if (intentResult.promptStats) {
+          emitPromptAssemblyLog({
+            mode: this.container.config.promptLog,
+            runLog,
+            logger,
+            payload: {
+              correlationId: `intent:${pull.id}`,
+              model: intentResult.model,
+              prompt: 'intent',
+              summary: intentResult.promptStats,
+            },
+            fingerprints: intentResult.promptFingerprints,
+          });
+        }
+      }
+    } catch (err) {
+      runLog.info(`intent: skipped — ${(err as Error).message}`);
+      intentResult = null;
+    }
+
     for (const { agent, runId } of jobs) {
       const agentStart = Date.now();
       logger?.info(
@@ -111,7 +167,17 @@ export class ReviewRunExecutor {
         `review: agent "${agent.name}" started (${agent.provider}/${agent.model})`,
       );
       try {
-        const outcome = await this.runOneAgent(workspaceId, pull, repo, diff, agent, runId, runLog);
+        const outcome = await this.runOneAgent(
+          workspaceId,
+          pull,
+          repo,
+          diff,
+          agent,
+          runId,
+          runLog,
+          intentResult,
+          logger,
+        );
         logger?.info(
           {
             runId,
@@ -143,6 +209,8 @@ export class ReviewRunExecutor {
     agent: AgentRow,
     runId: string,
     parentLog: RunLogger,
+    intentResult: ClassifyResult | null,
+    logger?: Logger,
   ): Promise<RunOutcome> {
     const start = Date.now();
     // Narrow the fanned-out pre-work logger to THIS run; the shared diff/intent
@@ -181,7 +249,8 @@ export class ReviewRunExecutor {
       const repoMap = repoIntelOn ? await this.buildRepoMapDigest(pull.repoId, runLog) : undefined;
       const rankNote = repoIntelOn ? await this.buildRankNote(pull.repoId, diff, runLog) : '';
 
-      const task = taskLine(pull) + rankNote;
+      const record: PrIntentRecord | null = intentResult?.record ?? null;
+      const task = taskLine(pull, record ?? undefined) + rankNote;
 
       // Skills: bodies where skills.enabled AND agent_skills.enabled, order ASC.
       // Empty → assemblePrompt omits the Skills section (trace skills = null).
@@ -219,16 +288,38 @@ export class ReviewRunExecutor {
         // PR author's description/body — untrusted; assemblePrompt wraps +
         // truncates it. Omitted when the PR has no body.
         ...(pull.body ? { prDescription: pull.body } : {}),
+        ...(record ? { intent: record } : {}),
         task,
         sessionId: `${repo.owner}/${repo.name}#${pull.number}:${agent.name}`,
-        onEvent: (e) => runLog.event(e.kind, e.msg, e.data),
+        correlationId: runId,
+        onEvent: (e) => {
+          if (e.msg === 'Prompt assembled' && this.container.config.promptLog === 'off') return;
+          runLog.event(e.kind, e.msg, e.data);
+        },
         checkCancelled: () => {
           if (this.container.runBus.isCancelled(runId)) throw new RunCancelledError();
         },
       });
       const { tokensIn, tokensOut, grounding, costUsd } = outcome;
 
-      const keptFindings = outcome.review.findings;
+      if (this.container.config.promptLog === 'verbose') {
+        emitPromptAssemblyLog({
+          mode: 'verbose',
+          logger,
+          payload: {
+            correlationId: runId,
+            model: agent.model,
+            prompt: 'review',
+            summary: summarizePromptAssembly(outcome.assembly, { diffChars: diff.raw.length }),
+          },
+          fingerprints: promptAssemblyFingerprints(outcome.assembly),
+          omitted: omittedPromptSlots(outcome.assembly),
+          skipSummary: true,
+        });
+      }
+
+      const kept = scopeFilter(outcome.review.findings, record?.out_of_scope ?? []);
+      const score = scoreFromFindings(kept);
 
       // The user may have deleted this run (timeline trash icon) while the LLM
       // call above was still in flight — `deleteAgentRun` only removes a
@@ -251,10 +342,10 @@ export class ReviewRunExecutor {
         kind: 'review',
         verdict: outcome.review.verdict,
         summary: outcome.review.summary,
-        score: outcome.review.score,
+        score,
         model: agent.model,
       });
-      const findingRows = await this.repo.insertFindings(review.id, keptFindings);
+      const findingRows = await this.repo.insertFindings(review.id, kept);
       runLog.result(`Persisted review ${review.id} with ${findingRows.length} finding(s)`);
 
       // Mark the commit this review ran against so the PR list can tell
@@ -265,7 +356,7 @@ export class ReviewRunExecutor {
 
       // Deterministic blocker count (severity ≥ the agent's gate) — the signal
       // the timeline colors on, NOT the model's self-reported verdict.
-      const blockers = countBlockers(keptFindings, agent.ciFailOn);
+      const blockers = countBlockers(kept, agent.ciFailOn);
 
       // ---- Observability: agent_runs + ONE run_traces document --------------
       await this.repo.completeAgentRun(runId, {
@@ -275,7 +366,7 @@ export class ReviewRunExecutor {
         tokensOut,
         findingsCount: findingRows.length,
         grounding,
-        score: outcome.review.score,
+        score,
         blockers,
         costUsd,
         error: null,
@@ -299,12 +390,24 @@ export class ReviewRunExecutor {
           grounding,
         },
         prompt_assembly: outcome.assembly,
-        tool_calls: outcome.chunks.map((c) => ({
-          tool: 'review_file',
-          args: c.label,
-          meta: outcome.mode,
-          ms: Math.round(durationMs / Math.max(outcome.chunks.length, 1)),
-        })),
+        tool_calls: [
+          ...(intentResult && !intentResult.reused
+            ? [
+                {
+                  tool: 'intent_classifier',
+                  args: intentResult.model,
+                  meta: 'PrIntent',
+                  ms: Math.round(intentResult.durationMs),
+                },
+              ]
+            : []),
+          ...outcome.chunks.map((c) => ({
+            tool: 'review_file',
+            args: c.label,
+            meta: outcome.mode,
+            ms: Math.round(durationMs / Math.max(outcome.chunks.length, 1)),
+          })),
+        ],
         raw_output: outcome.raw,
         memory_pulled: [],
         specs_read: [],

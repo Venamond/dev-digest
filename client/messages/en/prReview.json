@@ -69,6 +69,21 @@
   "overview": {
     "description": "Description"
   },
+  "intent": {
+    "title": "Intent",
+    "inScope": "In scope",
+    "outOfScope": "Out of scope",
+    "risks": "Risk areas",
+    "derive": "Derive",
+    "rederive": "Re-derive",
+    "recompute": "Recompute",
+    "stale": "This intent was classified against an older head commit. Recompute to refresh it.",
+    "empty": "No intent classified yet.",
+    "confidence": "Confidence",
+    "sources": "Sources",
+    "missing": "Missing context",
+    "unavailable": "Unavailable"
+  },
   "severity": {
     "CRITICAL": "CRITICAL",
     "WARNING": "WARNING",

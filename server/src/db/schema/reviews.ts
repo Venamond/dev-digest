@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { pgTable, uuid, text, integer, jsonb, timestamp, doublePrecision } from 'drizzle-orm/pg-core';
+import type { IntentMissingContext, IntentRiskArea } from '@devdigest/shared';
 import { now } from './_shared';
 import { workspaces } from './core';
 import { pullRequests } from './pulls';
@@ -52,6 +53,13 @@ export const prIntent = pgTable('pr_intent', {
   intent: text('intent').notNull(),
   inScope: jsonb('in_scope').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
   outOfScope: jsonb('out_of_scope').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  riskAreas: jsonb('risk_areas').$type<IntentRiskArea[]>().notNull().default(sql`'[]'::jsonb`),
+  confidence: doublePrecision('confidence').notNull().default(0),
+  sources: jsonb('sources').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  missingContext: jsonb('missing_context').$type<IntentMissingContext[]>().notNull().default(sql`'[]'::jsonb`),
+  headSha: text('head_sha'),
+  model: text('model'),
+  classifiedAt: timestamp('classified_at', { withTimezone: true }),
 });
 
 export const prBrief = pgTable('pr_brief', {

@@ -8,6 +8,7 @@ import {
   ReviewRecord,
   FindingRecord,
   ReviewRunResponse,
+  PrIntentRecord,
 } from '@devdigest/shared';
 import type { RunEvent } from '@devdigest/shared';
 import { getContext } from '../_shared/context.js';
@@ -195,4 +196,37 @@ export default async function reviewsRoutes(appBase: FastifyInstance) {
       },
     );
   }
+
+  app.get(
+    '/pulls/:id/intent',
+    {
+      schema: { params: IdParams, response: { 200: PrIntentRecord.nullable() } },
+    },
+    async (req) => {
+      const { workspaceId } = await getContext(container, req);
+      return service.getIntent(workspaceId, req.params.id);
+    },
+  );
+
+  app.post(
+    '/pulls/:id/intent',
+    {
+      schema: {
+        params: IdParams,
+        body: z.object({ force: z.boolean().optional() }).optional(),
+        response: { 200: PrIntentRecord },
+      },
+      config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
+    },
+    async (req) => {
+      const { workspaceId } = await getContext(container, req);
+      const body = req.body ?? {};
+      return service.deriveIntent(
+        workspaceId,
+        req.params.id,
+        { force: body.force, correlationId: req.id },
+        req.log,
+      );
+    },
+  );
 }

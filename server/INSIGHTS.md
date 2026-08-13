@@ -24,6 +24,16 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Codebase Patterns
 
+- **Prompt-assembly logs are metadata-only.** `summarizePromptAssembly` /
+  `toPromptLogPayload` (`platform/prompt-log.ts`) record section name, source,
+  char/token length, model, and correlation id — never API keys, the diff,
+  spec bodies, PR description, or intent JSON. `DEVDIGEST_PROMPT_LOG=verbose`
+  adds sha256-12 fingerprints of those bodies to **pino only** (not the SSE
+  Live Log / persisted `run_traces.log`); it is clamped to `summary` when
+  `NODE_ENV=production` even if the env var is set. Default is `summary`;
+  `off` disables the extra events. Do not log `PromptAssembly` fields
+  directly. (2026-08-13)
+
 - **If an agent's system prompt enumerates the same detection rules its skills
   carry, the skills become decorative — they can only reword findings, never
   add a detection.** Diagnosed 2026-08-08 on `API Contract Reviewer`: its
@@ -343,6 +353,13 @@ ground truth — wrap-ups can mischaracterize a session.
   all. (2026-08-08, Agents Lab card-stats fix)
 
 ## Recurring Errors & Fixes
+
+- OpenRouter `404 No endpoints found for deepseek/deepseek-v4-flash` after
+  sending `provider: { order: ['DeepSeek'], allow_fallbacks: false }`. That
+  slug is **not** hosted on OpenRouter's DeepSeek upstream; pinning drops
+  every real endpoint. Do not set `provider.order` / `allow_fallbacks: false`
+  for this default model. `temperature: 0` + `seed` is enough; keep OpenRouter
+  free to pick an available host. (2026-08-13)
 
 - Deleting a run (timeline trash icon → `deleteAgentRun`) while its LLM call
   is still in flight orphans a `reviews`/`findings` row: `runOneAgent`
