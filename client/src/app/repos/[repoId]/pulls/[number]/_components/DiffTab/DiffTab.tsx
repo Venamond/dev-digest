@@ -3,10 +3,12 @@
 import React from "react";
 import { useTranslations } from "next-intl";
 import { SectionLabel, Button } from "@devdigest/ui";
-import { DiffViewer, type DiffCommentApi } from "@/components/diff-viewer";
-import { usePrComments, useCreatePrComment } from "@/lib/hooks/reviews";
+import { DiffViewer, type DiffCommentApi, type DiffLineTarget } from "@/components/diff-viewer";
+import { usePrComments, useCreatePrComment, useSmartDiff } from "@/lib/hooks/reviews";
 import { notify } from "@/lib/toast";
 import type { PrFile } from "@devdigest/shared";
+import { SmartDiffViewer } from "../SmartDiffViewer/SmartDiffViewer";
+import { DEFAULT_DIFF_ORDER, type DiffOrder } from "../SmartDiffViewer/constants";
 
 interface DiffTabProps {
   prId: string | null;
@@ -22,6 +24,12 @@ export function DiffTab({ prId, filesCount, files, canComment }: DiffTabProps) {
   const create = useCreatePrComment(prId);
   // Comments start hidden so the diff is clean by default — toggle to reveal.
   const [showComments, setShowComments] = React.useState(false);
+
+  const { data: smartDiff } = useSmartDiff(prId);
+  const [order, setOrder] = React.useState<DiffOrder>(DEFAULT_DIFF_ORDER);
+  const [target, setTarget] = React.useState<DiffLineTarget | null>(null);
+  const onJumpToLine = (path: string, line: number) =>
+    setTarget((prev) => ({ path, line, nonce: (prev?.nonce ?? 0) + 1 }));
 
   const commentCount = comments?.length ?? 0;
 
@@ -63,7 +71,15 @@ export function DiffTab({ prId, filesCount, files, canComment }: DiffTabProps) {
       >
         {t("diffTab.sectionLabel", { count: filesCount })}
       </SectionLabel>
-      <DiffViewer files={files} commenting={commenting} />
+      <SmartDiffViewer smartDiff={smartDiff} order={order} onOrderChange={setOrder} />
+      <DiffViewer
+        files={files}
+        commenting={commenting}
+        smartDiff={smartDiff ?? null}
+        grouped={order === "smart"}
+        target={target}
+        onJumpToLine={onJumpToLine}
+      />
     </section>
   );
 }

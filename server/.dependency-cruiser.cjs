@@ -8,7 +8,7 @@ module.exports = {
         'Ring 0 (domain) must have no I/O. It defines port interfaces; ' +
         'ring 2 implements them. See .claude/skills/onion-architecture/rules/layers.md',
       from: {
-        path: '^(src/vendor/shared|src/platform/grounding\\.ts|src/modules/pulls/status\\.ts)',
+        path: '^(src/vendor/shared|src/platform/grounding\\.ts|src/modules/pulls/status\\.ts|src/modules/smart-diff/pure/)',
       },
       to: {
         path: '^(node_modules/\\.pnpm/[^/]+/node_modules/(fastify|drizzle-orm|octokit|postgres|simple-git|@fastify)|node_modules/(fastify|drizzle-orm|octokit|postgres|simple-git|@fastify)|octokit$|src/db/)',
@@ -19,7 +19,7 @@ module.exports = {
       severity: 'error',
       comment: 'Ring 0 must not touch Node builtins (fs, child_process, …).',
       from: {
-        path: '^(src/vendor/shared|src/platform/grounding\\.ts|src/modules/pulls/status\\.ts)',
+        path: '^(src/vendor/shared|src/platform/grounding\\.ts|src/modules/pulls/status\\.ts|src/modules/smart-diff/pure/)',
       },
       to: { dependencyTypes: ['core'] },
     },
@@ -41,11 +41,13 @@ module.exports = {
       comment:
         'Ring 1 (services, helpers, executors, pipelines) may name row shapes ' +
         'via src/db/rows.ts, but must not import the Drizzle table objects or ' +
-        'the query builder. See rules/drizzle-repositories.md',
+        'the query builder. See rules/drizzle-repositories.md. ' +
+        'src/modules/smart-diff/pure/ is the classifier/summarizer/assembler — ' +
+        'pure, DB-free by design.',
       from: {
         // feature-models is application-layer (reads settings via repository);
         // keep it in the ring-1 ban so it never grows a direct drizzle import again.
-        path: '^src/modules/[^/]+/(service|helpers|run-executor|diff-loader|feature-models)\\.ts$|^src/modules/repo-intel/pipeline/|^src/modules/reviews/intent/',
+        path: '^src/modules/[^/]+/(service|helpers|run-executor|diff-loader|feature-models)\\.ts$|^src/modules/repo-intel/pipeline/|^src/modules/reviews/intent/|^src/modules/smart-diff/pure/',
       },
       to: {
         path: '^(node_modules/\\.pnpm/[^/]+/node_modules/drizzle-orm|node_modules/drizzle-orm|src/db/schema)',

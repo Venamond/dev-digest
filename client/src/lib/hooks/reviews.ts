@@ -15,6 +15,7 @@ import type {
   ReviewRunResponse,
   RunEvent,
   RunSummary,
+  SmartDiffResponse,
 } from "@devdigest/shared";
 
 // ---- Active (in-flight) runs — server-side source of truth ----
@@ -76,6 +77,7 @@ export function useDeleteRun(prId: string | null | undefined) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.prRuns(prId) });
       qc.invalidateQueries({ queryKey: queryKeys.reviews(prId) });
+      qc.invalidateQueries({ queryKey: queryKeys.smartDiff(prId) });
     },
   });
 }
@@ -92,7 +94,10 @@ export function useDeleteReview(prId: string | null | undefined) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (reviewId: string) => api.del<{ ok: boolean }>(`/reviews/${reviewId}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.reviews(prId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.reviews(prId) });
+      qc.invalidateQueries({ queryKey: queryKeys.smartDiff(prId) });
+    },
   });
 }
 
@@ -142,6 +147,7 @@ export function useRunReview() {
     onSuccess: (_d, { prId }) => {
       qc.invalidateQueries({ queryKey: queryKeys.reviews(prId) });
       qc.invalidateQueries({ queryKey: queryKeys.prIntent(prId) });
+      qc.invalidateQueries({ queryKey: queryKeys.smartDiff(prId) });
     },
   });
 }
@@ -150,6 +156,15 @@ export function usePrIntent(prId: string | null | undefined) {
   return useQuery({
     queryKey: queryKeys.prIntent(prId),
     queryFn: () => api.get<PrIntentRecord | null>(`/pulls/${prId}/intent`),
+    enabled: !!prId,
+  });
+}
+
+/** Deterministic role-sorted diff (core/wiring/boilerplate), zero LLM calls. */
+export function useSmartDiff(prId: string | null | undefined) {
+  return useQuery({
+    queryKey: queryKeys.smartDiff(prId),
+    queryFn: () => api.get<SmartDiffResponse>(`/pulls/${prId}/smart-diff`),
     enabled: !!prId,
   });
 }
@@ -166,6 +181,8 @@ export function useDeriveIntent(prId: string | null | undefined) {
 }
 
 // ---- Finding actions (accept/dismiss) ----
+// Deliberately does NOT invalidate the smart-diff query key: accept/dismiss
+// only mutates accepted_at/dismissed_at, so finding_lines is unchanged (plan §2b).
 export function useFindingAction() {
   const qc = useQueryClient();
   return useMutation({

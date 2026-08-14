@@ -64,6 +64,48 @@ export const s = {
     color: "var(--text-primary)",
     paddingRight: 12,
   } satisfies CSSProperties,
+  groupSection: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+  } satisfies CSSProperties,
+  groupHeader: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "6px 2px",
+    cursor: "pointer",
+    background: "transparent",
+    border: "none",
+    width: "100%",
+    textAlign: "left",
+  } satisfies CSSProperties,
+  groupLabel: {
+    fontSize: 13,
+    fontWeight: 600,
+    color: "var(--text-primary)",
+  } satisfies CSSProperties,
+  groupCount: {
+    fontSize: 12,
+    color: "var(--text-muted)",
+  } satisfies CSSProperties,
+  groupBody: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+  } satisfies CSSProperties,
+  findingsBadge: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 4,
+    fontSize: 12,
+    color: "var(--accent-text)",
+    background: "var(--accent-bg)",
+    border: "none",
+    borderRadius: 999,
+    padding: "2px 8px",
+    cursor: "pointer",
+  } satisfies CSSProperties,
 } as const;
 
 /** Chevron rotates 90deg when the file card is open. */

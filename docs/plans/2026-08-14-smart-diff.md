@@ -2,7 +2,7 @@
 
 - **Date:** 2026-08-14
 - **Author:** planner
-- **Status:** draft — the human flips this to `approved` before implementation
+- **Status:** approved
 
 ## 0. Context & scope
 

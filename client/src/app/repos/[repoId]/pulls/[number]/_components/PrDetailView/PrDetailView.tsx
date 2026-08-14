@@ -141,6 +141,9 @@ export function PrDetailView() {
               invalidateActiveRuns();
               invalidateRunHistory();
               refetchReviews();
+              // SSE `done` fires after findings are persisted — this is what
+              // makes Smart Diff's "N findings" badges appear without a reload.
+              if (prId) qc.invalidateQueries({ queryKey: queryKeys.smartDiff(prId) });
             }}
           />
         )}

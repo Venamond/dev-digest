@@ -265,6 +265,21 @@ ground truth — wrap-ups can mischaracterize a session.
   same reference from the mock. Regression: `AgentEditor.test.tsx` Skills tab.
   (2026-08-05, Track C agent skills bind)
 
+- **A second top-level key with the same name in one `messages/<locale>/*.json`
+  file silently shadows the first — `JSON.parse` keeps only the last
+  occurrence, and nothing catches it.** `useTranslations` then reports every
+  key from the discarded block as `MISSING_MESSAGE` at runtime (raw key path
+  rendered, `IntlError` logged) since `layout.tsx` sets no `onError` /
+  `getMessageFallback`. `pnpm typecheck` does not see message files at all,
+  and there is no i18n-key linter in this repo. Concrete trap: adding a new
+  feature's copy under a key that already exists elsewhere in the same file
+  (e.g. two unrelated features both naming their block `"smartDiff"`) is a
+  silent no-op for the older or newer block depending on JSON key order, not
+  a merge. Before adding a top-level key to a message file, grep that exact
+  file for the key name first — `grep -n '"<key>":' client/messages/en/<file>.json`.
+  (2026-08-14, Smart Diff implementation — caught by `architecture-reviewer`,
+  not by any automated gate)
+
 - React DOM console warning "Updating a style property during rerender
   (borderColor) when a conflicting property is set (borderLeftColor)":
   `borderColor` in a React style object is itself CSS shorthand for all 4

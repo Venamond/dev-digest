@@ -15,11 +15,13 @@ export function CodeLine({
   path,
   threads,
   commenting,
+  anchorRef,
 }: {
   ln: Line;
   path: string;
   threads: CommentThread[];
   commenting?: DiffCommentApi;
+  anchorRef?: React.Ref<HTMLDivElement>;
 }) {
   const t = useTranslations("shell");
   const [hover, setHover] = React.useState(false);
@@ -39,6 +41,7 @@ export function CodeLine({
 
   return (
     <div
+      ref={anchorRef}
       style={cs.rowWrap}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}

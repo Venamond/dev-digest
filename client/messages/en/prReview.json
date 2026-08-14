@@ -104,6 +104,15 @@
     "hideComments": "Hide comments ({count})",
     "postError": "Couldn't post the comment to GitHub."
   },
+  "smartDiff": {
+    "order": {
+      "smart": "Smart order",
+      "original": "Original order"
+    },
+    "empty": "No changed files imported yet — open this PR's Files changed tab to load them.",
+    "tooBig": "This PR is large ({lines} reviewable lines). Consider splitting it:",
+    "proposedSplit": "{name} ({count} files)"
+  },
   "runStatus": {
     "elapsed": "Running · {count} agent(s)",
     "approved": "approved",
@@ -114,16 +123,6 @@
     "running": "running",
     "findings": "{count} finding(s)",
     "blockers": " · {count} blockers"
-  },
-  "smartDiff": {
-    "coreLabel": "Core",
-    "wiringLabel": "Wiring",
-    "boilerplateLabel": "Boilerplate",
-    "largeTitle": "This PR is large ({lines} changed lines)",
-    "largeBody": "Consider splitting it into smaller, focused PRs for easier review:",
-    "filesCount": "{count} files",
-    "findingLines": "{count} finding-lines",
-    "groupedByRole": "Smart Diff · grouped by role"
   },
   "list": {
     "breadcrumb": "Pull Requests",
