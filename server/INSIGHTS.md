@@ -24,6 +24,28 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Codebase Patterns
 
+- **`reviews.kind` is an enum of `'summary' | 'review'`
+  (`db/schema/reviews.ts:21`), but no *production* path ever writes
+  `'summary'`.** The only creation site is `run-executor.ts:342`, which
+  hardcodes `kind: 'review'`; `db/seed.ts` does the same (`:143`, `:493`,
+  `:508`). The sole `'summary'` insert in the repo is a deliberate test
+  fixture — `server/test/smart-diff.it.test.ts:172`, which exists precisely
+  to prove that `smart-diff`'s `kind='review'` filter excludes it
+  (`:198-202`).
+
+  Consequence for anyone reasoning about review sets: queries that filter
+  `eq(t.reviews.kind, 'review')` (`smart-diff/repository.ts`'s
+  `findingLinesByFile`, `pulls/repository.ts:128`) and ones that do not
+  (`reviews/repository/review.repo.ts:58-74` `reviewsForPull` — no `kind`
+  predicate at all) return **identical rows against real data**, and diverge
+  **only under that one test fixture**. The relationship is
+  `filtered ⊆ unfiltered`, never the reverse — so a finding reachable
+  through a `kind='review'` query always has a rendered card, while the
+  inverse can fail in tests only. Check which direction actually applies
+  before designing around it: a plan in this repo once inverted it and
+  invented a user-facing failure mode that cannot occur.
+  (2026-08-15, Smart Diff acceptance-gap planning)
+
 - **Prompt-assembly logs are metadata-only.** `summarizePromptAssembly` /
   `toPromptLogPayload` (`platform/prompt-log.ts`) record section name, source,
   char/token length, model, and correlation id — never API keys, the diff,
