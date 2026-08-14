@@ -2,8 +2,7 @@ import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import type { PrFile } from "@/lib/types";
-import type { SmartDiff } from "@devdigest/shared";
-import type { DiffLineTarget } from "../target";
+import type { FindingRecord, SmartDiff } from "@devdigest/shared";
 import messages from "../../../../messages/en/shell.json";
 import { DiffViewer } from "./DiffViewer";
 
@@ -92,16 +91,6 @@ describe("DiffViewer — grouped=true / Smart order", () => {
     expect(screen.getByText("Other files")).toBeInTheDocument();
     expect(screen.getByText("orphanLine")).toBeInTheDocument();
   });
-
-  it("a target pointing at a file inside a collapsed group force-expands that group", () => {
-    const target: DiffLineTarget = { path: BOILERPLATE_FILE.path, line: 1, nonce: 1 };
-    renderWithIntl(
-      <DiffViewer files={[CORE_FILE, WIRING_FILE, BOILERPLATE_FILE]} smartDiff={smartDiff()} grouped target={target} />,
-    );
-    // Group force-expanded, and (per FileCard's own role-aware target logic)
-    // the file card inside it force-expands too.
-    expect(screen.getByText("lockLine")).toBeInTheDocument();
-  });
 });
 
 describe("DiffViewer — no smart-diff data", () => {
@@ -109,5 +98,66 @@ describe("DiffViewer — no smart-diff data", () => {
     renderWithIntl(<DiffViewer files={[CORE_FILE]} smartDiff={null} grouped />);
     expect(screen.queryByText("Core logic")).not.toBeInTheDocument();
     expect(screen.getByText("coreLine")).toBeInTheDocument();
+  });
+});
+
+function finding(over: Partial<FindingRecord> = {}): FindingRecord {
+  return {
+    id: "f1",
+    severity: "CRITICAL",
+    category: "security",
+    title: "Hardcoded secret",
+    file: CORE_FILE.path,
+    start_line: 1,
+    end_line: 1,
+    rationale: "A secret.",
+    suggestion: null,
+    confidence: 0.9,
+    kind: "finding",
+    trifecta_components: null,
+    evidence: null,
+    review_id: "r1",
+    accepted_at: null,
+    dismissed_at: null,
+    ...over,
+  };
+}
+
+describe("DiffViewer — finding markers", () => {
+  it("renders the marker inside the core group in Smart order; click calls onOpenFinding", () => {
+    const onOpenFinding = vi.fn();
+    renderWithIntl(
+      <DiffViewer
+        files={[CORE_FILE, WIRING_FILE, BOILERPLATE_FILE]}
+        smartDiff={smartDiff()}
+        grouped
+        findings={[finding()]}
+        onOpenFinding={onOpenFinding}
+      />,
+    );
+    expect(screen.getByText("Hardcoded secret")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Hardcoded secret"));
+    expect(onOpenFinding).toHaveBeenCalledWith("f1");
+  });
+
+  it("hides the marker in Original order while keeping the findings badge", () => {
+    renderWithIntl(
+      <DiffViewer files={[CORE_FILE]} smartDiff={smartDiff()} grouped={false} findings={[finding()]} />,
+    );
+    expect(screen.queryByText("Hardcoded secret")).not.toBeInTheDocument();
+    expect(screen.getByText("1 findings")).toBeInTheDocument();
+  });
+
+  it("renders a leftover-file marker inside Other files", () => {
+    renderWithIntl(
+      <DiffViewer
+        files={[CORE_FILE, LEFTOVER_FILE]}
+        smartDiff={smartDiff()}
+        grouped
+        findings={[finding({ file: LEFTOVER_FILE.path })]}
+      />,
+    );
+    expect(screen.getByText("Other files")).toBeInTheDocument();
+    expect(screen.getByText("Hardcoded secret")).toBeInTheDocument();
   });
 });

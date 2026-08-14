@@ -2,13 +2,52 @@ import type { CSSProperties } from "react";
 
 /** Colocated JS style objects — not Tailwind (client/INSIGHTS.md). */
 export const s = {
-  row: {
+  header: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+    marginBottom: 14,
+  } satisfies CSSProperties,
+  topRow: {
     display: "flex",
     alignItems: "center",
-    flexWrap: "wrap",
     gap: 10,
-    marginBottom: 10,
   } satisfies CSSProperties,
+  eyebrow: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 10,
+    minWidth: 0,
+  } satisfies CSSProperties,
+  eyebrowText: {
+    fontSize: 12,
+    fontWeight: 700,
+    letterSpacing: "0.07em",
+    textTransform: "uppercase",
+    color: "var(--text-muted)",
+  } satisfies CSSProperties,
+  right: {
+    marginLeft: "auto",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 10,
+    flexShrink: 0,
+  } satisfies CSSProperties,
+  stats: {
+    display: "flex",
+    alignItems: "baseline",
+    gap: 8,
+    fontSize: 16,
+    fontWeight: 600,
+    color: "var(--text-primary)",
+    paddingLeft: 24,
+  } satisfies CSSProperties,
+  statsSep: {
+    color: "var(--text-muted)",
+    fontWeight: 500,
+  } satisfies CSSProperties,
+  add: { color: "var(--code-add-text)", fontVariantNumeric: "tabular-nums" } satisfies CSSProperties,
+  del: { color: "var(--code-del-text)", fontVariantNumeric: "tabular-nums" } satisfies CSSProperties,
   toggle: {
     display: "inline-flex",
     borderRadius: 7,
@@ -33,7 +72,6 @@ export const s = {
     color: active ? "var(--accent-text)" : "var(--text-muted)",
   }),
   banner: {
-    flexBasis: "100%",
     fontSize: 13,
     color: "var(--warn)",
     background: "var(--warn-bg, transparent)",
@@ -59,6 +97,15 @@ export const s = {
   empty: {
     fontSize: 13,
     color: "var(--text-muted)",
-    marginBottom: 10,
+    paddingLeft: 24,
   } satisfies CSSProperties,
+  tokenHint: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    paddingLeft: 24,
+    fontSize: 12,
+    color: "var(--text-muted)",
+  } satisfies CSSProperties,
+  tokenHintIcon: { color: "var(--warn)", flexShrink: 0 } satisfies CSSProperties,
 } as const;

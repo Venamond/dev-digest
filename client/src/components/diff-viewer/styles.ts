@@ -5,11 +5,29 @@ import type { Line } from "./helpers";
 export const s = {
   list: { display: "flex", flexDirection: "column", gap: 10 } satisfies CSSProperties,
   empty: { padding: "24px", fontSize: 14, color: "var(--text-muted)", textAlign: "center" } satisfies CSSProperties,
-  fileCard: {
-    border: "1px solid var(--border)",
+  fileCard: (large: boolean): CSSProperties => ({
+    // All-longhand, including per-side *Color (never pair `borderColor` — a
+    // shorthand for all 4 sides — with `borderLeftColor`).
+    borderStyle: "solid",
+    borderWidth: 1,
+    borderTopColor: "var(--border)",
+    borderRightColor: "var(--border)",
+    borderBottomColor: "var(--border)",
+    borderLeftWidth: large ? 3 : 1,
+    borderLeftColor: large ? "var(--warn)" : "var(--border)",
     borderRadius: 7,
     overflow: "hidden",
     background: "var(--bg-elevated)",
+  }),
+  largeChip: {
+    display: "inline-flex",
+    alignItems: "center",
+    fontSize: 12,
+    fontWeight: 600,
+    color: "var(--warn)",
+    background: "transparent",
+    borderRadius: 999,
+    padding: "2px 8px",
   } satisfies CSSProperties,
   fileHeader: {
     display: "flex",
@@ -105,6 +123,32 @@ export const s = {
     borderRadius: 999,
     padding: "2px 8px",
     cursor: "pointer",
+  } satisfies CSSProperties,
+  findingMarker: (sevColor: string): CSSProperties => ({
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    width: "100%",
+    textAlign: "left",
+    cursor: "pointer",
+    borderStyle: "solid",
+    borderTopWidth: 0,
+    borderRightWidth: 0,
+    borderBottomWidth: 0,
+    borderLeftWidth: 3,
+    borderLeftColor: sevColor,
+    background: "var(--bg-surface)",
+    padding: "4px 12px 4px 10px",
+    fontSize: 12.5,
+  }),
+  findingMarkerTitle: {
+    color: "var(--text-primary)",
+    fontWeight: 500,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    minWidth: 0,
+    flex: 1,
   } satisfies CSSProperties,
 } as const;
 

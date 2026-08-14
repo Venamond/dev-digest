@@ -18,13 +18,15 @@ export function FindingsPanel({
   repoFullName,
   headSha,
   severityFilter,
+  targetFindingId,
 }: {
   findings: FindingRecord[];
   prId: string;
   repoFullName?: string | null;
   headSha?: string | null;
-  /** When set, only findings of this severity are shown (PR-level severity counters). */
+  /** When set, only findings of that severity are shown (per-run filter). */
   severityFilter?: string | null;
+  targetFindingId?: string | null;
 }) {
   const t = useTranslations("prReview");
   const action = useFindingAction();
@@ -34,9 +36,15 @@ export function FindingsPanel({
   const [focusIdx, setFocusIdx] = React.useState(0);
 
   const shown = React.useMemo(
-    () => visibleFindings(findings, hideLow, severityFilter),
-    [findings, hideLow, severityFilter],
+    () => visibleFindings(findings, hideLow, severityFilter, targetFindingId),
+    [findings, hideLow, severityFilter, targetFindingId],
   );
+
+  React.useEffect(() => {
+    if (!targetFindingId) return;
+    const i = shown.findIndex((f) => f.id === targetFindingId);
+    if (i >= 0) setFocusIdx(i);
+  }, [targetFindingId, shown]);
 
   // Shortcuts only apply after the user interacts inside this panel — never
   // globally on the PR page (a/d used to accept/dismiss finding 0 by accident).
@@ -82,6 +90,7 @@ export function FindingsPanel({
               key={f.id}
               f={f}
               focused={i === focusIdx}
+              targeted={f.id === targetFindingId}
               defaultExpanded={i === 0}
               pending={action.isPending}
               repoFullName={repoFullName}

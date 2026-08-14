@@ -4,24 +4,28 @@
 
 import React from "react";
 import { useTranslations } from "next-intl";
+import type { FindingRecord } from "@devdigest/shared";
 import { commentTargetFor, type CommentThread, type DiffCommentApi, cs } from "../comments";
 import { type Line } from "../helpers";
 import { s, lineRowFor, lineSignFor } from "../styles";
 import { CommentThreadView } from "../CommentThreadView";
 import { InlineComposer } from "../InlineComposer";
+import { FindingMarker } from "../FindingMarker";
 
 export function CodeLine({
   ln,
   path,
   threads,
   commenting,
-  anchorRef,
+  findings,
+  onOpenFinding,
 }: {
   ln: Line;
   path: string;
   threads: CommentThread[];
   commenting?: DiffCommentApi;
-  anchorRef?: React.Ref<HTMLDivElement>;
+  findings?: FindingRecord[];
+  onOpenFinding?: (findingId: string) => void;
 }) {
   const t = useTranslations("shell");
   const [hover, setHover] = React.useState(false);
@@ -41,7 +45,6 @@ export function CodeLine({
 
   return (
     <div
-      ref={anchorRef}
       style={cs.rowWrap}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
@@ -68,6 +71,10 @@ export function CodeLine({
           {ln.text || " "}
         </span>
       </div>
+
+      {findings?.map((f) => (
+        <FindingMarker key={f.id} finding={f} onOpenFinding={onOpenFinding} />
+      ))}
 
       {commenting &&
         commenting.showComments &&

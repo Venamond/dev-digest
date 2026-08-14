@@ -31,6 +31,7 @@ export function FindingCard({
   pending,
   repoFullName,
   headSha,
+  targeted,
 }: {
   f: FindingRecord;
   focused?: boolean;
@@ -39,9 +40,11 @@ export function FindingCard({
   pending?: boolean;
   repoFullName?: string | null;
   headSha?: string | null;
+  targeted?: boolean;
 }) {
   const t = useTranslations("prReview");
   const [expanded, setExpanded] = React.useState(defaultExpanded ?? false);
+  const rootRef = React.useRef<HTMLDivElement | null>(null);
   const sevColor = SEV_COLOR[f.severity] ?? SEV_COLOR_FALLBACK;
   const fileHref =
     repoFullName && headSha
@@ -51,8 +54,14 @@ export function FindingCard({
   const dismissed = !!f.dismissed_at;
   const muted = accepted || dismissed;
 
+  React.useEffect(() => {
+    if (!targeted) return;
+    setExpanded(true);
+    rootRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [targeted]);
+
   return (
-    <div data-finding-id={f.id} style={s.card(!!focused, sevColor, muted)}>
+    <div ref={rootRef} data-finding-id={f.id} style={s.card(!!focused, sevColor, muted)}>
       <div onClick={() => setExpanded((e) => !e)} style={s.header}>
         <div style={s.badgeWrap}>
           <SeverityBadge severity={f.severity as Severity} compact />

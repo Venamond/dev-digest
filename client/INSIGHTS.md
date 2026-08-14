@@ -253,6 +253,20 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Recurring Errors & Fixes
 
+- **Root layout must not render a manual `<head>`.** `export const metadata`
+  already owns `<head>` (charset, title, viewport). A handwritten `<head>`
+  with the no-FOUC theme `<script>` made Next emit `<meta charset="utf-8">`
+  into `<body>`; hydration then failed with client=`<Suspense>` vs
+  server=`<meta charset>` under `NextIntlClientProvider` in
+  `src/app/layout.tsx`. It looked intermittent because Fast Refresh / a
+  full reload retriggered the stream. Fix: no `<head>` tag; inject the
+  theme script with `next/script` `strategy="beforeInteractive"` (Next
+  places it in `<head>`). Pass `now={new Date()}` from the server layout
+  into `NextIntlClientProvider` so it does not mint a second `Date` on the
+  client during hydrate. `suppressHydrationWarning` on `<html>`/`<body>`
+  stays — that one is for extension-injected attributes, not this bug.
+  (2026-08-15)
+
 - `useSetCrumb` Maximum update depth: if the effect depends on a crumb `ctx`
   that is rebuilt whenever crumbs change, `setCrumb` → new ctx → effect
   cleanup clears crumbs → effect runs again. Depend on the stable setter from

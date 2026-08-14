@@ -17,6 +17,7 @@ export const s = {
     borderLeftColor: sevColor,
     background: "var(--bg-elevated)",
     overflow: "hidden",
+    scrollMarginTop: 16,
     opacity: muted ? 0.6 : 1,
     transition: "opacity .2s, border-color .12s, box-shadow .12s",
     boxShadow: focused ? "0 0 0 1px " + sevColor : "none",

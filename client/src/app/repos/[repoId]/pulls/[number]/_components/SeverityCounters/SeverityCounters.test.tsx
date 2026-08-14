@@ -36,28 +36,38 @@ const FINDINGS: FindingRecord[] = [
 
 function renderCounters(
   findings: FindingRecord[],
-  active: FindingRecord["severity"] | null,
-  onSelect = vi.fn(),
+  opts: {
+    active?: FindingRecord["severity"] | null;
+    onSelect?: (severity: FindingRecord["severity"] | null) => void;
+  } = {},
 ) {
   return render(
     <NextIntlClientProvider locale="en" messages={{ prReview: messages }}>
-      <SeverityCounters findings={findings} active={active} onSelect={onSelect} />
+      <SeverityCounters findings={findings} active={opts.active ?? null} onSelect={opts.onSelect} />
     </NextIntlClientProvider>,
   );
 }
 
 describe("SeverityCounters", () => {
-  it("shows a count per severity, 0 for levels with no findings", () => {
-    renderCounters(FINDINGS, null);
-    expect(screen.getByRole("button", { name: "2 CRITICAL" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "1 WARNING" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "0 SUGGESTION" })).toBeInTheDocument();
+  it("shows a count per severity as labels, not buttons, when onSelect is omitted", () => {
+    renderCounters(FINDINGS);
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.getByText("2 CRITICAL")).toBeInTheDocument();
+    expect(screen.getByText("1 WARNING")).toBeInTheDocument();
+    expect(screen.getByText("0 SUGGESTION")).toBeInTheDocument();
   });
 
-  it("toggles the active severity filter on click", () => {
+  it("toggles the active severity filter on click when onSelect is provided", () => {
     const onSelect = vi.fn();
-    renderCounters(FINDINGS, null, onSelect);
+    renderCounters(FINDINGS, { onSelect });
     fireEvent.click(screen.getByRole("button", { name: "2 CRITICAL" }));
     expect(onSelect).toHaveBeenCalledWith("CRITICAL");
+  });
+
+  it("does not fire onSelect for a severity with a zero count", () => {
+    const onSelect = vi.fn();
+    renderCounters(FINDINGS, { onSelect });
+    fireEvent.click(screen.getByRole("button", { name: "0 SUGGESTION" }));
+    expect(onSelect).not.toHaveBeenCalled();
   });
 });

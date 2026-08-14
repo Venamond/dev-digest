@@ -2,16 +2,18 @@
    count, Smart Diff findings badge) and, when open, its parsed lines plus any
    outdated comments. Collapse seed is role-aware in Smart order (a boilerplate
    file always starts collapsed) and falls back to the original size rule
-   otherwise — see docs/plans/2026-08-14-smart-diff.md S8. */
+   otherwise. In Smart order a non-boilerplate file with findings starts
+   open even when it exceeds AUTO_EXPAND_MAX_LINES. */
 "use client";
 
 import React from "react";
 import { useTranslations } from "next-intl";
 import { Icon } from "@devdigest/ui";
 import type { PrFile } from "@/lib/types";
-import type { SmartDiffRole } from "@devdigest/shared";
-import { AUTO_EXPAND_MAX_LINES } from "../constants";
+import type { FindingRecord, SmartDiffRole } from "@devdigest/shared";
+import { LARGE_FILE_CHANGED_LINES } from "../constants";
 import { parsePatch, type Line } from "../helpers";
+import { fileCardStartsOpen } from "./helpers";
 import {
   buildThreads,
   keysForLine,
@@ -22,7 +24,6 @@ import {
 import { s, chevronFor } from "../styles";
 import { CodeLine } from "../CodeLine";
 import { OutdatedComments } from "../OutdatedComments";
-import type { DiffLineTarget } from "../target";
 
 /** Threads anchored to a given parsed line (RIGHT=new, LEFT=old). */
 function threadsForLine(ln: Line, matched: Map<string, CommentThread[]>): CommentThread[] {
@@ -39,45 +40,43 @@ export function FileCard({
   file,
   commenting,
   role,
-  findingLines,
-  target,
-  onJumpToLine,
+  smart,
+  findings,
+  onOpenFinding,
 }: {
   file: PrFile;
   commenting?: DiffCommentApi;
   role?: SmartDiffRole | null;
-  findingLines?: number[];
-  target?: DiffLineTarget | null;
-  onJumpToLine?: (path: string, line: number) => void;
+  smart?: boolean;
+  findings?: FindingRecord[];
+  onOpenFinding?: (findingId: string) => void;
 }) {
   const t = useTranslations("shell");
-  // Role is checked first: a small boilerplate diff (e.g. a `+3 −1`
-  // lock-file), far under AUTO_EXPAND_MAX_LINES, still starts collapsed. In
-  // Original order `role` is undefined, so this degrades to today's rule.
-  const [open, setOpen] = React.useState(() =>
-    role === "boilerplate"
-      ? false
-      : (file.additions ?? 0) + (file.deletions ?? 0) <= AUTO_EXPAND_MAX_LINES,
-  );
+  // Boilerplate always starts collapsed. In Smart order a file with findings
+  // starts open even when it is "large"; otherwise the size threshold applies.
+  // userOpen is null until the header is clicked, so findings that arrive
+  // after mount (Run Review finishing) still open the card.
+  const changedLines = (file.additions ?? 0) + (file.deletions ?? 0);
+  const defaultOpen = fileCardStartsOpen({
+    role,
+    smart,
+    changedLines,
+    findingsCount: findings?.length ?? 0,
+  });
+  const [userOpen, setUserOpen] = React.useState<boolean | null>(null);
+  const open = userOpen ?? defaultOpen;
+  const large = !!smart && changedLines > LARGE_FILE_CHANGED_LINES;
   const lines = React.useMemo(() => parsePatch(file.patch), [file.patch]);
 
-  const rootRef = React.useRef<HTMLDivElement | null>(null);
-  const lineRef = React.useRef<HTMLDivElement | null>(null);
-  const isTarget = !!target && target.path === file.path;
-  const targetIndex = isTarget
-    ? lines.findIndex((ln) => ln.kind !== "hunk" && ln.newNo === target!.line)
-    : -1;
-
-  React.useEffect(() => {
-    if (isTarget) setOpen(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isTarget, target?.nonce]);
-
-  React.useEffect(() => {
-    if (!isTarget || !open) return;
-    (lineRef.current ?? rootRef.current)?.scrollIntoView({ behavior: "smooth", block: "center" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isTarget, open, targetIndex, target?.nonce]);
+  const findingsByLine = React.useMemo(() => {
+    const m = new Map<number, FindingRecord[]>();
+    for (const f of findings ?? []) {
+      const list = m.get(f.start_line);
+      if (list) list.push(f);
+      else m.set(f.start_line, [f]);
+    }
+    return m;
+  }, [findings]);
 
   // Group this file's comments into threads, then split into ones we can anchor
   // to a rendered line vs. "outdated" (GitHub dropped the line / it's not here).
@@ -95,8 +94,8 @@ export function FileCard({
     : 0;
 
   return (
-    <div ref={rootRef} style={s.fileCard}>
-      <div onClick={() => setOpen((o) => !o)} style={s.fileHeader}>
+    <div style={s.fileCard(large)}>
+      <div onClick={() => setUserOpen(!(userOpen ?? defaultOpen))} style={s.fileHeader}>
         <Icon.ChevronRight size={13} style={chevronFor(open)} />
         <Icon.FileText size={14} style={s.fileIcon} />
         <span className="mono" style={s.filePath}>
@@ -106,6 +105,11 @@ export function FileCard({
           <span style={s.addText}>+{file.additions}</span>{" "}
           <span style={s.delText}>−{file.deletions}</span>
         </span>
+        {large && (
+          <span style={s.largeChip} title={t("diffViewer.largeFileTitle", { count: changedLines })}>
+            {t("diffViewer.largeFile")}
+          </span>
+        )}
         {commentCount > 0 && (
           <span
             style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "var(--text-muted)" }}
@@ -114,17 +118,17 @@ export function FileCard({
             {commentCount}
           </span>
         )}
-        {findingLines && findingLines.length > 0 && (
+        {findings && findings.length > 0 && (
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              const first = findingLines[0];
-              if (first !== undefined) onJumpToLine?.(file.path, first);
+              const first = findings[0];
+              if (first) onOpenFinding?.(first.id);
             }}
             style={s.findingsBadge}
           >
-            {t("diffViewer.findingsBadge", { count: findingLines.length })}
+            {t("diffViewer.findingsBadge", { count: findings.length })}
           </button>
         )}
       </div>
@@ -140,7 +144,8 @@ export function FileCard({
                 path={file.path}
                 threads={threadsForLine(ln, matched)}
                 commenting={commenting}
-                anchorRef={i === targetIndex ? lineRef : undefined}
+                findings={smart && ln.newNo != null ? findingsByLine.get(ln.newNo) : undefined}
+                onOpenFinding={onOpenFinding}
               />
             ))
           )}

@@ -49,6 +49,9 @@
     },
     "otherFiles": "Other files",
     "groupCount": "{count} files",
-    "findingsBadge": "{count} findings"
+    "findingsBadge": "{count} findings",
+    "openFinding": "Open finding: {title}",
+    "largeFile": "Large file",
+    "largeFileTitle": "{count} changed lines — review with extra care"
   }
 }

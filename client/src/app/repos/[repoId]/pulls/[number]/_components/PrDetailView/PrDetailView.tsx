@@ -19,6 +19,7 @@ import { useActiveRepo, useRepoNotFound } from "@/lib/repo-context";
 import { ApiError } from "@/lib/api";
 import { githubPrUrl } from "@/lib/github-urls";
 import type { FindingRecord } from "@devdigest/shared";
+import { patchedSearch, openFindingPatch } from "./helpers";
 
 export function PrDetailView() {
   const params = useParams<{ repoId: string; number: string }>();
@@ -51,13 +52,13 @@ export function PrDetailView() {
 
   const tab = search.get("tab") ?? "overview";
   const traceRunId = search.get("trace");
-  const setParam = (key: string, val: string | null) => {
-    const sp = new URLSearchParams(search.toString());
-    if (val == null) sp.delete(key);
-    else sp.set(key, val);
-    router.replace(`/repos/${repoId}/pulls/${number}${sp.toString() ? `?${sp.toString()}` : ""}`);
+  const targetFindingId = search.get("finding");
+  const setParams = (patch: Record<string, string | null>) => {
+    const qs = patchedSearch(search, patch);
+    router.replace(`/repos/${repoId}/pulls/${number}${qs ? `?${qs}` : ""}`);
   };
-  const setTab = (t: string) => setParam("tab", t);
+  const setParam = (key: string, val: string | null) => setParams({ [key]: val });
+  const setTab = (t: string) => setParams({ tab: t, finding: null });
 
   const runs = reviews ?? [];
   const allFindings: FindingRecord[] = React.useMemo(
@@ -145,6 +146,7 @@ export function PrDetailView() {
               // makes Smart Diff's "N findings" badges appear without a reload.
               if (prId) qc.invalidateQueries({ queryKey: queryKeys.smartDiff(prId) });
             }}
+            targetFindingId={targetFindingId}
           />
         )}
 
@@ -154,6 +156,9 @@ export function PrDetailView() {
             filesCount={pr.files_count}
             files={pr.files}
             canComment={pr.status === "open"}
+            findings={allFindings}
+            onOpenFinding={(id) => setParams(openFindingPatch(id))}
+            runs={prRuns}
           />
         )}
       </div>

@@ -7,10 +7,11 @@
 
 import React from "react";
 import { useTranslations } from "next-intl";
-import { Icon, Badge } from "@devdigest/ui";
+import { Icon, Badge, type Severity } from "@devdigest/ui";
 import type { ReviewRecord, Verdict } from "@devdigest/shared";
 import { FindingsPanel } from "../FindingsPanel/FindingsPanel";
 import { VerdictBanner } from "../VerdictBanner/VerdictBanner";
+import { SeverityCounters } from "../SeverityCounters/SeverityCounters";
 import { useDeleteReview } from "../../../../../../../lib/hooks/reviews";
 
 const VERDICT_COLOR: Record<string, string> = {
@@ -32,7 +33,7 @@ export function ReviewRunAccordion({
   headSha,
   targetRunId = null,
   targetNonce = 0,
-  severityFilter = null,
+  targetFindingId = null,
 }: {
   review: ReviewRecord;
   prId: string;
@@ -43,11 +44,11 @@ export function ReviewRunAccordion({
    *  (driven from the Timeline: clicking an agent name navigates here). */
   targetRunId?: string | null;
   targetNonce?: number;
-  /** PR-level severity counter filter — only this run's findings of this severity show. */
-  severityFilter?: string | null;
+  targetFindingId?: string | null;
 }) {
   const t = useTranslations("prReview");
   const [open, setOpen] = React.useState(defaultOpen);
+  const [severityFilter, setSeverityFilter] = React.useState<Severity | null>(null);
   const rootRef = React.useRef<HTMLDivElement | null>(null);
   React.useEffect(() => {
     if (review.run_id && review.run_id === targetRunId) {
@@ -56,6 +57,10 @@ export function ReviewRunAccordion({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetRunId, targetNonce, review.run_id]);
+  const containsFinding = !!targetFindingId && review.findings.some((f) => f.id === targetFindingId);
+  React.useEffect(() => {
+    if (containsFinding) setOpen(true);
+  }, [containsFinding, targetFindingId]);
   const del = useDeleteReview(prId);
   const findings = review.findings;
   const blockers = findings.filter((f) => f.severity === "CRITICAL" && !f.dismissed_at).length;
@@ -164,12 +169,20 @@ export function ReviewRunAccordion({
               />
             </div>
           )}
+          {findings.length > 0 && (
+            <SeverityCounters
+              findings={findings}
+              active={severityFilter}
+              onSelect={setSeverityFilter}
+            />
+          )}
           <FindingsPanel
             findings={findings}
             prId={prId}
             repoFullName={repoFullName}
             headSha={headSha}
             severityFilter={severityFilter}
+            targetFindingId={targetFindingId}
           />
         </div>
       )}

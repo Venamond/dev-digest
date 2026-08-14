@@ -10,43 +10,54 @@
 import React from "react";
 import { useTranslations } from "next-intl";
 import type { PrFile } from "@/lib/types";
-import type { SmartDiff, SmartDiffRole } from "@devdigest/shared";
+import type { FindingRecord, SmartDiff, SmartDiffRole } from "@devdigest/shared";
 import { type DiffCommentApi } from "../comments";
 import { s } from "../styles";
 import { FileCard } from "../FileCard";
 import { DiffGroupSection } from "../DiffGroupSection";
-import type { DiffLineTarget } from "../target";
 
 export function DiffViewer({
   files,
   commenting,
-  target,
   smartDiff,
   grouped = false,
-  onJumpToLine,
+  findings,
+  onOpenFinding,
 }: {
   files: PrFile[];
   commenting?: DiffCommentApi;
-  target?: DiffLineTarget | null;
   smartDiff?: SmartDiff | null;
   grouped?: boolean;
-  onJumpToLine?: (path: string, line: number) => void;
+  findings?: FindingRecord[];
+  onOpenFinding?: (findingId: string) => void;
 }) {
   const t = useTranslations("shell");
 
-  const meta = React.useMemo(() => {
-    const m = new Map<string, { role: SmartDiffRole; findingLines: number[] }>();
+  const roleByPath = React.useMemo(() => {
+    const m = new Map<string, SmartDiffRole>();
     for (const g of smartDiff?.groups ?? []) {
-      for (const f of g.files) m.set(f.path, { role: g.role, findingLines: f.finding_lines });
+      for (const f of g.files) m.set(f.path, g.role);
     }
     return m;
   }, [smartDiff]);
+
+  const findingsByPath = React.useMemo(() => {
+    const m = new Map<string, FindingRecord[]>();
+    for (const f of findings ?? []) {
+      const list = m.get(f.file);
+      if (list) list.push(f);
+      else m.set(f.file, [f]);
+    }
+    return m;
+  }, [findings]);
+
+  const smart = grouped && !!smartDiff;
 
   if (!files || files.length === 0) {
     return <div style={s.empty}>{t("diffViewer.noChangedFiles")}</div>;
   }
 
-  if (!grouped || !smartDiff) {
+  if (!smart || !smartDiff) {
     // Original order: exactly today's behaviour — flat, server-ordered list,
     // no group headers, no `role` (so collapse seeding stays size-only).
     return (
@@ -56,9 +67,8 @@ export function DiffViewer({
             key={i}
             file={f}
             commenting={commenting}
-            findingLines={meta.get(f.path)?.findingLines}
-            target={target}
-            onJumpToLine={onJumpToLine}
+            findings={findingsByPath.get(f.path)}
+            onOpenFinding={onOpenFinding}
           />
         ))}
       </div>
@@ -79,10 +89,11 @@ export function DiffViewer({
         key={g.role}
         role={g.role}
         files={groupFiles}
-        meta={meta}
+        roleByPath={roleByPath}
+        findingsByPath={findingsByPath}
         commenting={commenting}
-        target={target}
-        onJumpToLine={onJumpToLine}
+        smart={smart}
+        onOpenFinding={onOpenFinding}
       />
     );
   });
@@ -96,10 +107,11 @@ export function DiffViewer({
         <DiffGroupSection
           role={null}
           files={leftovers}
-          meta={meta}
+          roleByPath={roleByPath}
+          findingsByPath={findingsByPath}
           commenting={commenting}
-          target={target}
-          onJumpToLine={onJumpToLine}
+          smart={smart}
+          onOpenFinding={onOpenFinding}
           defaultOpen
         />
       )}

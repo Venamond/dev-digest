@@ -64,7 +64,8 @@
     "lethalTitle": "Lethal Trifecta detected",
     "findingsCount": "{count} finding(s)",
     "timeline": "Timeline",
-    "timelineHint": "runs & commits · newest first"
+    "timelineHint": "runs & commits · newest first",
+    "findingNotFound": "That finding is no longer available — its review run may have been deleted."
   },
   "overview": {
     "description": "Description"
@@ -99,19 +100,23 @@
     "deleteTitle": "Delete this review run"
   },
   "diffTab": {
-    "sectionLabel": "Files changed · {count} files",
     "showComments": "Show comments ({count})",
     "hideComments": "Hide comments ({count})",
     "postError": "Couldn't post the comment to GitHub."
   },
   "smartDiff": {
+    "eyebrowSmart": "Reviewer-ordered diff",
+    "eyebrowOriginal": "Files changed",
+    "fileCount": "{count} files",
     "order": {
       "smart": "Smart order",
       "original": "Original order"
     },
     "empty": "No changed files imported yet — open this PR's Files changed tab to load them.",
     "tooBig": "This PR is large ({lines} reviewable lines). Consider splitting it:",
-    "proposedSplit": "{name} ({count} files)"
+    "proposedSplit": "{name} ({count} files)",
+    "zeroNewTokens": "0 new tokens",
+    "builtOnLastReview": "built on {count} from last review"
   },
   "runStatus": {
     "elapsed": "Running · {count} agent(s)",

@@ -5,7 +5,12 @@ import type { FindingRecord } from "@devdigest/shared";
 import messages from "../../../../../../../../messages/en/prReview.json";
 import { FindingCard } from "./FindingCard";
 
-afterEach(cleanup);
+Element.prototype.scrollIntoView = vi.fn();
+
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+});
 
 const FINDING: FindingRecord = {
   id: "f1",
@@ -56,5 +61,23 @@ describe("FindingCard (smoke, both themes)", () => {
     expect(onAction).toHaveBeenCalledWith("accept");
     fireEvent.click(screen.getByText("Dismiss"));
     expect(onAction).toHaveBeenCalledWith("dismiss");
+  });
+});
+
+describe("FindingCard — targeted arrival", () => {
+  it("expands and scrolls when targeted even if defaultExpanded is omitted", () => {
+    renderWithIntl(<FindingCard f={FINDING} targeted onAction={() => {}} />);
+    expect(
+      screen.getByText((_, el) => el?.tagName === "P" && el.textContent === "A live Stripe key is committed in source."),
+    ).toBeInTheDocument();
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledTimes(1);
+  });
+
+  it("stays collapsed and does not scroll when targeted is absent", () => {
+    renderWithIntl(<FindingCard f={FINDING} onAction={() => {}} />);
+    expect(
+      screen.queryByText((_, el) => el?.tagName === "P" && el.textContent === "A live Stripe key is committed in source."),
+    ).not.toBeInTheDocument();
+    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
   });
 });

@@ -31,10 +31,29 @@ function smartDiff(overrides: Partial<SmartDiff> = {}): SmartDiff {
 }
 
 describe("SmartDiffViewer — order toggle", () => {
-  it("renders both Smart order and Original order labels", () => {
-    renderWithIntl(<SmartDiffViewer smartDiff={smartDiff()} order="smart" onOrderChange={vi.fn()} />);
+  it("renders the reviewer-ordered eyebrow, file stats, and both order labels", () => {
+    renderWithIntl(
+      <SmartDiffViewer
+        smartDiff={smartDiff()}
+        order="smart"
+        onOrderChange={vi.fn()}
+        filesCount={9}
+        additions={247}
+        deletions={38}
+      />,
+    );
+    expect(screen.getByText("Reviewer-ordered diff")).toBeInTheDocument();
+    expect(screen.getByText("9 files")).toBeInTheDocument();
+    expect(screen.getByText("+247")).toBeInTheDocument();
+    expect(screen.getByText("−38")).toBeInTheDocument();
     expect(screen.getByText("Smart order")).toBeInTheDocument();
     expect(screen.getByText("Original order")).toBeInTheDocument();
+  });
+
+  it("uses the Files changed eyebrow in Original order", () => {
+    renderWithIntl(<SmartDiffViewer smartDiff={smartDiff()} order="original" onOrderChange={vi.fn()} />);
+    expect(screen.getByText("Files changed")).toBeInTheDocument();
+    expect(screen.queryByText("Reviewer-ordered diff")).not.toBeInTheDocument();
   });
 
   it("clicking Original order calls onOrderChange('original') exactly once", () => {
@@ -116,5 +135,26 @@ describe("SmartDiffViewer — lists no files (regression guard)", () => {
   it("does not render a path from the fixture's groups — this component owns no file list", () => {
     renderWithIntl(<SmartDiffViewer smartDiff={smartDiff()} order="smart" onOrderChange={vi.fn()} />);
     expect(screen.queryByText("src/service.ts")).not.toBeInTheDocument();
+  });
+});
+
+describe("SmartDiffViewer — token hint", () => {
+  it("always claims 0 new tokens", () => {
+    renderWithIntl(<SmartDiffViewer smartDiff={smartDiff()} order="smart" onOrderChange={vi.fn()} />);
+    expect(screen.getByText("0 new tokens")).toBeInTheDocument();
+    expect(screen.queryByText(/built on/)).not.toBeInTheDocument();
+  });
+
+  it("appends built-on when the last review wave has prompt tokens", () => {
+    renderWithIntl(
+      <SmartDiffViewer
+        smartDiff={smartDiff()}
+        order="smart"
+        onOrderChange={vi.fn()}
+        reviewTokensIn={41177}
+      />,
+    );
+    expect(screen.getByText("0 new tokens")).toBeInTheDocument();
+    expect(screen.getByText("built on 41177 from last review")).toBeInTheDocument();
   });
 });
