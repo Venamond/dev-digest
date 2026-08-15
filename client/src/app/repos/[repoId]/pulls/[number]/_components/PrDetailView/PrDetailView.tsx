@@ -89,7 +89,6 @@ function PrDetailViewInner() {
     [reviews],
   );
   const lethalTrifecta = allFindings.filter((f) => f.kind === "lethal_trifecta");
-  const findingsCount = allFindings.length;
 
   const repoName = activeRepo?.full_name ?? repoId;
   const repoFullName = activeRepo?.full_name ?? null;
@@ -134,7 +133,7 @@ function PrDetailViewInner() {
         pr={pr}
         prId={prId}
         tab={tab}
-        findingsCount={findingsCount}
+        runsCount={runs.length}
         githubUrl={repoFullName ? githubPrUrl(repoFullName, pr.number) : null}
         onSetTab={setTab}
         onRunStart={() => setTab("findings")}

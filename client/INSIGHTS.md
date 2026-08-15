@@ -458,10 +458,25 @@ ground truth — wrap-ups can mischaracterize a session.
   feature's copy under a key that already exists elsewhere in the same file
   (e.g. two unrelated features both naming their block `"smartDiff"`) is a
   silent no-op for the older or newer block depending on JSON key order, not
-  a merge. Before adding a top-level key to a message file, grep that exact
-  file for the key name first — `grep -n '"<key>":' client/messages/en/<file>.json`.
+  a merge.
+
+  **Check it by parsing, not by grepping.** A bare
+  `grep -n '"<key>":' client/messages/en/<file>.json` also matches *nested*
+  keys of the same name and reports a duplicate that does not exist — e.g.
+  `"timeline"` appears both as a top-level block and as
+  `findingsTab.timeline`, so the grep says 2 and nothing is wrong. Use the
+  parser, which is exact:
+
+  ```sh
+  python3 -c "import json,collections,sys
+  d=[]
+  json.load(open('client/messages/en/prReview.json'),object_pairs_hook=lambda p:(d.extend(k for k,c in collections.Counter(x for x,_ in p).items() if c>1),dict(p))[1])
+  print('duplicates:', d or 'none')"
+  ```
+
   (2026-08-14, Smart Diff implementation — caught by `architecture-reviewer`,
-  not by any automated gate)
+  not by any automated gate; grep caveat added 2026-08-15 after it produced a
+  false positive)
 
 - React DOM console warning "Updating a style property during rerender
   (borderColor) when a conflicting property is set (borderLeftColor)":

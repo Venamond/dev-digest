@@ -26,6 +26,13 @@ export function RunRow({
   const t = useTranslations("prReview");
   const o = outcomeOf(r);
   const settled = r.status === "done";
+  // null (not 0) when the run reported neither figure — a failed or still
+  // running row should show nothing here, not "0 tok". Either half may be
+  // null on its own, so sum what is present.
+  const totalTokens =
+    r.tokens_in == null && r.tokens_out == null
+      ? null
+      : (r.tokens_in ?? 0) + (r.tokens_out ?? 0);
   const severityCounts = runFindings
     ? SEVERITY_LEVELS.map(
         (level) => [level, runFindings.filter((f) => f.severity === level).length] as const,
@@ -131,7 +138,17 @@ export function RunRow({
         }}
       >
         {r.ran_at && <span>{new Date(r.ran_at).toLocaleTimeString()}</span>}
-        <CostBadge usd={r.cost_usd} />
+        <span style={{ display: "inline-flex", alignItems: "baseline", gap: 6 }}>
+          {/* Tokens sit next to cost — the two answer the same question ("what
+              did this run cost?") and are read together. Rendered here rather
+              than inside CostBadge: that component is the single cost-format
+              authority for three surfaces (PR list, this timeline, trace
+              drawer) and only this one wants a token count. */}
+          {totalTokens != null && (
+            <span className="mono tnum">{t("timeline.tokens", { count: totalTokens })}</span>
+          )}
+          <CostBadge usd={r.cost_usd} />
+        </span>
       </div>
       <button
         type="button"
