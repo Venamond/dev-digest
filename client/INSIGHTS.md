@@ -253,19 +253,54 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Recurring Errors & Fixes
 
+- **`pnpm test` passing does not mean the types are fine — vitest does not
+  typecheck.** A type error living in a `*.test.tsx` file compiles away under
+  the test runner and surfaces only in `pnpm typecheck` (i.e. in CI). After
+  touching test files, run `pnpm typecheck` explicitly; a green test suite is
+  not evidence for it.
+
+  The concrete trap that caused this: **there are two different `Severity`
+  types in this package.** `src/vendor/ui/primitives/tokens.ts:3` defines
+  `"CRITICAL" | "WARNING" | "SUGGESTION" | "INFO"`, while the contract's
+  `Severity` (`vendor/shared/contracts/findings.ts:11`) has only the first
+  three — findings can never be `INFO`. Components that render severity
+  (`SeverityCounters`, `FindingCard`, badges) type their props against the
+  **UI** union, because that is what their real callers pass
+  (`ReviewRunAccordion.tsx` holds `useState<Severity | null>` from
+  `@devdigest/ui`). A test that redeclares such a prop as
+  `FindingRecord["severity"]` looks more precise, compiles under vitest, and
+  then fails `tsc` with "Type `'INFO'` is not assignable". Mirror the
+  component's own import in the test rather than narrowing to the contract
+  type. (2026-08-15)
+
 - **Root layout must not render a manual `<head>`.** `export const metadata`
   already owns `<head>` (charset, title, viewport). A handwritten `<head>`
   with the no-FOUC theme `<script>` made Next emit `<meta charset="utf-8">`
   into `<body>`; hydration then failed with client=`<Suspense>` vs
   server=`<meta charset>` under `NextIntlClientProvider` in
   `src/app/layout.tsx`. It looked intermittent because Fast Refresh / a
-  full reload retriggered the stream. Fix: no `<head>` tag; inject the
-  theme script with `next/script` `strategy="beforeInteractive"` (Next
-  places it in `<head>`). Pass `now={new Date()}` from the server layout
-  into `NextIntlClientProvider` so it does not mint a second `Date` on the
-  client during hydrate. `suppressHydrationWarning` on `<html>`/`<body>`
-  stays — that one is for extension-injected attributes, not this bug.
+  full reload retriggered the stream. Fix: no `<head>` tag; render the theme
+  script as a **plain `<script dangerouslySetInnerHTML>` child of `<body>`**.
+  Pass `now={new Date()}` from the server layout into
+  `NextIntlClientProvider` so it does not mint a second `Date` on the client
+  during hydrate. `suppressHydrationWarning` on `<html>`/`<body>` stays —
+  that one is for extension-injected attributes, not this bug.
   (2026-08-15)
+
+- **`next/script` `strategy="beforeInteractive"` does NOT put the script in
+  `<head>` in the App Router — do not use it for anything that must run
+  before first paint.** This entry previously claimed the opposite and the
+  claim was wrong. Next rewrites such a script into a `self.__next_s` push
+  that `app-bootstrap.js` evaluates only after the async `main-app` chunk
+  loads, i.e. after the first paint. Using it for the no-FOUC theme script
+  therefore silently reinstated the exact flash the script exists to
+  prevent: a `dd-theme=light` user painted full dark on every cold load.
+  Verified empirically against a production `next build` + `next start` —
+  the emitted `<head>` contained no theme script. A plain inline `<script>`
+  as a `<body>` child is emitted synchronously in the streamed HTML and
+  runs before paint; React 19 keeps it inline rather than hoisting it.
+  Neither `pnpm typecheck` nor `pnpm test` can see this class of bug — only
+  a real build, or looking at the served HTML. (2026-08-15)
 
 - `useSetCrumb` Maximum update depth: if the effect depends on a crumb `ctx`
   that is rebuilt whenever crumbs change, `setCrumb` → new ctx → effect

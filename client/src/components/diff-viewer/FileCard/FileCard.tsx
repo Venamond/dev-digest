@@ -57,11 +57,20 @@ export function FileCard({
   // userOpen is null until the header is clicked, so findings that arrive
   // after mount (Run Review finishing) still open the card.
   const changedLines = (file.additions ?? 0) + (file.deletions ?? 0);
+  // Dismissed findings are "not a problem" — they must not inflate the badge
+  // nor force a file open, same rule as ReviewRunAccordion's blocker count
+  // (`ReviewRunAccordion.tsx:66`). Accepted ones still count: accepting a
+  // finding acknowledges it, it does not retract it. The markers themselves
+  // still render for both, dimmed (see FindingMarker).
+  const activeFindings = React.useMemo(
+    () => (findings ?? []).filter((f) => !f.dismissed_at),
+    [findings],
+  );
   const defaultOpen = fileCardStartsOpen({
     role,
     smart,
     changedLines,
-    findingsCount: findings?.length ?? 0,
+    findingsCount: activeFindings.length,
   });
   const [userOpen, setUserOpen] = React.useState<boolean | null>(null);
   const open = userOpen ?? defaultOpen;
@@ -118,17 +127,17 @@ export function FileCard({
             {commentCount}
           </span>
         )}
-        {findings && findings.length > 0 && (
+        {activeFindings.length > 0 && (
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              const first = findings[0];
+              const first = activeFindings[0];
               if (first) onOpenFinding?.(first.id);
             }}
             style={s.findingsBadge}
           >
-            {t("diffViewer.findingsBadge", { count: findings.length })}
+            {t("diffViewer.findingsBadge", { count: activeFindings.length })}
           </button>
         )}
       </div>

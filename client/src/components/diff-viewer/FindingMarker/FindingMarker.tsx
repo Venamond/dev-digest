@@ -15,6 +15,9 @@ export function FindingMarker({
 }) {
   const t = useTranslations("shell");
   const sevColor = MARKER_SEVERITY_COLOR[finding.severity] ?? MARKER_SEVERITY_COLOR_FALLBACK;
+  // Same rule as FindingCard (`FindingCard.tsx:53-55`): a finding the user has
+  // already accepted or dismissed is dimmed, not hidden.
+  const muted = !!finding.accepted_at || !!finding.dismissed_at;
 
   return (
     <button
@@ -24,7 +27,7 @@ export function FindingMarker({
         onOpenFinding?.(finding.id);
       }}
       aria-label={t("diffViewer.openFinding", { title: finding.title })}
-      style={s.findingMarker(sevColor)}
+      style={s.findingMarker(sevColor, muted)}
     >
       <SeverityBadge severity={finding.severity as Severity} compact />
       <span style={s.findingMarkerTitle}>{finding.title}</span>

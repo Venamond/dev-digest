@@ -155,6 +155,8 @@ export function PrDetailView() {
             prId={prId}
             filesCount={pr.files_count}
             files={pr.files}
+            additions={pr.additions}
+            deletions={pr.deletions}
             canComment={pr.status === "open"}
             findings={allFindings}
             onOpenFinding={(id) => setParams(openFindingPatch(id))}

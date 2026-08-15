@@ -124,7 +124,11 @@ export const s = {
     padding: "2px 8px",
     cursor: "pointer",
   } satisfies CSSProperties,
-  findingMarker: (sevColor: string): CSSProperties => ({
+  findingMarker: (sevColor: string, muted = false): CSSProperties => ({
+    // Mirrors FindingCard's `muted` treatment (accepted || dismissed): the
+    // marker dims rather than disappearing, so an acted-on finding stays
+    // clickable through to its card instead of vanishing off the line.
+    opacity: muted ? 0.6 : 1,
     display: "flex",
     alignItems: "center",
     gap: 8,

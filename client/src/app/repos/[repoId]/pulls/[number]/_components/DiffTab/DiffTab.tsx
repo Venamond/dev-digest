@@ -20,19 +20,24 @@ interface DiffTabProps {
   findings?: FindingRecord[];
   onOpenFinding?: (findingId: string) => void;
   runs?: RunSummary[];
+  /** PR totals from `PrDetail`, NOT re-derived from `files` — the GitHub
+   *  adapter fetches files at `per_page: 100` without pagination, so on a
+   *  101+ file PR summing `files` undercounts while `filesCount` is right. */
+  additions: number;
+  deletions: number;
 }
 
-function sumDiff(files: PrFile[]): { additions: number; deletions: number } {
-  let additions = 0;
-  let deletions = 0;
-  for (const f of files) {
-    additions += f.additions ?? 0;
-    deletions += f.deletions ?? 0;
-  }
-  return { additions, deletions };
-}
-
-export function DiffTab({ prId, filesCount, files, canComment, findings, onOpenFinding, runs }: DiffTabProps) {
+export function DiffTab({
+  prId,
+  filesCount,
+  files,
+  additions,
+  deletions,
+  canComment,
+  findings,
+  onOpenFinding,
+  runs,
+}: DiffTabProps) {
   const t = useTranslations("prReview");
   const { data: comments } = usePrComments(prId);
   const create = useCreatePrComment(prId);
@@ -41,7 +46,6 @@ export function DiffTab({ prId, filesCount, files, canComment, findings, onOpenF
 
   const { data: smartDiff } = useSmartDiff(prId);
   const [order, setOrder] = React.useState<DiffOrder>(DEFAULT_DIFF_ORDER);
-  const { additions, deletions } = sumDiff(files);
 
   const commentCount = comments?.length ?? 0;
 

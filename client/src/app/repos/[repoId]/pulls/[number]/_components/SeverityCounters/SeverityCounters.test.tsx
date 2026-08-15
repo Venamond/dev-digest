@@ -2,6 +2,10 @@ import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import type { FindingRecord } from "@devdigest/shared";
+// `Severity` here must be the UI union (it carries "INFO"), not
+// `FindingRecord["severity"]` — SeverityCounters types `active`/`onSelect`
+// against the UI union to match its real caller, ReviewRunAccordion.
+import type { Severity } from "@devdigest/ui";
 import messages from "../../../../../../../../messages/en/prReview.json";
 import { SeverityCounters } from "./SeverityCounters";
 
@@ -37,8 +41,8 @@ const FINDINGS: FindingRecord[] = [
 function renderCounters(
   findings: FindingRecord[],
   opts: {
-    active?: FindingRecord["severity"] | null;
-    onSelect?: (severity: FindingRecord["severity"] | null) => void;
+    active?: Severity | null;
+    onSelect?: (severity: Severity | null) => void;
   } = {},
 ) {
   return render(
