@@ -253,6 +253,36 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Recurring Errors & Fixes
 
+- **Never call a parent's setState from inside your own state updater.** The
+  natural way to add "tell the parent when this changes" is to wrap
+  `setOpen` and fire the callback inside the updater, where you already have
+  the previous value to compare against:
+
+  ```tsx
+  setOpenRaw((o) => { const v = next(o); if (v !== o) onOpenChange?.(v); return v; }); // ✗
+  ```
+
+  React may invoke an updater during render (and does, under StrictMode's
+  double-invoke), so this throws *Cannot update a component (`Parent`) while
+  rendering a different component (`Child`)*. Report from an effect instead,
+  guarded by a ref so it only fires on real transitions:
+
+  ```tsx
+  const reported = React.useRef(defaultOpen);                                        // ✓
+  React.useEffect(() => {
+    if (reported.current === open) return;
+    reported.current = open;
+    onOpenChange?.(open);
+  }, [open, onOpenChange]);
+  ```
+
+  Detection gap worth remembering: `pnpm typecheck` was clean and all 205
+  tests passed with the broken version — the existing tests never render the
+  parent and child together. It showed up only as a runtime overlay when a
+  human opened the page. Adding a cross-component callback is a "click
+  through it in the browser" change, not a "tests are green" change.
+  (2026-08-15, `ReviewRunAccordion` → `PrDetailView` open-state reporting)
+
 - **This app scrolls an inner `<main overflow-y:auto>`, NOT the window — so
   window-level scroll reasoning does not apply here.** Measured in the
   running app: `document.body.scrollHeight === window.innerHeight` (838) and
@@ -282,14 +312,47 @@ ground truth — wrap-ups can mischaracterize a session.
      restored offset. Restoring scroll without restoring the state that
      determines content height cannot work.
 
-     Fixed by lifting that state out of the unmounting subtree:
-     `PrDetailView` owns `openRuns: Record<reviewId, boolean>`, seeds
-     `ReviewRunAccordion`'s `defaultOpen` from it and takes an
-     `onOpenChange` callback. The accordion stays *uncontrolled* — its own
-     auto-open effects (`targetRunId`, `containsFinding`) are untouched, it
-     just reports. Measured after: 2587 → 2587 with the accordion still
-     expanded at 920px. The general rule: whatever determines content height
-     must live at or above the component that survives the unmount.
+     Fixed by `PrDetailView/preserved-toggle.tsx`: a tiny context whose
+     provider sits **above** the loading/error branches (those unmount the
+     tab subtree too) holding a ref-backed `Record<key, boolean>`.
+     `usePreservedToggle(key, fallback)` is a drop-in for
+     `useState(fallback)` that seeds from the store and writes back. Consumers
+     stay *uncontrolled*, so `ReviewRunAccordion`'s own auto-open effects
+     (`targetRunId`, `containsFinding`) keep working untouched.
+
+     **The same defect existed at two levels, and the root cause is a
+     positional default.** `ReviewRunAccordion` had `defaultOpen={i === 0}`
+     and `FindingCard` had `defaultExpanded={i === 0}` — so returning to the
+     tab re-opened the *first* row while the row the user actually opened
+     came back collapsed. Fixing only the accordion looked like nothing had
+     changed, because the visible symptom was the finding card. Grep for
+     `=== 0` defaults before assuming one fix covers it.
+
+     Two rules that make this work:
+     - **Key by id, never by index** (`finding:${f.id}`, `run:${review.id}`).
+       An index re-applies the positional default after any reorder.
+     - **Seed the store on mount, not only on change.** A store holding only
+       the rows the user clicked lets untouched rows fall back to the
+       positional default and resurrect it.
+
+     Measured after: expanding the *last* finding, switching tabs and
+     returning restores all four cards' exact states and both open
+     accordions; scroll 2587 → 2587.
+
+     Testing note: the verification that missed this asserted only that the
+     *opened* accordion came back open. Assert the negative too — the ones
+     that should stay closed.
+
+     Two more traps when driving this from a browser tool:
+     - **Do not read the DOM synchronously after a click.** React has not
+       re-rendered yet, so `getBoundingClientRect()` returns the *previous*
+       state and the run looks like the click did nothing. Wait a tick
+       between acting and measuring.
+     - **A slow page invalidates the whole experiment.** While
+       `GET /pulls/:id` still took 30 s, the detail screen sat in its loading
+       branch and no client fix could be observed at all — the behaviour
+       under test never got to run. Fix the latency first, then verify the
+       UI, or you will "confirm" a fix that was never exercised.
 
      **Testing trap that hid this:** the first verification scrolled to an
      accordion without expanding it, so total height was identical before

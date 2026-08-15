@@ -243,8 +243,23 @@ ground truth — wrap-ups can mischaracterize a session.
   later line. Spell such patterns in words inside block comments — never
   write that terminator sequence literally. (2026-08-04, PriceBook)
 
-- **`GET /repos/:id/pulls` is not a cheap DB read — it calls GitHub live and
-  writes on every request.** `pulls/service.ts:49-58` (`listForRepo`) does
+- **NOT FIXED — and the obvious fix has a trap worth knowing before you try
+  it.** Serving from the DB and refreshing GitHub in the background
+  (`void this.refreshFromGitHub(...)`) does work and is dramatic: measured
+  list 30 021 ms → 17-44 ms, detail 30 026 ms → 5-46 ms, with the *first*
+  view of a PR still awaiting GitHub because there is nothing persisted to
+  show yet.
+
+  But un-awaited work escapes the request **and the test lifecycle**. With
+  that change the `.it.test` suite went flaky: `agents-skills.it.test.ts`
+  failed in 2 of 4 full-suite runs while passing 3/3 in isolation, and 3/3
+  in the full suite once the change was stashed. The background writes from
+  one test file land while a later file is asserting against the same
+  container. Any retry of this needs the in-flight promises tracked and
+  drained on app close (or otherwise bounded), not just fired with `void`.
+
+  The diagnosis of the slowness itself, unchanged:
+  `pulls/service.ts` (`listForRepo`) did
   `gh.listPullRequests(...)` and then `await this.repo.upsertFromGhList(...)`
   **inside a `for` loop**, sequentially, before returning anything. Measured
   on an 8-PR repo with a valid token: 0.43–0.55 s warm, 4.7 s on the first

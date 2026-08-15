@@ -21,8 +21,19 @@ import { githubPrUrl } from "@/lib/github-urls";
 import type { FindingRecord } from "@devdigest/shared";
 import { patchedSearch, openFindingPatch } from "./helpers";
 import { useTabScroll } from "./use-tab-scroll";
+import { PreservedToggleProvider } from "./preserved-toggle";
 
+/** The provider must sit ABOVE the loading/error branches: those unmount the
+ *  whole tab subtree, and the store has to outlive that. */
 export function PrDetailView() {
+  return (
+    <PreservedToggleProvider>
+      <PrDetailViewInner />
+    </PreservedToggleProvider>
+  );
+}
+
+function PrDetailViewInner() {
   const params = useParams<{ repoId: string; number: string }>();
   const search = useSearchParams();
   const router = useRouter();
@@ -67,16 +78,6 @@ export function PrDetailView() {
   // not dump them back at the top. Skip the restore when a ?finding= target is
   // in play — FindingCard scrolls itself to the card and must win.
   const { rootRef, remember } = useTabScroll(tab, { skipRestore: !!targetFindingId });
-  // Which run accordions are open. Lives here, not in FindingsTab, because
-  // FindingsTab unmounts on every tab switch while this component does not —
-  // and a collapsed accordion on return changes the content height, which
-  // clamps the scroll offset useTabScroll just restored.
-  const [openRuns, setOpenRuns] = React.useState<Record<string, boolean>>({});
-  const handleRunOpenChange = React.useCallback(
-    (reviewId: string, open: boolean) =>
-      setOpenRuns((prev) => (prev[reviewId] === open ? prev : { ...prev, [reviewId]: open })),
-    [],
-  );
   const setTab = (t: string) => {
     remember(tab);
     setParams({ tab: t, finding: null });
@@ -169,8 +170,6 @@ export function PrDetailView() {
               if (prId) qc.invalidateQueries({ queryKey: queryKeys.smartDiff(prId) });
             }}
             targetFindingId={targetFindingId}
-            openRuns={openRuns}
-            onRunOpenChange={handleRunOpenChange}
           />
         )}
 

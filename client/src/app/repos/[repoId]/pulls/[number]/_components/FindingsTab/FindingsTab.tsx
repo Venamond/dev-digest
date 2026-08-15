@@ -29,10 +29,6 @@ interface FindingsTabProps {
   onDelete: (id: string) => void;
   onRunDone: () => void;
   targetFindingId?: string | null;
-  /** Which run accordions were open last time this tab was mounted, keyed by
-   *  review id. Owned by PrDetailView so it survives a tab switch. */
-  openRuns?: Record<string, boolean>;
-  onRunOpenChange?: (reviewId: string, open: boolean) => void;
 }
 
 export function FindingsTab({
@@ -51,8 +47,6 @@ export function FindingsTab({
   onDelete,
   onRunDone,
   targetFindingId,
-  openRuns,
-  onRunOpenChange,
 }: FindingsTabProps) {
   const t = useTranslations("prReview");
   const handleCancelAll = useCallback(() => {
@@ -184,8 +178,7 @@ export function FindingsTab({
             key={review.id}
             review={review}
             prId={prId}
-            defaultOpen={openRuns?.[review.id] ?? i === 0}
-            onOpenChange={(o) => onRunOpenChange?.(review.id, o)}
+            defaultOpen={i === 0}
             repoFullName={repoFullName}
             headSha={headSha}
             targetRunId={target?.runId ?? null}

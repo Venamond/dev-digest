@@ -22,6 +22,7 @@ import { SEV_COLOR, SEV_COLOR_FALLBACK } from "./constants";
 import { lineLabel } from "./helpers";
 import { githubBlobUrl } from "../../../../../../../lib/github-urls";
 import { s } from "./styles";
+import { usePreservedToggle } from "../PrDetailView/preserved-toggle";
 
 export function FindingCard({
   f,
@@ -43,7 +44,10 @@ export function FindingCard({
   targeted?: boolean;
 }) {
   const t = useTranslations("prReview");
-  const [expanded, setExpanded] = React.useState(defaultExpanded ?? false);
+  // Keyed by finding id, not list index: survives the tab switch, so expanding
+  // the last card and coming back does not silently re-expand the first one
+  // via `defaultExpanded={i === 0}`.
+  const [expanded, setExpanded] = usePreservedToggle(`finding:${f.id}`, defaultExpanded ?? false);
   const rootRef = React.useRef<HTMLDivElement | null>(null);
   const sevColor = SEV_COLOR[f.severity] ?? SEV_COLOR_FALLBACK;
   const fileHref =
