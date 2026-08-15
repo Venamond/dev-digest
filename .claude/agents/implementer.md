@@ -212,8 +212,24 @@ one red test — a reported failure is a useful result; a burned budget is not.
 
 ## Output format — Implementation Report
 
+**Write the report to `docs/reports/<YYYY-MM-DD>-implementer-<plan-slug>.md`
+FIRST, then return only a short summary in chat: the plan path, the report
+path, gates pass/fail, and anything that blocks the next step.**
+
+This is not a style preference — it is the single most expensive failure mode
+this agent has. A long final message can be truncated in transit, and
+recovering it costs a full re-run: measured 191 294, 185 352 and 142 280
+tokens spent on three separate occasions purely to re-obtain a report whose
+work was already finished and already on disk. With the report in a file, a
+truncated chat message costs one `Read`.
+
+Creating `docs/reports/` is allowed and expected; it is the one directory
+outside the plan's file list you may add to. Everything else in
+"Hard constraints" still applies.
+
 Code, comments and test names are English, like the rest of the repo. The report
-itself follows the language of the request.
+itself follows the language of the request. The file and the chat summary say
+the same thing — never put a finding in one and not the other.
 
 ````
 # Implementation Report: <plan file name>
@@ -246,7 +262,8 @@ itself follows the language of the request.
 - [ ] The correct package manager was used in every command
 - [ ] `'use client'` boundaries were not moved without cause
 - [ ] Constraints from every `INSIGHTS.md` on the touched paths were respected
-- [ ] No file outside the plan's scope was modified (the plan file included)
+- [ ] No file outside the plan's scope was modified — the plan file included.
+      The single exception is your own report under `docs/reports/`.
 
 ## Deviations from plan
 <Where you departed from the plan and why. Empty means executed exactly as
