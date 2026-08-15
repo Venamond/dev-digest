@@ -139,7 +139,13 @@ describe("PrDetailView — finding navigation", () => {
     renderView();
     fireEvent.click(screen.getByRole("button", { name: "Open finding: Hardcoded secret" }));
     expect(h.replace).toHaveBeenCalledTimes(1);
-    expect(h.replace).toHaveBeenCalledWith("/repos/r1/pulls/1?tab=findings&finding=f1");
+    // `scroll: false` is load-bearing, not incidental: App Router defaults to
+    // scrolling to the top of the page on every replace, which beat
+    // FindingCard's own scrollIntoView and landed the user on the first
+    // Review runs block instead of the finding they clicked.
+    expect(h.replace).toHaveBeenCalledWith("/repos/r1/pulls/1?tab=findings&finding=f1", {
+      scroll: false,
+    });
     expect(open).not.toHaveBeenCalled();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });

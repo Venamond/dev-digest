@@ -34,10 +34,16 @@ export function ReviewRunAccordion({
   targetRunId = null,
   targetNonce = 0,
   targetFindingId = null,
+  onOpenChange,
 }: {
   review: ReviewRecord;
   prId: string;
   defaultOpen?: boolean;
+  /** Reports every open/close so an ancestor that outlives this component
+   *  (PrDetailView, across tab switches) can seed `defaultOpen` on remount.
+   *  Without it the accordion returns collapsed, the content shrinks, and any
+   *  restored scroll offset gets clamped — see client/INSIGHTS.md. */
+  onOpenChange?: (open: boolean) => void;
   repoFullName?: string | null;
   headSha?: string | null;
   /** When this matches review.run_id, the accordion opens and scrolls into view
@@ -48,6 +54,15 @@ export function ReviewRunAccordion({
 }) {
   const t = useTranslations("prReview");
   const [open, setOpen] = React.useState(defaultOpen);
+  // Report upward from an effect, never from inside the state updater: React
+  // may run an updater during render, and calling the parent's setState there
+  // throws "Cannot update a component while rendering a different component".
+  const reported = React.useRef(defaultOpen);
+  React.useEffect(() => {
+    if (reported.current === open) return;
+    reported.current = open;
+    onOpenChange?.(open);
+  }, [open, onOpenChange]);
   const [severityFilter, setSeverityFilter] = React.useState<Severity | null>(null);
   const rootRef = React.useRef<HTMLDivElement | null>(null);
   React.useEffect(() => {

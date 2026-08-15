@@ -253,6 +253,62 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Recurring Errors & Fixes
 
+- **This app scrolls an inner `<main overflow-y:auto>`, NOT the window — so
+  window-level scroll reasoning does not apply here.** Measured in the
+  running app: `document.body.scrollHeight === window.innerHeight` (838) and
+  `window.scrollY` is always 0, while `main.scrollHeight` is 3775 with
+  `clientHeight` 786. Before theorising about a scroll bug, measure
+  `main.scrollTop` in the browser — `window.scrollY` will read 0 and tell you
+  nothing.
+
+  Two consequences that cost real time here:
+
+  1. `router.push`/`replace` default to `ScrollBehavior.Default`
+     (scroll-to-top) and `{ scroll: false }` disables it — true in general,
+     and it is what the Next docs and source say. **But it is inert in this
+     app**, because the window never scrolls. A "jump to X lands at the top"
+     bug here is *not* caused by it, and adding `{ scroll: false }` will not
+     fix one. (An earlier version of this entry prescribed exactly that fix
+     on doc-reading alone; it changed nothing.)
+  2. Switching tabs unmounts the outgoing tab's content, `<main>` shrinks to
+     the new content's height, and the browser clamps `scrollTop`. Coming
+     back remounts and the position is gone — measured 2587 → 244 on the PR
+     detail view. `PrDetailView/use-tab-scroll.ts` saves the offset per tab
+     and restores it, **but restoring an offset is only half the problem**:
+     any collapse/expand state inside the tab is local `useState` and dies
+     with the unmount too. Measured with `ReviewRunAccordion` #8 expanded:
+     leaving at 2587 and returning gives 2061, because the accordion came
+     back collapsed, the content lost 870px, and the browser clamped the
+     restored offset. Restoring scroll without restoring the state that
+     determines content height cannot work.
+
+     Fixed by lifting that state out of the unmounting subtree:
+     `PrDetailView` owns `openRuns: Record<reviewId, boolean>`, seeds
+     `ReviewRunAccordion`'s `defaultOpen` from it and takes an
+     `onOpenChange` callback. The accordion stays *uncontrolled* — its own
+     auto-open effects (`targetRunId`, `containsFinding`) are untouched, it
+     just reports. Measured after: 2587 → 2587 with the accordion still
+     expanded at 920px. The general rule: whatever determines content height
+     must live at or above the component that survives the unmount.
+
+     **Testing trap that hid this:** the first verification scrolled to an
+     accordion without expanding it, so total height was identical before
+     and after and the restore looked perfect (2117 → 2117). A scroll
+     restoration test is only meaningful when the content height actually
+     changes across the round trip — expand something first.
+
+  Reaching the container: `<main>` is rendered by
+  `vendor/ui/shell/AppFrame.tsx`, which is read-only vendored code, so you
+  cannot put a ref on it. Take a ref on your own root and walk up with
+  `rootRef.current?.closest("main")`. Restoring also has to survive the
+  incoming tab still growing (async query rows) — set `scrollTop`, then
+  re-apply over a few `requestAnimationFrame`s until it sticks, or the
+  browser clamps it back to a smaller `scrollHeight` on the first pass.
+
+  Navigating straight to `?tab=findings&finding=<id>` *does* scroll correctly
+  (measured `main.scrollTop` 2790, card in view) — that path works and is
+  unrelated to the tab round-trip. (2026-08-15)
+
 - **Never run `pnpm build` in `client/` while `next dev` is running — they
   share one `.next/`.** The production build overwrites the dev server's
   chunks, and the next request fails with a misleading

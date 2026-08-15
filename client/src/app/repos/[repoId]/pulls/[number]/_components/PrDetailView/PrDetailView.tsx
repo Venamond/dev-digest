@@ -20,6 +20,7 @@ import { ApiError } from "@/lib/api";
 import { githubPrUrl } from "@/lib/github-urls";
 import type { FindingRecord } from "@devdigest/shared";
 import { patchedSearch, openFindingPatch } from "./helpers";
+import { useTabScroll } from "./use-tab-scroll";
 
 export function PrDetailView() {
   const params = useParams<{ repoId: string; number: string }>();
@@ -53,12 +54,33 @@ export function PrDetailView() {
   const tab = search.get("tab") ?? "overview";
   const traceRunId = search.get("trace");
   const targetFindingId = search.get("finding");
-  const setParams = (patch: Record<string, string | null>) => {
+  // `scroll` defaults to Next's own behaviour (scroll to top). Pass false when
+  // the destination does its own scrolling: App Router's default is
+  // ScrollBehavior.Default on every push/replace, which lands the viewport at
+  // the top of the page and beats a `scrollIntoView` fired from an effect.
+  const setParams = (patch: Record<string, string | null>, opts?: { scroll?: boolean }) => {
     const qs = patchedSearch(search, patch);
-    router.replace(`/repos/${repoId}/pulls/${number}${qs ? `?${qs}` : ""}`);
+    router.replace(`/repos/${repoId}/pulls/${number}${qs ? `?${qs}` : ""}`, opts);
   };
   const setParam = (key: string, val: string | null) => setParams({ [key]: val });
-  const setTab = (t: string) => setParams({ tab: t, finding: null });
+  // Remember where the user was in the tab being left, so returning to it does
+  // not dump them back at the top. Skip the restore when a ?finding= target is
+  // in play — FindingCard scrolls itself to the card and must win.
+  const { rootRef, remember } = useTabScroll(tab, { skipRestore: !!targetFindingId });
+  // Which run accordions are open. Lives here, not in FindingsTab, because
+  // FindingsTab unmounts on every tab switch while this component does not —
+  // and a collapsed accordion on return changes the content height, which
+  // clamps the scroll offset useTabScroll just restored.
+  const [openRuns, setOpenRuns] = React.useState<Record<string, boolean>>({});
+  const handleRunOpenChange = React.useCallback(
+    (reviewId: string, open: boolean) =>
+      setOpenRuns((prev) => (prev[reviewId] === open ? prev : { ...prev, [reviewId]: open })),
+    [],
+  );
+  const setTab = (t: string) => {
+    remember(tab);
+    setParams({ tab: t, finding: null });
+  };
 
   const runs = reviews ?? [];
   const allFindings: FindingRecord[] = React.useMemo(
@@ -118,7 +140,7 @@ export function PrDetailView() {
         onRunsStarted={() => invalidateActiveRuns()}
       />
 
-      <div style={{ padding: "24px 32px 44px", display: "flex", flexDirection: "column", gap: 24, maxWidth: 1080, margin: "0 auto" }}>
+      <div ref={rootRef} style={{ padding: "24px 32px 44px", display: "flex", flexDirection: "column", gap: 24, maxWidth: 1080, margin: "0 auto" }}>
         {tab === "overview" && <OverviewTab prBody={pr.body} prId={prId} />}
 
         {tab === "findings" && (
@@ -147,6 +169,8 @@ export function PrDetailView() {
               if (prId) qc.invalidateQueries({ queryKey: queryKeys.smartDiff(prId) });
             }}
             targetFindingId={targetFindingId}
+            openRuns={openRuns}
+            onRunOpenChange={handleRunOpenChange}
           />
         )}
 
@@ -159,7 +183,10 @@ export function PrDetailView() {
             deletions={pr.deletions}
             canComment={pr.status === "open"}
             findings={allFindings}
-            onOpenFinding={(id) => setParams(openFindingPatch(id))}
+            // scroll: false — FindingCard scrolls itself to the target card.
+            // Without this, Next scrolls to the top of the page first and the
+            // user always lands on the first Review runs block instead.
+            onOpenFinding={(id) => setParams(openFindingPatch(id), { scroll: false })}
             runs={prRuns}
           />
         )}
