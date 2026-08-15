@@ -1,9 +1,8 @@
 "use client";
 
 import React, { useCallback } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Icon, Badge, Button, SectionLabel, EmptyState, type Severity } from "@devdigest/ui";
+import { Icon, Badge, Button, SectionLabel, EmptyState } from "@devdigest/ui";
 import { RunStatus } from "../RunStatus/RunStatus";
 import { RunHistory } from "../RunHistory/RunHistory";
 import { ReviewRunAccordion } from "../ReviewRunAccordion/ReviewRunAccordion";
@@ -11,8 +10,6 @@ import { SeverityCounters } from "../SeverityCounters/SeverityCounters";
 import { s } from "./styles";
 import type { FindingRecord, ReviewRecord, RunSummary, PrCommit } from "@devdigest/shared";
 import type { UseMutationResult } from "@tanstack/react-query";
-
-const SEVERITIES = new Set<Severity>(["CRITICAL", "WARNING", "SUGGESTION", "INFO"]);
 
 interface FindingsTabProps {
   prId: string | null;
@@ -31,6 +28,7 @@ interface FindingsTabProps {
   onOpenTrace: (id: string) => void;
   onDelete: (id: string) => void;
   onRunDone: () => void;
+  targetFindingId?: string | null;
 }
 
 export function FindingsTab({
@@ -48,6 +46,7 @@ export function FindingsTab({
   onOpenTrace,
   onDelete,
   onRunDone,
+  targetFindingId,
 }: FindingsTabProps) {
   const t = useTranslations("prReview");
   const handleCancelAll = useCallback(() => {
@@ -80,23 +79,7 @@ export function FindingsTab({
     setTarget((p) => ({ runId, n: (p?.n ?? 0) + 1 }));
   }, []);
 
-  // Severity counters filter — URL-backed (?severity=) so the filter is shareable.
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
-  const router = useRouter();
-  const rawSeverity = searchParams.get("severity");
-  const severityFilter: Severity | null =
-    rawSeverity && SEVERITIES.has(rawSeverity as Severity) ? (rawSeverity as Severity) : null;
-  const setSeverityFilter = useCallback(
-    (next: Severity | null) => {
-      const sp = new URLSearchParams(searchParams.toString());
-      if (next) sp.set("severity", next);
-      else sp.delete("severity");
-      const qs = sp.toString();
-      router.replace(`${pathname}${qs ? `?${qs}` : ""}`);
-    },
-    [pathname, router, searchParams],
-  );
+  const targetMissing = !!targetFindingId && !allFindings.some((f) => f.id === targetFindingId);
 
   return (
     <section>
@@ -145,6 +128,10 @@ export function FindingsTab({
         </div>
       )}
 
+      {targetMissing && (
+        <div style={s.findingNotFound}>{t("findingsTab.findingNotFound")}</div>
+      )}
+
       {((prRuns && prRuns.length > 0) || prCommits.length > 0) && (
         <div style={s.timelineSection}>
           <SectionLabel
@@ -166,9 +153,7 @@ export function FindingsTab({
         </div>
       )}
 
-      {allFindings.length > 0 && (
-        <SeverityCounters findings={allFindings} active={severityFilter} onSelect={setSeverityFilter} />
-      )}
+      {allFindings.length > 0 && <SeverityCounters findings={allFindings} />}
 
       <SectionLabel
         icon="AlertOctagon"
@@ -198,7 +183,7 @@ export function FindingsTab({
             headSha={headSha}
             targetRunId={target?.runId ?? null}
             targetNonce={target?.n ?? 0}
-            severityFilter={severityFilter}
+            targetFindingId={targetFindingId}
           />
         ))
       )}

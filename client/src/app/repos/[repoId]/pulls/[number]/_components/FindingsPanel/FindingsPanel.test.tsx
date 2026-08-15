@@ -12,6 +12,8 @@ vi.mock("../../../../../../../lib/hooks/reviews", () => ({
 
 import { FindingsPanel } from "./FindingsPanel";
 
+Element.prototype.scrollIntoView = vi.fn();
+
 afterEach(() => {
   cleanup();
   mutate.mockClear();
@@ -97,5 +99,22 @@ describe("FindingsPanel (smoke)", () => {
       action: "accept",
       prId: "pr1",
     });
+  });
+
+  it("keeps a targeted CRITICAL finding visible under a WARNING filter and focuses it", () => {
+    renderWithIntl(
+      <FindingsPanel findings={FINDINGS} prId="pr1" severityFilter="WARNING" targetFindingId="f1" />,
+    );
+    expect(screen.getByText("Hardcoded secret")).toBeInTheDocument();
+    expect(screen.getByText("N+1 query")).toBeInTheDocument();
+
+    fireEvent.pointerDown(screen.getByTestId("findings-panel"));
+    fireEvent.keyDown(window, { key: "a" });
+    expect(mutate).toHaveBeenCalledWith({
+      findingId: "f1",
+      action: "accept",
+      prId: "pr1",
+    });
+    expect(mutate).not.toHaveBeenCalledWith(expect.objectContaining({ findingId: "f2" }));
   });
 });

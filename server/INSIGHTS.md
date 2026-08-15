@@ -24,6 +24,38 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Codebase Patterns
 
+- **`reviews.kind` is an enum of `'summary' | 'review'`
+  (`db/schema/reviews.ts:21`), but no *production* path ever writes
+  `'summary'`.** The only creation site is `run-executor.ts:342`, which
+  hardcodes `kind: 'review'`; `db/seed.ts` does the same (`:143`, `:493`,
+  `:508`). The sole `'summary'` insert in the repo is a deliberate test
+  fixture — `server/test/smart-diff.it.test.ts:172`, which exists precisely
+  to prove that `smart-diff`'s `kind='review'` filter excludes it
+  (`:198-202`).
+
+  Consequence for anyone reasoning about review sets: queries that filter
+  `eq(t.reviews.kind, 'review')` (`smart-diff/repository.ts`'s
+  `findingLinesByFile`, `pulls/repository.ts:128`) and ones that do not
+  (`reviews/repository/review.repo.ts:58-74` `reviewsForPull` — no `kind`
+  predicate at all) return **identical rows against real data**, and diverge
+  **only under that one test fixture**. The relationship is
+  `filtered ⊆ unfiltered`, never the reverse — so a finding reachable
+  through a `kind='review'` query always has a rendered card, while the
+  inverse can fail in tests only. Check which direction actually applies
+  before designing around it: a plan in this repo once inverted it and
+  invented a user-facing failure mode that cannot occur.
+  (2026-08-15, Smart Diff acceptance-gap planning)
+
+- **Prompt-assembly logs are metadata-only.** `summarizePromptAssembly` /
+  `toPromptLogPayload` (`platform/prompt-log.ts`) record section name, source,
+  char/token length, model, and correlation id — never API keys, the diff,
+  spec bodies, PR description, or intent JSON. `DEVDIGEST_PROMPT_LOG=verbose`
+  adds sha256-12 fingerprints of those bodies to **pino only** (not the SSE
+  Live Log / persisted `run_traces.log`); it is clamped to `summary` when
+  `NODE_ENV=production` even if the env var is set. Default is `summary`;
+  `off` disables the extra events. Do not log `PromptAssembly` fields
+  directly. (2026-08-13)
+
 - **If an agent's system prompt enumerates the same detection rules its skills
   carry, the skills become decorative — they can only reword findings, never
   add a detection.** Diagnosed 2026-08-08 on `API Contract Reviewer`: its
@@ -193,11 +225,114 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Tool & Library Notes
 
+- A route `response` schema field typed `X.nullable()` is REQUIRED for the
+  handler to actually return `null` — dropping `.nullable()` from a
+  `response: { 200: X.nullable() }` schema makes `fastify-type-provider-zod`
+  serialize a `null` return value as a `500`, not a `200`. Proven by
+  red-proof mutation in `server/test/intent.it.test.ts` (removed
+  `.nullable()` from the `/pulls/:id/intent` GET response schema; the "no
+  row exists" test failed with `expected 500 to be 200`). Any `GET` route
+  that can legitimately return "no record yet" needs this on the response
+  schema, and a test that asserts the `200 null` case is the only thing that
+  catches it — `pnpm typecheck` does not, since the handler's return type is
+  still valid without it. (2026-08-14, intent-layer test-writer run)
+
 - A JSDoc/block comment that contains the two-character sequence star-slash
   (e.g. documenting a glob like "star-slash + bare") terminates the comment
   early; esbuild then fails with a cryptic "Expected ';' but found …" on a
   later line. Spell such patterns in words inside block comments — never
   write that terminator sequence literally. (2026-08-04, PriceBook)
+
+- **NOT FIXED — and the obvious fix has a trap worth knowing before you try
+  it.** Serving from the DB and refreshing GitHub in the background
+  (`void this.refreshFromGitHub(...)`) does work and is dramatic: measured
+  list 30 021 ms → 17-44 ms, detail 30 026 ms → 5-46 ms, with the *first*
+  view of a PR still awaiting GitHub because there is nothing persisted to
+  show yet.
+
+  But un-awaited work escapes the request **and the test lifecycle**. With
+  that change the `.it.test` suite went flaky: `agents-skills.it.test.ts`
+  failed in 2 of 4 full-suite runs while passing 3/3 in isolation, and 3/3
+  in the full suite once the change was stashed. The background writes from
+  one test file land while a later file is asserting against the same
+  container. Any retry of this needs the in-flight promises tracked and
+  drained on app close (or otherwise bounded), not just fired with `void`.
+
+  The diagnosis of the slowness itself, unchanged:
+  `pulls/service.ts` (`listForRepo`) did
+  `gh.listPullRequests(...)` and then `await this.repo.upsertFromGhList(...)`
+  **inside a `for` loop**, sequentially, before returning anything. Measured
+  on an 8-PR repo with a valid token: 0.43–0.55 s warm, 4.7 s on the first
+  call, 7.8 s from the browser, and **30.0 s** on a later load in the same
+  session — the spread is GitHub's latency, so it degrades without warning
+  and without any local change. The page HTML itself serves in ~50 ms, so a
+  slow PR list is always this endpoint, never Next.
+
+  Worse path, currently dormant: `:63-83` backfills diff stats for rows where
+  `additions/deletions/filesCount` are all 0, calling `gh.getPullRequest()`
+  **per PR**, sequentially, up to `BACKFILL_LIMIT = 10` — and each of those
+  itself issues `listFiles` + `listCommits` (see the `per_page` entry below).
+  That is up to ~30 serial GitHub round-trips in one HTTP request. It is
+  invisible today only because every seeded PR already has stats; a freshly
+  imported PR re-arms it.
+
+  So: when the PR list feels slow, measure this one endpoint before
+  suspecting the client. And treat "add a PR" as a performance event, not
+  just a data one.
+
+  **This one endpoint gates the whole PR detail screen, not just the list.**
+  `PrDetailView` has no prId of its own — it derives it by finding the PR
+  inside `usePulls(repoId)`'s response (`PrDetailView.tsx`), so *every* query
+  on the detail page (reviews, runs, intent, smart-diff) waits behind this
+  call. Measured: the Agent-runs accordions took **7.5 s** to appear, while
+  `GET /pulls/:id/reviews` itself serves in **17-24 ms**. The reviews
+  endpoint is not slow; it simply cannot start until the PR list resolves.
+
+  Corollary for triage: a slow *detail* screen is not evidence about the
+  detail endpoints. Time `/repos/:id/pulls` first — it is upstream of
+  everything on that page. (Recorded after briefly blaming `reviewsForPull`'s
+  per-agent `getById` loop for the 7.5 s; direct measurement showed that
+  endpoint is fast and the loop only runs once per *distinct* agent — 5, not
+  12, on the PR in question.) (2026-08-15)
+
+- **`getPullRequest` fetches PR files and commits with `per_page: 100` and no
+  pagination — a PR with more than 100 changed files is silently truncated.**
+  `adapters/github/octokit.ts:79-90` calls `pulls.listFiles` and
+  `pulls.listCommits` with a bare `per_page: 100`, never `octokit.paginate`.
+  Confirmed live: `Venamond/dev-digest#5` returns exactly 100 files from
+  `GET /pulls/:id/smart-diff`, a suspiciously round number that is the cap,
+  not the real count.
+
+  Consequences for anything built on `PrDetail.files`: Smart Diff classifies
+  only the first 100 paths, and any per-file total re-derived by summing
+  `files` disagrees with `pr.files_count` / `pr.additions` / `pr.deletions`,
+  which GitHub reports for the whole PR. Prefer the PR-level totals already
+  on `PrDetail` over summing `files`; treat `files` as "up to 100 files"
+  until the adapter paginates. Nothing errors, nothing logs — the list just
+  ends. (2026-08-15)
+
+- **Enum columns are `text` with no constraint, and the insert path does not
+  Zod-parse — so a value the read path's `z.enum` rejects can be written and
+  then permanently 500s that route.** Found live: `GET /pulls/:id/reviews`
+  returned `internal_error` for PR #482 while `/pulls/:id` and
+  `/pulls/:id/smart-diff` were fine. Cause: `findings.category` is
+  `text('category').notNull()` (`db/schema/reviews.ts:38`), `insertFindings`
+  (`repository/review.repo.ts`) writes `f.category` straight through, and the
+  response schema validates against
+  `FindingCategory = z.enum(['bug','security','perf','style','test'])`. The
+  offending rows came from **our own seed** — `db/seed.ts:524,550,563,576`
+  writes `coverage`, `flaky`, `over-mocking` for the Test Quality Reviewer,
+  none of which are in the enum.
+
+  Why it hides: `pnpm typecheck` sees only the DTO type, and every test
+  fixture uses valid categories, so unit and integration suites stay green.
+  It surfaces only against seeded or production data, one route at a time —
+  whichever response schema happens to include the field. When triaging a
+  500 on one endpoint while its siblings work, diff the response schemas for
+  a validated field the others omit, then check the actual column values
+  (`select category, count(*) … group by 1`) rather than assuming the code
+  is wrong. Same failure class as the `.nullable()` serializer trap, but
+  data-driven rather than shape-driven. (2026-08-15)
 
 - Adding Fastify `schema.response` via ZodTypeProvider tightens the handler
   return type to `z.infer`. A DTO field typed `string | null` will fail
@@ -343,6 +478,13 @@ ground truth — wrap-ups can mischaracterize a session.
   all. (2026-08-08, Agents Lab card-stats fix)
 
 ## Recurring Errors & Fixes
+
+- OpenRouter `404 No endpoints found for deepseek/deepseek-v4-flash` after
+  sending `provider: { order: ['DeepSeek'], allow_fallbacks: false }`. That
+  slug is **not** hosted on OpenRouter's DeepSeek upstream; pinning drops
+  every real endpoint. Do not set `provider.order` / `allow_fallbacks: false`
+  for this default model. `temperature: 0` + `seed` is enough; keep OpenRouter
+  free to pick an available host. (2026-08-13)
 
 - Deleting a run (timeline trash icon → `deleteAgentRun`) while its LLM call
   is still in flight orphans a `reviews`/`findings` row: `runOneAgent`

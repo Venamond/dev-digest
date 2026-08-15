@@ -13,6 +13,13 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Codebase Patterns
 
+- **Prompt-assembly observability stays metadata-only and I/O-free.**
+  `summarizePromptAssembly` (`src/prompt-log.ts`) returns section name / source
+  / lengths; `reviewPullRequest` emits that object on `onEvent` as
+  `"Prompt assembled"` — never the assembled strings. Hashing and pino live
+  in the server (`platform/prompt-log.ts`). Do not `console.log` `assembly`
+  or add Node builtins here to fingerprint it. (2026-08-13)
+
 - `OpenRouterProvider` (`src/llm/openrouter.ts`) is the intentional sole
   concrete network client in `reviewer-core` — studio (`container.ts`) and
   the future CI runner share it. The review pipeline still takes an injected

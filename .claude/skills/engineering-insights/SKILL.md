@@ -24,6 +24,18 @@ re-investigating? "Be careful with async" fails; "X times out after 30 items
 — including because it was already recorded — write nothing. An empty
 wrap-up is the correct, expected outcome, not a shortfall.
 
+**Prefer promotion over accumulation.** Before writing an entry, ask whether
+the lesson can be expressed one level up: as a rule in the relevant skill
+(`onion-architecture`, `frontend-architecture`, …), or — better — as a
+machine check (a `dependency-cruiser` rule, a test, a script, a hook). If it
+can, do that instead of writing the entry: a rule that fails in CI cannot be
+forgotten, while an entry only helps the agent that happens to read the file.
+Write to `INSIGHTS.md` when the lesson is real but not yet expressible as a
+rule. When an existing entry later becomes a machine check, mark it
+`(now enforced by <check>)` rather than leaving it to compete for attention
+with active guidance — these files are read in full before work, so stale
+entries cost context on every read.
+
 Route each entry into exactly one section (create it if missing): What
 Works, What Doesn't Work, Codebase Patterns, Tool & Library Notes, Recurring
 Errors & Fixes, Session Notes, Open Questions.

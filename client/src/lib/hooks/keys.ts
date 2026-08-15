@@ -32,6 +32,8 @@ export const queryKeys = {
   prRuns: (prId: string | null | undefined) => ["pr-runs", prId] as const,
   reviews: (prId: string | null | undefined) => ["reviews", prId] as const,
   prComments: (prId: string | null | undefined) => ["pr-comments", prId] as const,
+  prIntent: (prId: string | null | undefined) => ["pr-intent", prId] as const,
+  smartDiff: (prId: string | null | undefined) => ["smart-diff", prId] as const,
 
   runTrace: (runId: string | null | undefined) => ["run-trace", runId] as const,
   repoIntelState: (repoId: string | null | undefined) => ["repo-intel-state", repoId] as const,

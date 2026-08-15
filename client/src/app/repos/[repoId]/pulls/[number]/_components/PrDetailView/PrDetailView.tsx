@@ -19,8 +19,21 @@ import { useActiveRepo, useRepoNotFound } from "@/lib/repo-context";
 import { ApiError } from "@/lib/api";
 import { githubPrUrl } from "@/lib/github-urls";
 import type { FindingRecord } from "@devdigest/shared";
+import { patchedSearch, openFindingPatch } from "./helpers";
+import { useTabScroll } from "./use-tab-scroll";
+import { PreservedToggleProvider } from "./preserved-toggle";
 
+/** The provider must sit ABOVE the loading/error branches: those unmount the
+ *  whole tab subtree, and the store has to outlive that. */
 export function PrDetailView() {
+  return (
+    <PreservedToggleProvider>
+      <PrDetailViewInner />
+    </PreservedToggleProvider>
+  );
+}
+
+function PrDetailViewInner() {
   const params = useParams<{ repoId: string; number: string }>();
   const search = useSearchParams();
   const router = useRouter();
@@ -51,13 +64,24 @@ export function PrDetailView() {
 
   const tab = search.get("tab") ?? "overview";
   const traceRunId = search.get("trace");
-  const setParam = (key: string, val: string | null) => {
-    const sp = new URLSearchParams(search.toString());
-    if (val == null) sp.delete(key);
-    else sp.set(key, val);
-    router.replace(`/repos/${repoId}/pulls/${number}${sp.toString() ? `?${sp.toString()}` : ""}`);
+  const targetFindingId = search.get("finding");
+  // `scroll` defaults to Next's own behaviour (scroll to top). Pass false when
+  // the destination does its own scrolling: App Router's default is
+  // ScrollBehavior.Default on every push/replace, which lands the viewport at
+  // the top of the page and beats a `scrollIntoView` fired from an effect.
+  const setParams = (patch: Record<string, string | null>, opts?: { scroll?: boolean }) => {
+    const qs = patchedSearch(search, patch);
+    router.replace(`/repos/${repoId}/pulls/${number}${qs ? `?${qs}` : ""}`, opts);
   };
-  const setTab = (t: string) => setParam("tab", t);
+  const setParam = (key: string, val: string | null) => setParams({ [key]: val });
+  // Remember where the user was in the tab being left, so returning to it does
+  // not dump them back at the top. Skip the restore when a ?finding= target is
+  // in play — FindingCard scrolls itself to the card and must win.
+  const { rootRef, remember } = useTabScroll(tab, { skipRestore: !!targetFindingId });
+  const setTab = (t: string) => {
+    remember(tab);
+    setParams({ tab: t, finding: null });
+  };
 
   const runs = reviews ?? [];
   const allFindings: FindingRecord[] = React.useMemo(
@@ -117,8 +141,8 @@ export function PrDetailView() {
         onRunsStarted={() => invalidateActiveRuns()}
       />
 
-      <div style={{ padding: "24px 32px 44px", display: "flex", flexDirection: "column", gap: 24, maxWidth: 1080, margin: "0 auto" }}>
-        {tab === "overview" && <OverviewTab prBody={pr.body} />}
+      <div ref={rootRef} style={{ padding: "24px 32px 44px", display: "flex", flexDirection: "column", gap: 24, maxWidth: 1080, margin: "0 auto" }}>
+        {tab === "overview" && <OverviewTab prBody={pr.body} prId={prId} />}
 
         {tab === "findings" && (
           <FindingsTab
@@ -141,7 +165,11 @@ export function PrDetailView() {
               invalidateActiveRuns();
               invalidateRunHistory();
               refetchReviews();
+              // SSE `done` fires after findings are persisted — this is what
+              // makes Smart Diff's "N findings" badges appear without a reload.
+              if (prId) qc.invalidateQueries({ queryKey: queryKeys.smartDiff(prId) });
             }}
+            targetFindingId={targetFindingId}
           />
         )}
 
@@ -150,7 +178,15 @@ export function PrDetailView() {
             prId={prId}
             filesCount={pr.files_count}
             files={pr.files}
+            additions={pr.additions}
+            deletions={pr.deletions}
             canComment={pr.status === "open"}
+            findings={allFindings}
+            // scroll: false — FindingCard scrolls itself to the target card.
+            // Without this, Next scrolls to the top of the page first and the
+            // user always lands on the first Review runs block instead.
+            onOpenFinding={(id) => setParams(openFindingPatch(id), { scroll: false })}
+            runs={prRuns}
           />
         )}
       </div>

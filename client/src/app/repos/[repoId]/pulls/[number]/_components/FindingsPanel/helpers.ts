@@ -15,10 +15,11 @@ export function visibleFindings(
   findings: FindingRecord[],
   hideLow: boolean,
   severityFilter?: string | null,
+  keepId?: string | null,
 ): FindingRecord[] {
   let shown = findings;
-  if (hideLow) shown = shown.filter((f) => f.confidence >= LOW_CONFIDENCE_THRESHOLD);
-  if (severityFilter) shown = shown.filter((f) => f.severity === severityFilter);
+  if (hideLow) shown = shown.filter((f) => f.id === keepId || f.confidence >= LOW_CONFIDENCE_THRESHOLD);
+  if (severityFilter) shown = shown.filter((f) => f.id === keepId || f.severity === severityFilter);
   return [...shown].sort(
     (a, b) => (SEVERITY_ORDER[a.severity] ?? 9) - (SEVERITY_ORDER[b.severity] ?? 9),
   );

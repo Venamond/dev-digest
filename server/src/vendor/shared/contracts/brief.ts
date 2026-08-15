@@ -5,14 +5,6 @@ import { z } from 'zod';
  * Smart Diff. Composed into PrBrief.
  */
 
-// ---- Intent ----
-export const Intent = z.object({
-  intent: z.string(),
-  in_scope: z.array(z.string()),
-  out_of_scope: z.array(z.string()),
-});
-export type Intent = z.infer<typeof Intent>;
-
 // ---- Blast radius ----
 export const ChangedSymbol = z.object({
   name: z.string(),
@@ -46,6 +38,33 @@ export type BlastRadius = z.infer<typeof BlastRadius>;
 // ---- Risks ----
 export const RiskSeverity = z.enum(['high', 'medium', 'low']);
 export type RiskSeverity = z.infer<typeof RiskSeverity>;
+
+// ---- Intent ----
+export const IntentRiskArea = z.object({
+  title: z.string(),
+  severity: RiskSeverity,
+  explanation: z.string().default(''),
+  file_ref: z.string().default(''),
+});
+export type IntentRiskArea = z.infer<typeof IntentRiskArea>;
+
+export const IntentMissingContext = z.object({
+  kind: z.string(),
+  ref: z.string(),
+  reason: z.string(),
+});
+export type IntentMissingContext = z.infer<typeof IntentMissingContext>;
+
+export const Intent = z.object({
+  intent: z.string(),
+  in_scope: z.array(z.string()),
+  out_of_scope: z.array(z.string()),
+  risk_areas: z.array(IntentRiskArea).default([]),
+  confidence: z.number().min(0).max(1).default(0),
+  sources: z.array(z.string()).default([]),
+  missing_context: z.array(IntentMissingContext).default([]),
+});
+export type Intent = z.infer<typeof Intent>;
 
 export const Risk = z.object({
   kind: z.string(),

@@ -41,6 +41,17 @@
     "viewOnGitHub": "View on GitHub",
     "postedToGitHub": "Posts to GitHub immediately",
     "outdatedTitle": "{count} comment(s) on older revisions",
-    "addComment": "Add a comment on this line"
+    "addComment": "Add a comment on this line",
+    "role": {
+      "core": "Core logic",
+      "wiring": "Wiring & config",
+      "boilerplate": "Boilerplate & lock files"
+    },
+    "otherFiles": "Other files",
+    "groupCount": "{count} files",
+    "findingsBadge": "{count} findings",
+    "openFinding": "Open finding: {title}",
+    "largeFile": "Large file",
+    "largeFileTitle": "{count} changed lines — review with extra care"
   }
 }

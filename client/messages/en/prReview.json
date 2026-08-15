@@ -64,10 +64,26 @@
     "lethalTitle": "Lethal Trifecta detected",
     "findingsCount": "{count} finding(s)",
     "timeline": "Timeline",
-    "timelineHint": "runs & commits · newest first"
+    "timelineHint": "runs & commits · newest first",
+    "findingNotFound": "That finding is no longer available — its review run may have been deleted."
   },
   "overview": {
     "description": "Description"
+  },
+  "intent": {
+    "title": "Intent",
+    "inScope": "In scope",
+    "outOfScope": "Out of scope",
+    "risks": "Risk areas",
+    "derive": "Derive",
+    "rederive": "Re-derive",
+    "recompute": "Recompute",
+    "stale": "This intent was classified against an older head commit. Recompute to refresh it.",
+    "empty": "No intent classified yet.",
+    "confidence": "Confidence",
+    "sources": "Sources",
+    "missing": "Missing context",
+    "unavailable": "Unavailable"
   },
   "severity": {
     "CRITICAL": "CRITICAL",
@@ -84,10 +100,23 @@
     "deleteTitle": "Delete this review run"
   },
   "diffTab": {
-    "sectionLabel": "Files changed · {count} files",
     "showComments": "Show comments ({count})",
     "hideComments": "Hide comments ({count})",
     "postError": "Couldn't post the comment to GitHub."
+  },
+  "smartDiff": {
+    "eyebrowSmart": "Reviewer-ordered diff",
+    "eyebrowOriginal": "Files changed",
+    "fileCount": "{count} files",
+    "order": {
+      "smart": "Smart order",
+      "original": "Original order"
+    },
+    "empty": "No changed files imported yet — open this PR's Files changed tab to load them.",
+    "tooBig": "This PR is large ({lines} reviewable lines). Consider splitting it:",
+    "proposedSplit": "{name} ({count} files)",
+    "zeroNewTokens": "0 new tokens",
+    "builtOnLastReview": "built on {count} from last review"
   },
   "runStatus": {
     "elapsed": "Running · {count} agent(s)",
@@ -99,16 +128,6 @@
     "running": "running",
     "findings": "{count} finding(s)",
     "blockers": " · {count} blockers"
-  },
-  "smartDiff": {
-    "coreLabel": "Core",
-    "wiringLabel": "Wiring",
-    "boilerplateLabel": "Boilerplate",
-    "largeTitle": "This PR is large ({lines} changed lines)",
-    "largeBody": "Consider splitting it into smaller, focused PRs for easier review:",
-    "filesCount": "{count} files",
-    "findingLines": "{count} finding-lines",
-    "groupedByRole": "Smart Diff · grouped by role"
   },
   "list": {
     "breadcrumb": "Pull Requests",

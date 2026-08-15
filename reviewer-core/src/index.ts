@@ -19,6 +19,14 @@ export {
   type AssembledPrompt,
 } from './prompt.js';
 
+export {
+  approxTokens,
+  summarizePromptAssembly,
+  summarizePromptSections,
+  type PromptSectionStat,
+  type PromptAssemblySummary,
+} from './prompt-log.js';
+
 // Citation grounding — the mandatory mechanical gate for diff findings.
 export { groundFindings, groundingSummary, type GroundingResult } from './grounding.js';
 
@@ -32,7 +40,7 @@ export {
 } from './llm/structured.js';
 
 // Map-reduce helpers (reduce partials, slice a file's diff).
-export { reduceReviews, sliceDiff } from './review/reduce.js';
+export { reduceReviews, sliceDiff, scoreFromFindings } from './review/reduce.js';
 
 // The engine entry point: given (diff + resolved agent inputs + LLM) → grounded Review.
 export {

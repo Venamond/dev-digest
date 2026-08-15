@@ -2,11 +2,14 @@
 
 import React from "react";
 import { useTranslations } from "next-intl";
-import { SectionLabel, Button } from "@devdigest/ui";
+import { Button } from "@devdigest/ui";
 import { DiffViewer, type DiffCommentApi } from "@/components/diff-viewer";
-import { usePrComments, useCreatePrComment } from "@/lib/hooks/reviews";
+import { usePrComments, useCreatePrComment, useSmartDiff } from "@/lib/hooks/reviews";
 import { notify } from "@/lib/toast";
-import type { PrFile } from "@devdigest/shared";
+import type { FindingRecord, PrFile, RunSummary } from "@devdigest/shared";
+import { SmartDiffViewer } from "../SmartDiffViewer/SmartDiffViewer";
+import { DEFAULT_DIFF_ORDER, type DiffOrder } from "../SmartDiffViewer/constants";
+import { lastReviewTokensIn } from "../SmartDiffViewer/helpers";
 
 interface DiffTabProps {
   prId: string | null;
@@ -14,14 +17,35 @@ interface DiffTabProps {
   files: PrFile[];
   /** Inline commenting is offered only on open PRs (GitHub rejects otherwise). */
   canComment?: boolean;
+  findings?: FindingRecord[];
+  onOpenFinding?: (findingId: string) => void;
+  runs?: RunSummary[];
+  /** PR totals from `PrDetail`, NOT re-derived from `files` — the GitHub
+   *  adapter fetches files at `per_page: 100` without pagination, so on a
+   *  101+ file PR summing `files` undercounts while `filesCount` is right. */
+  additions: number;
+  deletions: number;
 }
 
-export function DiffTab({ prId, filesCount, files, canComment }: DiffTabProps) {
+export function DiffTab({
+  prId,
+  filesCount,
+  files,
+  additions,
+  deletions,
+  canComment,
+  findings,
+  onOpenFinding,
+  runs,
+}: DiffTabProps) {
   const t = useTranslations("prReview");
   const { data: comments } = usePrComments(prId);
   const create = useCreatePrComment(prId);
   // Comments start hidden so the diff is clean by default — toggle to reveal.
   const [showComments, setShowComments] = React.useState(false);
+
+  const { data: smartDiff } = useSmartDiff(prId);
+  const [order, setOrder] = React.useState<DiffOrder>(DEFAULT_DIFF_ORDER);
 
   const commentCount = comments?.length ?? 0;
 
@@ -44,9 +68,15 @@ export function DiffTab({ prId, filesCount, files, canComment }: DiffTabProps) {
 
   return (
     <section>
-      <SectionLabel
-        icon="Code"
-        right={
+      <SmartDiffViewer
+        smartDiff={smartDiff}
+        order={order}
+        onOrderChange={setOrder}
+        filesCount={filesCount}
+        additions={additions}
+        deletions={deletions}
+        reviewTokensIn={lastReviewTokensIn(runs ?? [])}
+        extraRight={
           commentCount > 0 ? (
             <Button
               kind="ghost"
@@ -60,10 +90,15 @@ export function DiffTab({ prId, filesCount, files, canComment }: DiffTabProps) {
             </Button>
           ) : undefined
         }
-      >
-        {t("diffTab.sectionLabel", { count: filesCount })}
-      </SectionLabel>
-      <DiffViewer files={files} commenting={commenting} />
+      />
+      <DiffViewer
+        files={files}
+        commenting={commenting}
+        smartDiff={smartDiff ?? null}
+        grouped={order === "smart"}
+        findings={findings}
+        onOpenFinding={onOpenFinding}
+      />
     </section>
   );
 }

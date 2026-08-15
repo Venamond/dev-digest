@@ -21,6 +21,22 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Codebase Patterns
 
+- **i18n namespace follows the component's location, not the feature it serves.**
+  Shared components under `client/src/components/**` call
+  `useTranslations("shell")` (10 of 13 call sites; the rest are `common` /
+  `agents`), while feature components under
+  `client/src/app/**/_components/**` call the feature namespace
+  (`prReview`, `runs`, `prReview.intent`). Consequence when a feature adds copy
+  to a *shared* component — e.g. a per-file badge inside
+  `components/diff-viewer/` for a PR-review feature: the string must go in
+  `client/messages/en/shell.json`, **not** in the feature's
+  `prReview.json`. A key added to the wrong file is unreachable at runtime —
+  `useTranslations` resolves only within the namespace the component itself
+  declared, so the component renders the raw key path instead of the text, and
+  `pnpm typecheck` does not catch it. A feature that touches both layers has to
+  split its copy across two message files on purpose.
+  (2026-08-14, Smart Diff planning)
+
 - **Agent → Skills row order is frozen on load — never re-derive the sort per
   render.** `SkillsTab` used to compute its order every render as "linked rows
   first (by `order`), then unlinked (by name)". Ticking a checkbox links the
@@ -237,6 +253,189 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Recurring Errors & Fixes
 
+- **Never call a parent's setState from inside your own state updater.** The
+  natural way to add "tell the parent when this changes" is to wrap
+  `setOpen` and fire the callback inside the updater, where you already have
+  the previous value to compare against:
+
+  ```tsx
+  setOpenRaw((o) => { const v = next(o); if (v !== o) onOpenChange?.(v); return v; }); // ✗
+  ```
+
+  React may invoke an updater during render (and does, under StrictMode's
+  double-invoke), so this throws *Cannot update a component (`Parent`) while
+  rendering a different component (`Child`)*. Report from an effect instead,
+  guarded by a ref so it only fires on real transitions:
+
+  ```tsx
+  const reported = React.useRef(defaultOpen);                                        // ✓
+  React.useEffect(() => {
+    if (reported.current === open) return;
+    reported.current = open;
+    onOpenChange?.(open);
+  }, [open, onOpenChange]);
+  ```
+
+  Detection gap worth remembering: `pnpm typecheck` was clean and all 205
+  tests passed with the broken version — the existing tests never render the
+  parent and child together. It showed up only as a runtime overlay when a
+  human opened the page. Adding a cross-component callback is a "click
+  through it in the browser" change, not a "tests are green" change.
+  (2026-08-15, `ReviewRunAccordion` → `PrDetailView` open-state reporting)
+
+- **This app scrolls an inner `<main overflow-y:auto>`, NOT the window — so
+  window-level scroll reasoning does not apply here.** Measured in the
+  running app: `document.body.scrollHeight === window.innerHeight` (838) and
+  `window.scrollY` is always 0, while `main.scrollHeight` is 3775 with
+  `clientHeight` 786. Before theorising about a scroll bug, measure
+  `main.scrollTop` in the browser — `window.scrollY` will read 0 and tell you
+  nothing.
+
+  Two consequences that cost real time here:
+
+  1. `router.push`/`replace` default to `ScrollBehavior.Default`
+     (scroll-to-top) and `{ scroll: false }` disables it — true in general,
+     and it is what the Next docs and source say. **But it is inert in this
+     app**, because the window never scrolls. A "jump to X lands at the top"
+     bug here is *not* caused by it, and adding `{ scroll: false }` will not
+     fix one. (An earlier version of this entry prescribed exactly that fix
+     on doc-reading alone; it changed nothing.)
+  2. Switching tabs unmounts the outgoing tab's content, `<main>` shrinks to
+     the new content's height, and the browser clamps `scrollTop`. Coming
+     back remounts and the position is gone — measured 2587 → 244 on the PR
+     detail view. `PrDetailView/use-tab-scroll.ts` saves the offset per tab
+     and restores it, **but restoring an offset is only half the problem**:
+     any collapse/expand state inside the tab is local `useState` and dies
+     with the unmount too. Measured with `ReviewRunAccordion` #8 expanded:
+     leaving at 2587 and returning gives 2061, because the accordion came
+     back collapsed, the content lost 870px, and the browser clamped the
+     restored offset. Restoring scroll without restoring the state that
+     determines content height cannot work.
+
+     Fixed by `PrDetailView/preserved-toggle.tsx`: a tiny context whose
+     provider sits **above** the loading/error branches (those unmount the
+     tab subtree too) holding a ref-backed `Record<key, boolean>`.
+     `usePreservedToggle(key, fallback)` is a drop-in for
+     `useState(fallback)` that seeds from the store and writes back. Consumers
+     stay *uncontrolled*, so `ReviewRunAccordion`'s own auto-open effects
+     (`targetRunId`, `containsFinding`) keep working untouched.
+
+     **The same defect existed at two levels, and the root cause is a
+     positional default.** `ReviewRunAccordion` had `defaultOpen={i === 0}`
+     and `FindingCard` had `defaultExpanded={i === 0}` — so returning to the
+     tab re-opened the *first* row while the row the user actually opened
+     came back collapsed. Fixing only the accordion looked like nothing had
+     changed, because the visible symptom was the finding card. Grep for
+     `=== 0` defaults before assuming one fix covers it.
+
+     Two rules that make this work:
+     - **Key by id, never by index** (`finding:${f.id}`, `run:${review.id}`).
+       An index re-applies the positional default after any reorder.
+     - **Seed the store on mount, not only on change.** A store holding only
+       the rows the user clicked lets untouched rows fall back to the
+       positional default and resurrect it.
+
+     Measured after: expanding the *last* finding, switching tabs and
+     returning restores all four cards' exact states and both open
+     accordions; scroll 2587 → 2587.
+
+     Testing note: the verification that missed this asserted only that the
+     *opened* accordion came back open. Assert the negative too — the ones
+     that should stay closed.
+
+     Two more traps when driving this from a browser tool:
+     - **Do not read the DOM synchronously after a click.** React has not
+       re-rendered yet, so `getBoundingClientRect()` returns the *previous*
+       state and the run looks like the click did nothing. Wait a tick
+       between acting and measuring.
+     - **A slow page invalidates the whole experiment.** While
+       `GET /pulls/:id` still took 30 s, the detail screen sat in its loading
+       branch and no client fix could be observed at all — the behaviour
+       under test never got to run. Fix the latency first, then verify the
+       UI, or you will "confirm" a fix that was never exercised.
+
+     **Testing trap that hid this:** the first verification scrolled to an
+     accordion without expanding it, so total height was identical before
+     and after and the restore looked perfect (2117 → 2117). A scroll
+     restoration test is only meaningful when the content height actually
+     changes across the round trip — expand something first.
+
+  Reaching the container: `<main>` is rendered by
+  `vendor/ui/shell/AppFrame.tsx`, which is read-only vendored code, so you
+  cannot put a ref on it. Take a ref on your own root and walk up with
+  `rootRef.current?.closest("main")`. Restoring also has to survive the
+  incoming tab still growing (async query rows) — set `scrollTop`, then
+  re-apply over a few `requestAnimationFrame`s until it sticks, or the
+  browser clamps it back to a smaller `scrollHeight` on the first pass.
+
+  Navigating straight to `?tab=findings&finding=<id>` *does* scroll correctly
+  (measured `main.scrollTop` 2790, card in view) — that path works and is
+  unrelated to the tab round-trip. (2026-08-15)
+
+- **Never run `pnpm build` in `client/` while `next dev` is running — they
+  share one `.next/`.** The production build overwrites the dev server's
+  chunks, and the next request fails with a misleading
+  `Cannot find module './vendor-chunks/<pkg>.js'` naming a package that is
+  installed and fine (seen with `recharts`). Nothing is wrong with the
+  dependency, the code, or `node_modules` — it is purely a clobbered build
+  directory. Fix: stop the dev server, `rm -rf client/.next` (a gitignored
+  artifact, `.gitignore:8`), restart `./scripts/dev.sh`.
+
+  This matters because verifying certain things *requires* a real production
+  build — HTML that only a build emits, e.g. whether a `<script>` is inline
+  in the streamed markup (see the `beforeInteractive` entry below). If you
+  need that while `dev.sh` is up, stop the dev server first, or build with a
+  separate `distDir` so the two never share a directory. (2026-08-15)
+
+- **`pnpm test` passing does not mean the types are fine — vitest does not
+  typecheck.** A type error living in a `*.test.tsx` file compiles away under
+  the test runner and surfaces only in `pnpm typecheck` (i.e. in CI). After
+  touching test files, run `pnpm typecheck` explicitly; a green test suite is
+  not evidence for it.
+
+  The concrete trap that caused this: **there are two different `Severity`
+  types in this package.** `src/vendor/ui/primitives/tokens.ts:3` defines
+  `"CRITICAL" | "WARNING" | "SUGGESTION" | "INFO"`, while the contract's
+  `Severity` (`vendor/shared/contracts/findings.ts:11`) has only the first
+  three — findings can never be `INFO`. Components that render severity
+  (`SeverityCounters`, `FindingCard`, badges) type their props against the
+  **UI** union, because that is what their real callers pass
+  (`ReviewRunAccordion.tsx` holds `useState<Severity | null>` from
+  `@devdigest/ui`). A test that redeclares such a prop as
+  `FindingRecord["severity"]` looks more precise, compiles under vitest, and
+  then fails `tsc` with "Type `'INFO'` is not assignable". Mirror the
+  component's own import in the test rather than narrowing to the contract
+  type. (2026-08-15)
+
+- **Root layout must not render a manual `<head>`.** `export const metadata`
+  already owns `<head>` (charset, title, viewport). A handwritten `<head>`
+  with the no-FOUC theme `<script>` made Next emit `<meta charset="utf-8">`
+  into `<body>`; hydration then failed with client=`<Suspense>` vs
+  server=`<meta charset>` under `NextIntlClientProvider` in
+  `src/app/layout.tsx`. It looked intermittent because Fast Refresh / a
+  full reload retriggered the stream. Fix: no `<head>` tag; render the theme
+  script as a **plain `<script dangerouslySetInnerHTML>` child of `<body>`**.
+  Pass `now={new Date()}` from the server layout into
+  `NextIntlClientProvider` so it does not mint a second `Date` on the client
+  during hydrate. `suppressHydrationWarning` on `<html>`/`<body>` stays —
+  that one is for extension-injected attributes, not this bug.
+  (2026-08-15)
+
+- **`next/script` `strategy="beforeInteractive"` does NOT put the script in
+  `<head>` in the App Router — do not use it for anything that must run
+  before first paint.** This entry previously claimed the opposite and the
+  claim was wrong. Next rewrites such a script into a `self.__next_s` push
+  that `app-bootstrap.js` evaluates only after the async `main-app` chunk
+  loads, i.e. after the first paint. Using it for the no-FOUC theme script
+  therefore silently reinstated the exact flash the script exists to
+  prevent: a `dd-theme=light` user painted full dark on every cold load.
+  Verified empirically against a production `next build` + `next start` —
+  the emitted `<head>` contained no theme script. A plain inline `<script>`
+  as a `<body>` child is emitted synchronously in the streamed HTML and
+  runs before paint; React 19 keeps it inline rather than hoisting it.
+  Neither `pnpm typecheck` nor `pnpm test` can see this class of bug — only
+  a real build, or looking at the served HTML. (2026-08-15)
+
 - `useSetCrumb` Maximum update depth: if the effect depends on a crumb `ctx`
   that is rebuilt whenever crumbs change, `setCrumb` → new ctx → effect
   cleanup clears crumbs → effect runs again. Depend on the stable setter from
@@ -248,6 +447,21 @@ ground truth — wrap-ups can mischaracterize a session.
   draft state). Hoist a stable array/object with `vi.hoisted` and return the
   same reference from the mock. Regression: `AgentEditor.test.tsx` Skills tab.
   (2026-08-05, Track C agent skills bind)
+
+- **A second top-level key with the same name in one `messages/<locale>/*.json`
+  file silently shadows the first — `JSON.parse` keeps only the last
+  occurrence, and nothing catches it.** `useTranslations` then reports every
+  key from the discarded block as `MISSING_MESSAGE` at runtime (raw key path
+  rendered, `IntlError` logged) since `layout.tsx` sets no `onError` /
+  `getMessageFallback`. `pnpm typecheck` does not see message files at all,
+  and there is no i18n-key linter in this repo. Concrete trap: adding a new
+  feature's copy under a key that already exists elsewhere in the same file
+  (e.g. two unrelated features both naming their block `"smartDiff"`) is a
+  silent no-op for the older or newer block depending on JSON key order, not
+  a merge. Before adding a top-level key to a message file, grep that exact
+  file for the key name first — `grep -n '"<key>":' client/messages/en/<file>.json`.
+  (2026-08-14, Smart Diff implementation — caught by `architecture-reviewer`,
+  not by any automated gate)
 
 - React DOM console warning "Updating a style property during rerender
   (borderColor) when a conflicting property is set (borderLeftColor)":

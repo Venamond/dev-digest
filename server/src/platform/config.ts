@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { z } from 'zod';
 import { homedir } from 'node:os';
 import { join, isAbsolute, resolve } from 'node:path';
+import { resolvePromptLogMode, type PromptLogMode } from './prompt-log.js';
 
 /**
  * Central, zod-validated environment config. Loaded once at startup.
@@ -36,6 +37,12 @@ const EnvSchema = z.object({
     (v) => (v === '' ? undefined : v),
     z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).optional(),
   ),
+  // Prompt-assembly log: section name/source/length only. `verbose` adds
+  // sha256 fingerprints (still no bodies) and is ignored when NODE_ENV=production.
+  DEVDIGEST_PROMPT_LOG: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.enum(['off', 'summary', 'verbose']).optional(),
+  ),
 });
 
 export type AppConfig = {
@@ -59,6 +66,12 @@ export type AppConfig = {
    * EXACTLY like the ripgrep-only baseline.
    */
   repoIntelEnabled: boolean;
+  /**
+   * Prompt-assembly logging. `summary` (default) logs section name, source,
+   * char/token length, model, correlation id — never bodies. `verbose` adds
+   * sha256 fingerprints and is clamped to `summary` in production.
+   */
+  promptLog: PromptLogMode;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -77,5 +90,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     webOrigin: `http://localhost:${parsed.WEB_PORT}`,
     embeddingsEnabled: parsed.EMBEDDINGS_ENABLED === 'true',
     repoIntelEnabled: parsed.REPO_INTEL_ENABLED !== 'false',
+    promptLog: resolvePromptLogMode(parsed.NODE_ENV, parsed.DEVDIGEST_PROMPT_LOG),
   };
 }
