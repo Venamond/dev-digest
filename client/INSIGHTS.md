@@ -253,6 +253,21 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Recurring Errors & Fixes
 
+- **Never run `pnpm build` in `client/` while `next dev` is running — they
+  share one `.next/`.** The production build overwrites the dev server's
+  chunks, and the next request fails with a misleading
+  `Cannot find module './vendor-chunks/<pkg>.js'` naming a package that is
+  installed and fine (seen with `recharts`). Nothing is wrong with the
+  dependency, the code, or `node_modules` — it is purely a clobbered build
+  directory. Fix: stop the dev server, `rm -rf client/.next` (a gitignored
+  artifact, `.gitignore:8`), restart `./scripts/dev.sh`.
+
+  This matters because verifying certain things *requires* a real production
+  build — HTML that only a build emits, e.g. whether a `<script>` is inline
+  in the streamed markup (see the `beforeInteractive` entry below). If you
+  need that while `dev.sh` is up, stop the dev server first, or build with a
+  separate `distDir` so the two never share a directory. (2026-08-15)
+
 - **`pnpm test` passing does not mean the types are fine — vitest does not
   typecheck.** A type error living in a `*.test.tsx` file compiles away under
   the test runner and surfaces only in `pnpm typecheck` (i.e. in CI). After
