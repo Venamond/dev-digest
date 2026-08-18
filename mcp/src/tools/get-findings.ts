@@ -54,10 +54,14 @@ export function registerGetFindings(server: McpServer, api: DevDigestApi): void 
       description: GET_FINDINGS_DESCRIPTION,
       inputSchema: z.object({
         repo: z.string().describe('owner/name'),
-        pr: z.number().int().positive(),
-        agent: z.string().optional(),
-        severity_min: z.enum(['CRITICAL', 'WARNING', 'SUGGESTION']).optional(),
-        detail: z.enum(['summary', 'full']).default('summary').optional(),
+        pr: z.number().int().positive().describe('pull request number'),
+        agent: z.string().optional().describe('name or id from list_agents; omit to union every agent'),
+        severity_min: z.enum(['CRITICAL', 'WARNING', 'SUGGESTION']).optional().describe('lowest severity to keep'),
+        detail: z
+          .enum(['summary', 'full'])
+          .default('summary')
+          .optional()
+          .describe('full adds rationale and id but caps at 20 findings; summary caps at 50'),
       }),
       annotations: { readOnlyHint: true },
     },

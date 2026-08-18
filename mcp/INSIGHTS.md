@@ -54,13 +54,18 @@ ground truth — wrap-ups can mischaracterize a session.
 - **A caveat the caller needs but the tool description cannot afford goes in
   the response `hint`, not in the description or a `.describe()`.** The five
   descriptions are pinned byte-for-byte by `test/token-budget.test.ts` and
-  capped at 150 tokens per tool (`run_agent_on_pr` already sits at 156 under
-  a 160 override), and every token there is paid at *every* session start,
+  the whole tool definition is capped per tool (200 since 2026-08-19) under
+  a 900-token total, and every token there is paid at *every* session start,
   whether or not the caveat is relevant. A `hint` field in the payload costs
   nothing until the situation actually arises. Measured while adding one:
-  a `.describe()` on `get_findings`'s `detail` came to 24 tokens, which
-  would have taken that tool from 143 to 167 against a 150 cap — the same
-  fix as a conditional `hint` cost zero. Two live examples (2026-08-19):
+  a `.describe()` on `get_findings`'s `detail` came to 24 tokens against
+  that tool's then-143 of a 150 cap, while the equivalent conditional
+  `hint` cost zero. (Later the same day the caps were raised to a flat 200
+  and every parameter got a `.describe()` as well — the two are
+  complementary, not alternatives: the schema text prevents the mistake,
+  the payload `hint` catches it when it happens anyway. Reach for the
+  `hint` first; it is the one that is free.) Two live examples
+  (2026-08-19):
   `get_findings` warns when `detail: 'full'` truncated below what
   `'summary'` would have returned (`MAX_FINDINGS_FULL` 20 vs
   `MAX_FINDINGS_SUMMARY` 50 — asking for more detail returns *fewer*

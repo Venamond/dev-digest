@@ -179,33 +179,34 @@ records twice.
 ## Token budget — measured numbers (S7)
 
 `mcp/test/token-budget.test.ts` gates `tools/list` + `instructions` at a
-900-token total cap and 150 tokens per tool, using the same `cl100k_base`
+900-token total cap and 200 tokens per tool, using the same `cl100k_base`
 encoder the server uses (`js-tiktoken`). Measured on this branch:
 
 | Tool | Tokens |
 |---|---|
 | `list_agents` | 57 |
-| `run_agent_on_pr` | 156 (see override below) |
-| `get_findings` | 143 |
+| `run_agent_on_pr` | 171 |
+| `get_findings` | 191 |
 | `get_conventions` | 69 |
-| `get_blast_radius` | 96 |
-| **Total (`tools` + `instructions`)** | **604** (cap 900) |
+| `get_blast_radius` | 102 |
+| **Total (`tools` + `instructions`)** | **673** (cap 900) |
 
-**Deviation from the plan's 150-token-per-tool cap:** `run_agent_on_pr`
-measures 156 tokens, 6 over the plan's `PER_TOOL_TOKEN_CAP = 150`. Root
-cause: Zod 4's JSON-Schema conversion for `z.number().int()` always emits
-explicit `minimum`/`maximum` bounds around `Number.MAX_SAFE_INTEGER`, adding
-roughly 26 tokens per integer field. `run_agent_on_pr` has two integer
-fields (`pr`, `timeout_s`), which is what pushes it past the plan's own
-~130-of-150 estimate. This is a Zod-4 library artifact in the generated JSON
-Schema, not a growth in the approved `description`/schema text — neither was
-edited to make this number happen. Human-approved fix: a per-tool override in
-the test itself,
-`PER_TOOL_TOKEN_CAP_OVERRIDES: Record<string, number> = { run_agent_on_pr: 160 }`,
-applied as `PER_TOOL_TOKEN_CAP_OVERRIDES[tool.name] ?? PER_TOOL_TOKEN_CAP` in
-the assertion loop, with the root cause recorded as a comment beside it. The
-tool's `description` and `inputSchema` are unchanged from the plan's S4
-table.
+**The per-tool cap is 200, not the plan's 150, and there is no per-tool
+override.** Two changes stacked. First, Zod 4's JSON-Schema conversion for
+`z.number().int()` always emits explicit `minimum`/`maximum` bounds around
+`Number.MAX_SAFE_INTEGER`, roughly 26 tokens per integer field; that alone
+took `run_agent_on_pr` to 156 against the plan's 150, and was carried for a
+while as `PER_TOOL_TOKEN_CAP_OVERRIDES = { run_agent_on_pr: 160 }`. Second,
+on 2026-08-19 every parameter got a `.describe()` — `agent` and
+`severity_min` on `get_findings` in particular carry semantics a model
+cannot infer from the name and type (`agent` omitted unions every agent's
+newest review; `severity_min` keeps that severity *and above*). That costs
++69 tokens across the surface and puts `get_findings` at 191. Human-approved
+resolution: a flat `PER_TOOL_TOKEN_CAP = 200` with the override deleted,
+because the gate that actually protects the session's context is
+`TOTAL_TOKEN_CAP`, and the total moved 604 → 673 against 900. If a future
+change pushes the total past ~800, cut parameter descriptions before
+touching `TOTAL_TOKEN_CAP`.
 
 **In-session cost — pending human verification.** The numbers above are
 `JSON.stringify(tools)` measured by the test suite, which is a **systematic

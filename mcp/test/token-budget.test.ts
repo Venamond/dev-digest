@@ -15,19 +15,20 @@ import { InMemoryTransport } from '@modelcontextprotocol/server';
 import { DevDigestApi } from '../src/api/client.js';
 import { createMcpServer, INSTRUCTIONS } from '../src/server.js';
 
-const PER_TOOL_TOKEN_CAP = 150;
+const PER_TOOL_TOKEN_CAP = 200;
 const TOTAL_TOKEN_CAP = 900;
 
-/**
- * Zod 4's `z.number().int()` JSON-Schema conversion always emits explicit
- * `Number.MAX_SAFE_INTEGER` min/max bounds, adding ~26 tokens per integer
- * field; `run_agent_on_pr` has two (`pr`, `timeout_s`), pushing it to 156
- * tokens. This is a Zod4 library artifact, not a growth in the approved
- * schema/description — see `mcp/AGENTS.md`'s token-budget section (S7) for
- * the measured numbers. Human-approved: raise the cap for this one tool only,
- * rather than touch its schema or description.
+/*
+ * `PER_TOOL_TOKEN_CAP` was 150 with a 160 override for `run_agent_on_pr`
+ * (Zod 4's `z.number().int()` conversion emits explicit
+ * `Number.MAX_SAFE_INTEGER` bounds, ~26 tokens per integer field, and that
+ * tool has two). Human-approved 2026-08-19: raised to a flat 200 and the
+ * override dropped, to buy a `.describe()` on every parameter — `agent` and
+ * `severity_min` in particular carry semantics a model cannot infer from the
+ * name and type. `TOTAL_TOKEN_CAP` is the gate that actually protects the
+ * session's context and is unchanged; the measured total is 673 of 900. See
+ * `mcp/AGENTS.md`'s token-budget section for the per-tool numbers.
  */
-const PER_TOOL_TOKEN_CAP_OVERRIDES: Record<string, number> = { run_agent_on_pr: 160 };
 
 /** S4's approved table, copied verbatim (D14) — this is what makes "do not paraphrase" mechanical. */
 const EXPECTED_DESCRIPTIONS: Record<string, string> = {
@@ -76,15 +77,17 @@ describe('startup token budget', () => {
     }
   });
 
-  it('each tool definition stays under 150 tokens', async () => {
+  it('each tool definition stays under 200 tokens', async () => {
     const client = await connectClient();
     const { tools } = await client.listTools();
     expect(tools.length).toBe(5);
 
     for (const tool of tools) {
       const count = countTokens(JSON.stringify(tool));
-      const cap = PER_TOOL_TOKEN_CAP_OVERRIDES[tool.name] ?? PER_TOOL_TOKEN_CAP;
-      expect(count, `${tool.name} costs ${count} tokens, cap is ${cap}`).toBeLessThanOrEqual(cap);
+      expect(
+        count,
+        `${tool.name} costs ${count} tokens, cap is ${PER_TOOL_TOKEN_CAP}`,
+      ).toBeLessThanOrEqual(PER_TOOL_TOKEN_CAP);
     }
   });
 

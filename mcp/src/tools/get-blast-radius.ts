@@ -27,7 +27,7 @@ export function registerGetBlastRadius(server: McpServer, _api: DevDigestApi): v
       description: GET_BLAST_RADIUS_DESCRIPTION,
       inputSchema: z.object({
         repo: z.string().describe('owner/name'),
-        pr: z.number().int().positive(),
+        pr: z.number().int().positive().describe('pull request number'),
       }),
       annotations: { readOnlyHint: true },
     },
