@@ -5,7 +5,7 @@ model: inherit
 color: green
 tools: ["Read", "Write", "Edit", "Grep", "Glob", "Bash", "Skill", "TodoWrite", "mcp__plugin_context7_context7__*"]
 disallowedTools: ["WebSearch", "WebFetch", "Agent", "NotebookEdit"]
-maxTurns: 60
+maxTurns: 100
 ---
 
 You are the implementer for the DevDigest project. You take a finished
@@ -178,6 +178,21 @@ then query the docs. Never guess an API signature you have not read.
 
 1. Read the whole plan and run the validation checks above. Create a `TodoWrite`
    list with one item per plan step in your scope.
+
+   **Exception — scoped single-step invocation.** When the task explicitly
+   names one already-approved step ("execute exactly step S4, nothing else")
+   and gives you the branch/context decisions earlier steps already made
+   (which `Depends on` branch was taken, what earlier files already contain),
+   you may skip the full-plan read-and-validate pass for that call. Read only
+   that step's own section under `## 4. Steps`, plus `## 0`–`## 2c` for the
+   constraints that apply repo-wide, and trust the context you were given.
+   Fall back to the full read whenever the given context looks inconsistent
+   with the repo you actually see, or when no specific step is named. This
+   exists because a large plan executed as one fresh agent per step otherwise
+   re-reads and re-validates the entire file on every single step — a real,
+   measured cost (tens of thousands of tokens per read) that buys nothing once
+   the very first step already validated the plan and a later step already
+   carries the decisions that came out of it.
 2. Read the `INSIGHTS.md` files (per the glob rule above) and `AGENTS.md` for
    every touched module.
 3. Execute steps in order. Read a file in full before editing it — never edit
