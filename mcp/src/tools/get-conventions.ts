@@ -44,11 +44,22 @@ export function registerGetConventions(server: McpServer, api: DevDigestApi): vo
           ...(c.category !== null ? { category: c.category } : {}),
         }));
 
+        // `kept` is everything the extractor proposed minus the rejected ones,
+        // so `pending` candidates sit next to `accepted` rules with nothing but
+        // the per-item `status` to tell them apart. Say it out loud, or a
+        // proposal gets quoted back as an established rule of the repository.
+        const pending = kept.filter((c) => c.status === 'pending').length;
+
         return jsonContent({
           conventions,
           total: kept.length,
           ...(capped.length < kept.length ? { truncated: true } : {}),
           ...(list.scan !== null ? { scanned_at: list.scan.scanned_at } : {}),
+          ...(pending > 0
+            ? {
+                hint: `${pending} of ${kept.length} are still pending review, not accepted rules: check each item's status before quoting it.`,
+              }
+            : {}),
         });
       } catch (err) {
         return errorContent(err instanceof Error ? err.message : String(err));

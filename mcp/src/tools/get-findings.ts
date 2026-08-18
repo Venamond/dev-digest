@@ -11,7 +11,14 @@ import type { McpServer } from '@modelcontextprotocol/server';
 import type { DevDigestApi } from '../api/client.js';
 import { resolveAgentId, resolvePullId, resolveRepoId } from '../api/resolve.js';
 import type { ReviewRecord } from '../api/types.js';
-import { errorContent, jsonContent, selectFindings, type Severity } from '../format.js';
+import {
+  errorContent,
+  jsonContent,
+  MAX_FINDINGS_FULL,
+  MAX_FINDINGS_SUMMARY,
+  selectFindings,
+  type Severity,
+} from '../format.js';
 
 export const GET_FINDINGS_DESCRIPTION =
   'Returns the verdict and findings from reviews already done for a pull request, without starting a new run.';
@@ -88,9 +95,10 @@ export function registerGetFindings(server: McpServer, api: DevDigestApi): void 
         }
 
         const allFindings = kept.flatMap((r) => r.findings);
+        const detailUsed = detail ?? 'summary';
         const selected = selectFindings(allFindings, {
           ...(severity_min !== undefined ? { severityMin: severity_min as Severity } : {}),
-          detail: detail ?? 'summary',
+          detail: detailUsed,
         });
 
         const verdict = worstVerdict(kept.map((r) => r.verdict));
@@ -98,12 +106,22 @@ export function registerGetFindings(server: McpServer, api: DevDigestApi): void 
         const summary =
           kept.length === 1 ? first.summary : kept.map((r) => `${r.agent_name ?? r.agent_id}: ${r.summary}`).join('\n');
 
+        // `detail: 'full'` caps lower than `'summary'` (20 vs 50) because each
+        // finding carries `rationale`. Asking for more detail therefore returns
+        // fewer findings — the opposite of what a caller expects — so say so in
+        // the payload rather than in the tool description, which is token-capped.
+        const hint =
+          selected.truncated && detailUsed === 'full'
+            ? `Showing ${selected.findings.length} of ${selected.total} findings: detail "full" caps at ${MAX_FINDINGS_FULL}. Call again with detail "summary" for up to ${MAX_FINDINGS_SUMMARY}.`
+            : undefined;
+
         return jsonContent({
           verdict,
           summary,
           findings: selected.findings,
           total: selected.total,
           ...(selected.truncated ? { truncated: true } : {}),
+          ...(hint !== undefined ? { hint } : {}),
         });
       } catch (err) {
         return errorContent(err instanceof Error ? err.message : String(err));

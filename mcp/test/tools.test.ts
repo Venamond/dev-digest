@@ -388,6 +388,58 @@ describe('get_findings', () => {
     expect(payload).toMatchObject({ verdict: null, summary: null, findings: [], total: 0 });
   });
 
+  it('get_findings warns in the payload when detail "full" caps the list lower than "summary" would', async () => {
+    // 25 findings: `detail: 'full'` keeps 20 (MAX_FINDINGS_FULL), `'summary'`
+    // would have kept all 25 — asking for more detail returns fewer findings,
+    // so the payload must say so.
+    const reviews: ReviewRecord[] = [
+      {
+        run_id: 'run-a',
+        agent_id: 'agent-a',
+        agent_name: 'Agent A',
+        verdict: 'comment',
+        summary: 'many findings',
+        findings: Array.from({ length: 25 }, (_, i) => ({
+          id: `f-${i}`,
+          severity: 'WARNING' as const,
+          category: 'style',
+          title: `finding ${i}`,
+          file: `f${String(i).padStart(2, '0')}.ts`,
+          start_line: 1,
+          end_line: 1,
+          rationale: 'because',
+        })),
+      },
+    ];
+    stubFetch((path) => {
+      if (path === '/repos') return jsonResponse(repos);
+      if (path === '/repos/repo-1/pulls') return jsonResponse(pulls);
+      if (path === '/pulls/pr-1/reviews') return jsonResponse(reviews);
+      throw new Error(`unexpected path ${path}`);
+    });
+    const api = new DevDigestApi(BASE_URL);
+    const client = await connectClient(api);
+
+    const full = (await client.callTool({
+      name: 'get_findings',
+      arguments: { repo: 'acme/repo', pr: 42, detail: 'full' },
+    })) as CallToolResult;
+
+    const fullPayload = JSON.parse(text(full)) as { findings: unknown[]; total: number; hint?: string };
+    expect(fullPayload.findings.length).toBe(20);
+    expect(fullPayload.total).toBe(25);
+    expect(fullPayload.hint).toContain('summary');
+
+    const summary = (await client.callTool({
+      name: 'get_findings',
+      arguments: { repo: 'acme/repo', pr: 42 },
+    })) as CallToolResult;
+
+    const summaryPayload = JSON.parse(text(summary)) as { findings: unknown[]; hint?: string };
+    expect(summaryPayload.findings.length).toBe(25);
+    expect(summaryPayload.hint).toBeUndefined();
+  });
+
   it('get_findings surfaces a 500 from /pulls/:id/reviews as an actionable isError', async () => {
     stubFetch((path) => {
       if (path === '/repos') return jsonResponse(repos);
@@ -441,6 +493,56 @@ describe('get_conventions', () => {
 
     expect(text(result)).not.toContain('evidence_snippet');
     expect(text(result)).not.toContain('evidence_url');
+  });
+
+  it('get_conventions flags pending candidates so they are not quoted as accepted rules', async () => {
+    const list: ConventionsList = {
+      candidates: [
+        { rule: 'Use named exports', category: 'style', status: 'accepted' },
+        { rule: 'Prefer const', category: 'style', status: 'pending' },
+        { rule: 'Never do this', category: 'style', status: 'rejected' },
+      ],
+      scan: null,
+    };
+    stubFetch((path) => {
+      if (path === '/repos') return jsonResponse(repos);
+      if (path === '/repos/repo-1/conventions') return jsonResponse(list);
+      throw new Error(`unexpected path ${path}`);
+    });
+    const api = new DevDigestApi(BASE_URL);
+    const client = await connectClient(api);
+
+    const result = (await client.callTool({
+      name: 'get_conventions',
+      arguments: { repo: 'acme/repo' },
+    })) as CallToolResult;
+
+    const payload = JSON.parse(text(result)) as { total: number; hint?: string };
+    // The rejected candidate is dropped entirely; the pending one is kept but announced.
+    expect(payload.total).toBe(2);
+    expect(payload.hint).toMatch(/1 of 2 .*pending/);
+  });
+
+  it('get_conventions adds no pending hint when every kept candidate is accepted', async () => {
+    const list: ConventionsList = {
+      candidates: [{ rule: 'Use named exports', category: 'style', status: 'accepted' }],
+      scan: null,
+    };
+    stubFetch((path) => {
+      if (path === '/repos') return jsonResponse(repos);
+      if (path === '/repos/repo-1/conventions') return jsonResponse(list);
+      throw new Error(`unexpected path ${path}`);
+    });
+    const api = new DevDigestApi(BASE_URL);
+    const client = await connectClient(api);
+
+    const result = (await client.callTool({
+      name: 'get_conventions',
+      arguments: { repo: 'acme/repo' },
+    })) as CallToolResult;
+
+    const payload = JSON.parse(text(result)) as { hint?: string };
+    expect(payload.hint).toBeUndefined();
   });
 
   it('get_conventions on an unscanned repo omits scanned_at', async () => {
