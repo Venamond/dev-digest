@@ -120,9 +120,9 @@ describe('constants', () => {
 });
 
 describe('jsonContent / errorContent', () => {
-  it('jsonContent wraps the payload as one JSON-stringified text block', () => {
+  it('jsonContent returns the payload as structuredContent, not a stringified text block', () => {
     const result = jsonContent({ a: 1 });
-    expect(result).toEqual({ content: [{ type: 'text', text: '{"a":1}' }] });
+    expect(result).toEqual({ content: [], structuredContent: { a: 1 } });
   });
 
   it('errorContent sets isError true with the given text', () => {

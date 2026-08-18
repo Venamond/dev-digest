@@ -95,8 +95,22 @@ export function selectFindings(
   };
 }
 
-export function jsonContent(payload: unknown): { content: [{ type: 'text'; text: string }] } {
-  return { content: [{ type: 'text', text: JSON.stringify(payload) }] };
+/**
+ * Success payloads travel as `structuredContent` — a real JSON object on the
+ * wire — not as `JSON.stringify` inside a text block. The spec's "SHOULD also
+ * return the serialized JSON in a TextContent block" is a backwards-compat
+ * concession for clients that predate `structuredContent` and read only
+ * `content[]`; duplicating costs a second full copy of every response (measured
+ * 919 tokens for one `get_findings` reply), so we send one copy. Errors keep
+ * using `errorContent`: those are prose for the model, not data.
+ */
+export function jsonContent(payload: unknown): {
+  content: [];
+  structuredContent: Record<string, unknown>;
+} {
+  // `content: []` is not decoration: the SDK's `registerTool` callback type
+  // requires the field, and the wire format carries it either way.
+  return { content: [], structuredContent: payload as Record<string, unknown> };
 }
 
 export function errorContent(text: string): { content: [{ type: 'text'; text: string }]; isError: true } {

@@ -50,6 +50,12 @@ function text(result: CallToolResult): string {
   return first.text;
 }
 
+/** Success payloads ride in `structuredContent`; `content` stays empty for them. */
+function structured<T = Record<string, unknown>>(result: CallToolResult): T {
+  if (result.structuredContent === undefined) throw new Error('expected structuredContent');
+  return result.structuredContent as T;
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
@@ -103,7 +109,7 @@ describe('list_agents', () => {
     const client = await connectClient(api);
 
     const result = await client.callTool({ name: 'list_agents', arguments: {} });
-    const payload = JSON.parse(text(result as CallToolResult)) as { agents: Array<{ skills: string[] }> };
+    const payload = structured<{ agents: Array<{ skills: string[] }> }>(result as CallToolResult);
 
     expect(payload.agents).toHaveLength(1);
     expect(payload.agents[0]?.skills).toEqual(['B']);
@@ -125,9 +131,9 @@ describe('list_agents', () => {
     const client = await connectClient(api);
 
     const result = await client.callTool({ name: 'list_agents', arguments: {} });
-    const payload = JSON.parse(text(result as CallToolResult)) as {
+    const payload = structured<{
       agents: Array<{ id: string; skills: string[]; skills_unavailable?: boolean }>;
-    };
+    }>(result as CallToolResult);
 
     expect(result.isError).toBeFalsy();
     expect(payload.agents).toHaveLength(2);
@@ -187,7 +193,7 @@ describe('run_agent_on_pr', () => {
     const result = (await resultPromise) as CallToolResult;
 
     expect(result.isError).toBeFalsy();
-    const payload = JSON.parse(text(result)) as { verdict: string; summary: string };
+    const payload = structured<{ verdict: string; summary: string }>(result);
     expect(payload.verdict).toBe('approve');
     expect(payload.summary).toBe('looks fine');
     expect(runsCall).toBe(3);
@@ -363,7 +369,7 @@ describe('get_findings', () => {
     })) as CallToolResult;
 
     expect(result.isError).toBeFalsy();
-    const payload = JSON.parse(text(result)) as { findings: Array<{ title: string }>; verdict: string };
+    const payload = structured<{ findings: Array<{ title: string }>; verdict: string }>(result);
     expect(payload.findings.map((f) => f.title).sort()).toEqual(['A finding', 'B finding']);
     expect(payload.verdict).toBe('request_changes');
   });
@@ -384,7 +390,7 @@ describe('get_findings', () => {
     })) as CallToolResult;
 
     expect(result.isError).toBeUndefined();
-    const payload = JSON.parse(text(result));
+    const payload = structured(result);
     expect(payload).toMatchObject({ verdict: null, summary: null, findings: [], total: 0 });
   });
 
@@ -425,7 +431,7 @@ describe('get_findings', () => {
       arguments: { repo: 'acme/repo', pr: 42, detail: 'full' },
     })) as CallToolResult;
 
-    const fullPayload = JSON.parse(text(full)) as { findings: unknown[]; total: number; hint?: string };
+    const fullPayload = structured<{ findings: unknown[]; total: number; hint?: string }>(full);
     expect(fullPayload.findings.length).toBe(20);
     expect(fullPayload.total).toBe(25);
     expect(fullPayload.hint).toContain('summary');
@@ -435,7 +441,7 @@ describe('get_findings', () => {
       arguments: { repo: 'acme/repo', pr: 42 },
     })) as CallToolResult;
 
-    const summaryPayload = JSON.parse(text(summary)) as { findings: unknown[]; hint?: string };
+    const summaryPayload = structured<{ findings: unknown[]; hint?: string }>(summary);
     expect(summaryPayload.findings.length).toBe(25);
     expect(summaryPayload.hint).toBeUndefined();
   });
@@ -491,8 +497,9 @@ describe('get_conventions', () => {
       arguments: { repo: 'acme/repo' },
     })) as CallToolResult;
 
-    expect(text(result)).not.toContain('evidence_snippet');
-    expect(text(result)).not.toContain('evidence_url');
+    const serialized = JSON.stringify(structured(result));
+    expect(serialized).not.toContain('evidence_snippet');
+    expect(serialized).not.toContain('evidence_url');
   });
 
   it('get_conventions flags pending candidates so they are not quoted as accepted rules', async () => {
@@ -517,7 +524,7 @@ describe('get_conventions', () => {
       arguments: { repo: 'acme/repo' },
     })) as CallToolResult;
 
-    const payload = JSON.parse(text(result)) as { total: number; hint?: string };
+    const payload = structured<{ total: number; hint?: string }>(result);
     // The rejected candidate is dropped entirely; the pending one is kept but announced.
     expect(payload.total).toBe(2);
     expect(payload.hint).toMatch(/1 of 2 .*pending/);
@@ -541,7 +548,7 @@ describe('get_conventions', () => {
       arguments: { repo: 'acme/repo' },
     })) as CallToolResult;
 
-    const payload = JSON.parse(text(result)) as { hint?: string };
+    const payload = structured<{ hint?: string }>(result);
     expect(payload.hint).toBeUndefined();
   });
 
@@ -563,7 +570,7 @@ describe('get_conventions', () => {
       arguments: { repo: 'acme/repo' },
     })) as CallToolResult;
 
-    const payload = JSON.parse(text(result));
+    const payload = structured(result);
     expect('scanned_at' in payload).toBe(false);
   });
 });
