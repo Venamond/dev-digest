@@ -155,6 +155,26 @@ records twice.
   four tools are read-only is that their code paths issue only `GET`s —
   `run_agent_on_pr` is the one tool without `readOnlyHint`, because it is the
   one tool that issues a `POST` and spends real LLM money.
+- **`readOnlyHint` is the only annotation we set, and the other three are
+  deliberately absent — do not "complete" the set for spec tidiness.**
+  `destructiveHint` and `idempotentHint` are meaningful only when
+  `readOnlyHint == false`, so on the four read tools they say nothing. On
+  `run_agent_on_pr` every value we could write either repeats the client's
+  default (`idempotentHint: false`, `openWorldHint: true`) or actively
+  weakens the guard: an explicit `destructiveHint: false` would be formally
+  accurate — a run only appends rows — but it nudges clients toward
+  auto-approving the one tool that spends real money, which the omitted
+  block's cautious default (`destructiveHint: true`) prevents. Cost, measured
+  with the same `cl100k_base` encoder the tests use: `"annotations":
+  {"readOnlyHint":true}` is 8 tokens, adding `openWorldHint` makes it 14
+  (+6 per tool), and a full three-hint block on `run_agent_on_pr` is 22 —
+  which would take that tool from 156 to roughly 178 tokens and force
+  `PER_TOOL_TOKEN_CAP_OVERRIDES.run_agent_on_pr` up from 160, loosening the
+  only mechanical gate on tool-surface size. The one hint that would carry
+  new information is `openWorldHint: false` on the four read tools (they
+  query a bounded set of imported repos, not the open internet); it costs
+  +24 tokens per session start and no client acts on it today, so it stays
+  unset until one does.
 
 ## Token budget — measured numbers (S7)
 
