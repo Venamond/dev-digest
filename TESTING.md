@@ -31,6 +31,7 @@ If a test wouldn't catch a class of regression we care about, we don't write it.
 | server-integration | `server/` | integration (real Postgres) | vitest | `server-integration.yml` | **yes** |
 | reviewer-core | `reviewer-core/` | unit (engine) | vitest | `reviewer-core.yml` | no |
 | e2e web | `e2e/` | browser e2e (deterministic) | agent-browser + `run.ts` | `e2e-web.yml` | yes (stack) |
+| mcp | `mcp/` | unit + stdio smoke | vitest | `mcp.yml` | no |
 
 ## What each suite covers
 
@@ -58,12 +59,22 @@ and a `run` with a stubbed model → grounded findings. No DB / GitHub / FS.
 main journeys (boot → PR list → PR detail; agents) against a real seeded stack.
 No `chat`, no model key.
 
+**mcp** — the stdio MCP server: `fetch`-stubbed unit tests for the resolvers,
+formatting, and the five tools, plus a real stdio smoke test that spawns the
+server and drives it with an MCP client. Includes a **startup token-budget
+gate** (`token-budget.test.ts`) that measures the real `tools/list` response
+with the same tokenizer the server uses and fails the build if any tool
+definition or the total `tools` + `instructions` payload grows past its cap
+— catching a bloated tool description or schema before it makes every chat
+session more expensive.
+
 ## Running locally
 
 ```sh
 # per package
 cd client        && pnpm test           # + pnpm typecheck
 cd reviewer-core && npm test
+cd mcp           && npm test            # + npm run typecheck
 
 # server — the unit/integration split (see note below)
 cd server && pnpm exec vitest run --exclude '**/*.it.test.ts'   # unit, no Docker

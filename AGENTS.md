@@ -11,8 +11,8 @@ Next.js 15 + React 19 (client) · Zod contracts shared via
 `server/src/vendor/shared` (duplicated into `client/src/vendor/shared`, see
 Gotchas).
 
-**Package managers:** `server/` and `client/` use **pnpm ≥10**; `reviewer-core/`
-and `e2e/` use **npm**. Keep vendored contracts in sync with
+**Package managers:** `server/` and `client/` use **pnpm ≥10**; `reviewer-core/`,
+`e2e/` and `mcp/` use **npm**. Keep vendored contracts in sync with
 `./scripts/check-shared-sync.sh` (CI enforces this).
 
 ## Commands
@@ -33,6 +33,7 @@ cd client && pnpm test        # vitest + jsdom
 | `client/` | `@devdigest/web` | Next.js studio (the UI) |
 | `reviewer-core/` | `@devdigest/reviewer-core` | pure diff→prompt→LLM→findings engine |
 | `e2e/` | `@devdigest/e2e` | deterministic browser flows (no LLM) |
+| `mcp/` | `@devdigest/mcp` | local stdio MCP server over the REST API |
 
 Each has its own `AGENTS.md` — module conventions live there, not duplicated
 here.
