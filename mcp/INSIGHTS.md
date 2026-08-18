@@ -75,6 +75,24 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Tool & Library Notes
 
+- **You cannot colour our JSON in MCP Inspector by tagging the text block —
+  `mimeType` on a `type: 'text'` block is silently dropped.** Verified on
+  the live server 2026-08-19: adding `mimeType: 'application/json'` to
+  `jsonContent` (`src/format.ts`) never reaches the wire, because
+  `TextContentSchema` in `@modelcontextprotocol/core` has no such field and
+  is a Zod `$strip` object. Inspector's web client picks the Prism
+  (`tomorrow` theme) JSON renderer purely from a block's mime type, so our
+  untagged text lands in the monochrome `<pre>` branch — it still
+  pretty-prints anything starting with `{` or `[`, which is why the output
+  is indented but uncoloured. The only two paths that do colour are
+  `structuredContent` (Inspector renders it in a "Structured Output" panel
+  with `mimeType: 'application/json'` hardcoded) and an embedded
+  `type: 'resource'` block — both change what every client receives and
+  duplicate the payload the model pays for, so neither is worth it for a
+  dev-tool cosmetic. For coloured output while debugging, pipe the raw
+  stdio call through `jq -C 'select(.id==2) | .result.content[0].text |
+  fromjson'` instead.
+
 ## Recurring Errors & Fixes
 
 ## Session Notes
