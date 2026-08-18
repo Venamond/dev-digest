@@ -24,6 +24,37 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Codebase Patterns
 
+- **`agents.name` has no unique constraint, and the create path does not
+  check for one — so resolving an agent *by name* can silently pick the
+  wrong row.** `db/schema/agents.ts:13` is a bare `text('name').notNull()`
+  with no unique index anywhere in the file, and `POST /agents`
+  (`modules/agents/routes.ts:101`) goes straight through
+  `AgentService.create` (`service.ts:90`) to `AgentRepository.insert`
+  (`repository.ts:87`) — a plain INSERT with no name lookup. Two agents
+  named `Security Reviewer` in one workspace is a legal, reachable state
+  via the normal Agents UI.
+
+  This is the sibling of the recorded `skills.name` entry below, but with a
+  worse blast radius: a duplicate *skill* produces indistinguishable labels
+  in a picker, while a duplicate *agent* hit by a first-match-wins lookup
+  starts a **paid LLM review run against the wrong reviewer** and reports
+  success. Any code that accepts an agent name instead of a uuid must
+  therefore collect **all** matches and fail loudly when there is more than
+  one — `Two agents are named "X". Pass the id instead: <id1>, <id2>` —
+  rather than taking `[0]`. Resolving by `agents.id` avoids the class
+  entirely.
+
+  Check before debugging a "wrong agent ran" report:
+  `SELECT name, count(*) FROM agents GROUP BY workspace_id, name
+  HAVING count(*) > 1;`
+
+  Not yet a machine check: the natural enforcement is a per-workspace
+  unique index on `(workspace_id, name)`, which needs a migration and a
+  decision about existing duplicate rows. The first consumer to hit this is
+  the planned MCP server's `resolveAgentId`
+  (`docs/plans/2026-08-18-mcp-server.md`, S2), where it is handled
+  defensively in that package instead. (2026-08-18)
+
 - **`reviews.kind` is an enum of `'summary' | 'review'`
   (`db/schema/reviews.ts:21`), but no *production* path ever writes
   `'summary'`.** The only creation site is `run-executor.ts:342`, which
