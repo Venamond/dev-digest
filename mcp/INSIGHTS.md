@@ -75,6 +75,27 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Tool & Library Notes
 
+- **`structuredContent` alone is enough for the clients this repo targets —
+  the spec's "also send a text copy" is optional and costs a full duplicate
+  payload.** Verified 2026-08-19 in both directions. Wire: returning
+  `{ content: [], structuredContent: payload }` from `jsonContent`
+  (`src/format.ts`) is accepted by the SDK with no `outputSchema` and no
+  error; `content: []` must be present because the `registerTool` callback
+  type demands the field, even though the runtime tolerates its absence.
+  Client: a fresh headless `claude -p` run (spawned *after* the change, so
+  running the new code) received the whole payload in its `tool_result` —
+  Claude Code reads the structured field and hands it to the model. MCP
+  Inspector reads it too, and renders it colourised in its "Structured
+  Output" panel, which the old text block never got. Cost: 939 → 919 tokens
+  on one real `get_findings` reply, the difference being `\"` escaping.
+  **How to test a change like this without fooling yourself:** `tsx` reads
+  source at process start, so an already-running MCP server keeps serving
+  the old code — compare `ps -o lstart -p $(pgrep -f mcp/src/index.ts)`
+  against the commit time before trusting any result, or bypass the
+  question entirely with `claude -p ... --output-format stream-json
+  --verbose`, which spawns a fresh server and lets you read the exact
+  `tool_result` the model saw.
+
 - **You cannot colour our JSON in MCP Inspector by tagging the text block —
   `mimeType` on a `type: 'text'` block is silently dropped.** Verified on
   the live server 2026-08-19: adding `mimeType: 'application/json'` to

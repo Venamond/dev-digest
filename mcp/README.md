@@ -18,11 +18,22 @@ source via `tsx`, the same way `reviewer-core/` does.
 | `get_conventions` | Returns the coding conventions DevDigest extracted for a repository. | Same data as **L02**'s Conventions Extractor (`GET /repos/:id/conventions`, `server/src/modules/conventions`) — this tool is an MCP surface over work you already did in that lesson, not a new feature. |
 | `get_blast_radius` | Maps which files and symbols a pull request impacts, and who calls them. | **Deliberate stub.** The facade method `RepoIntel.getBlastRadius` exists (`server/src/modules/repo-intel/service.ts:214`) but has no HTTP route yet — wiring it up is **L04**. The tool's description promises a working tool on purpose; calling it returns a forward-leading error instead of silently disappearing from the tool list. See `mcp/AGENTS.md` for why. |
 
-All five results are returned as a single `content[0].text` holding
-`JSON.stringify(payload)` — never as prose — because repo-derived,
-LLM-generated text (finding titles, suggestions, rationale, convention rules)
-is untrusted third-party content and must stay unambiguously *data*, never
-formatted instructions.
+Successful results are returned as `structuredContent` — a real JSON object
+on the wire, with `content` left empty — never as prose, because
+repo-derived, LLM-generated text (finding titles, suggestions, rationale,
+convention rules) is untrusted third-party content and must stay
+unambiguously *data*, never formatted instructions. Errors are the one
+exception: `errorContent` puts an actionable sentence in a text block and
+sets `isError`, because an error message is written for the model to act on,
+not parsed as data.
+
+The spec suggests *also* repeating the payload as a JSON string in a text
+block, for clients written before `structuredContent` existed. This server
+does not: the duplicate is a second full copy of every response (a single
+`get_findings` reply measures 919 tokens), and the clients this package
+targets read the structured field — verified against Claude Code and MCP
+Inspector 2.2.0. A client that reads only `content[]` will see empty
+results here.
 
 ## Configuration
 
