@@ -77,7 +77,7 @@ export function registerRunAgentOnPr(server: McpServer, api: DevDigestApi): void
     {
       description: RUN_AGENT_ON_PR_DESCRIPTION,
       inputSchema: z.object({
-        repo: z.string().describe('owner/name, e.g. Venamond/dev-digest'),
+        repo: z.string().describe('owner/name, e.g. octocat/hello-world'),
         pr: z.number().int().positive(),
         agent: z.string().describe('agent name or id from list_agents'),
         timeout_s: z.number().int().min(10).max(900).default(180).optional(),

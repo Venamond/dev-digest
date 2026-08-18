@@ -107,6 +107,21 @@ records twice.
   (`server/src/modules/repo-intel/service.ts:214`, interface at `types.ts:147`)
   — the facade method exists, but `server/src/modules/repo-intel/routes.ts`
   exposes no route for it.
+- **The `repo` example — in `INSTRUCTIONS` (`src/server.ts`) and in
+  `run_agent_on_pr`'s `.describe()` — is a deliberate placeholder,
+  `octocat/hello-world`, and must not be replaced with a real repository.**
+  It illustrates the `owner/name` shape, nothing else. Two reasons it stays
+  fake: (1) this server exposes no `list_repos` tool, so a real-looking
+  example is the only repository name in the model's context and it will
+  substitute that instead of asking which repo the user means — harmless on
+  the read tools, but `run_agent_on_pr` would spend LLM money reviewing the
+  wrong PR; (2) a fork-specific name baked into shared source ships upstream
+  to every student of the course. Changed from `Venamond/dev-digest` on
+  2026-08-18; the same string is mirrored in the plan's S4 table
+  (`docs/plans/2026-08-18-mcp-server.md`) — keep both in sync. No test pins
+  the example (`token-budget.test.ts` checks only
+  `toContain('owner/name')`), and the token numbers below are unchanged by
+  the swap.
 - **The five tool `description` strings are fixed text, copied
   character-for-character from the plan's S4 table.** They are English on
   purpose in a Ukrainian-language course repo: the description is read by

@@ -964,7 +964,7 @@ Branch A's alias makes `tsc` compile those Zod-3 files inside a Zod-4 package.
   ```
   DevDigest reviews GitHub pull requests with local AI agents.
   Call list_agents first, then run_agent_on_pr; use get_findings to re-read a past review.
-  repo is always "owner/name" (e.g. Venamond/dev-digest); pr is the PR number.
+  repo is always "owner/name" (e.g. octocat/hello-world); pr is the PR number.
   Requires the DevDigest API running on localhost:3001 (./scripts/dev.sh).
   ```
 
@@ -989,7 +989,7 @@ Branch A's alias makes `tsc` compile those Zod-3 files inside a Zod-4 package.
   | Tool | `description` (verbatim) | `inputSchema` | `annotations` |
   |---|---|---|---|
   | `list_agents` | `Lists the review agents configured in DevDigest, with their model and skills. Call this first to get a valid agent name for run_agent_on_pr.` | *(omitted entirely — no arguments)* | `{ readOnlyHint: true }` |
-  | `run_agent_on_pr` | `Runs one review agent on a pull request, waits for it to finish, and returns the verdict with its findings. Starts a real LLM run: slow and not free.` | `z.object({ repo: z.string().describe('owner/name, e.g. Venamond/dev-digest'), pr: z.number().int().positive(), agent: z.string().describe('agent name or id from list_agents'), timeout_s: z.number().int().min(10).max(900).default(180).optional() })` | **none** — it creates a run and spends money on LLM calls, so it must not carry `readOnlyHint` |
+  | `run_agent_on_pr` | `Runs one review agent on a pull request, waits for it to finish, and returns the verdict with its findings. Starts a real LLM run: slow and not free.` | `z.object({ repo: z.string().describe('owner/name, e.g. octocat/hello-world'), pr: z.number().int().positive(), agent: z.string().describe('agent name or id from list_agents'), timeout_s: z.number().int().min(10).max(900).default(180).optional() })` | **none** — it creates a run and spends money on LLM calls, so it must not carry `readOnlyHint` |
   | `get_findings` | `Returns the verdict and findings from reviews already done for a pull request, without starting a new run.` | `z.object({ repo: z.string().describe('owner/name'), pr: z.number().int().positive(), agent: z.string().optional(), severity_min: z.enum(['CRITICAL','WARNING','SUGGESTION']).optional(), detail: z.enum(['summary','full']).default('summary').optional() })` | `{ readOnlyHint: true }` |
   | `get_conventions` | `Returns the coding conventions DevDigest extracted for a repository.` | `z.object({ repo: z.string().describe('owner/name') })` | `{ readOnlyHint: true }` |
   | `get_blast_radius` | `Maps which files and symbols a pull request impacts, and who calls them.` | `z.object({ repo: z.string().describe('owner/name'), pr: z.number().int().positive() })` | `{ readOnlyHint: true }` |
