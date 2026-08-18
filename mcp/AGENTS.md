@@ -175,6 +175,27 @@ records twice.
   query a bounded set of imported repos, not the open internet); it costs
   +24 tokens per session start and no client acts on it today, so it stays
   unset until one does.
+- **Success payloads go out as `structuredContent` with `content: []`, and
+  the spec's backwards-compatibility duplicate is deliberately not sent.**
+  The 2025-06-18 Tools spec says: *"For backwards compatibility, a tool that
+  returns structured content SHOULD also return the serialized JSON in a
+  TextContent block."* We don't, because the duplicate is a second full copy
+  of every response — one real `get_findings` reply measures 919 tokens —
+  and it exists only for clients that predate `structuredContent`. Both
+  clients this package targets were verified on 2026-08-19 to read the
+  structured field: Claude Code (a headless `claude -p` run received the
+  whole payload in its `tool_result`) and MCP Inspector 2.2.0 (renders it
+  colourised in its "Structured Output" panel — a text block never gets
+  colour, since Inspector keys its highlighter off a JSON mime type and the
+  SDK strips `mimeType` from `TextContent`). `errorContent` is unchanged and
+  still returns a text block with `isError`: an error message is prose for
+  the model to act on, not data to parse. **Revisit trigger:** if this
+  server is ever used by anything outside {Claude Code, MCP Inspector} — a
+  registry listing, another IDE, an older SDK — restore the text duplicate,
+  because a client reading only `content[]` sees empty results here. Related
+  and also deliberate: no tool declares an `outputSchema` (asserted by
+  `test/token-budget.test.ts`), so clients cannot validate the structure;
+  that is the token-budget trade-off, not an oversight.
 
 ## Token budget — measured numbers (S7)
 
