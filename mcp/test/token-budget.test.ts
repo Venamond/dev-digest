@@ -26,7 +26,7 @@ const TOTAL_TOKEN_CAP = 900;
  * override dropped, to buy a `.describe()` on every parameter — `agent` and
  * `severity_min` in particular carry semantics a model cannot infer from the
  * name and type. `TOTAL_TOKEN_CAP` is the gate that actually protects the
- * session's context and is unchanged; the measured total is 673 of 900. See
+ * session's context and is unchanged; the measured total is 627 of 900. See
  * `mcp/AGENTS.md`'s token-budget section for the per-tool numbers.
  */
 

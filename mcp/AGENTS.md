@@ -149,11 +149,15 @@ records twice.
   fails a test instead of silently degrading the tools.
 - **`readOnlyHint` is an untrusted hint, not enforcement.** The MCP spec says
   clients must treat tool annotations from untrusted servers as advisory
-  only; `readOnlyHint: true` on the four read tools is a UX signal that lets
+  only; `readOnlyHint: true` on the three read tools is a UX signal that lets
   a client auto-approve a read, nothing more. The real guarantee that those
-  four tools are read-only is that their code paths issue only `GET`s —
-  `run_agent_on_pr` is the one tool without `readOnlyHint`, because it is the
-  one tool that issues a `POST` and spends real LLM money.
+  three tools are read-only is that their code paths issue only `GET`s.
+  **The annotation is per tool, not per call**, which is why
+  `get_blast_radius` lost it on 2026-08-19 when `summary: true` was added:
+  the default call is still a pure `GET`, but one branch now `POST`s to
+  `/pulls/:id/blast/summary` and spends real LLM money, and a tool a client
+  may auto-approve must have no such branch at all. `run_agent_on_pr` is
+  unannotated for the same reason — it always `POST`s.
 - **`readOnlyHint` is the only annotation we set, and the other three are
   deliberately absent — do not "complete" the set for spec tidiness.**
   `destructiveHint` and `idempotentHint` are meaningful only when
@@ -208,8 +212,11 @@ encoder the server uses (`js-tiktoken`). Measured on this branch:
 | `run_agent_on_pr` | 141 |
 | `get_findings` | 171 |
 | `get_conventions` | 69 |
-| `get_blast_radius` | 93 |
-| **Total (`tools` + `instructions`)** | **609** (cap 900) |
+| `get_blast_radius` | 111 |
+| **Total (`tools` + `instructions`)** | **627** (cap 900) |
+
+`get_blast_radius` went 93 → 111 on 2026-08-19: `summary` costs +26 tokens
+of schema and `.describe()`, less the 8 the dropped `readOnlyHint` returned.
 
 **The per-tool cap is 200, not the plan's 150, and there is no per-tool
 override.** Two changes stacked. First, Zod 4's JSON-Schema conversion for

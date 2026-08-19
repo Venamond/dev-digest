@@ -76,15 +76,19 @@ describe('tools/list', () => {
     );
   });
 
-  it('run_agent_on_pr is the only tool without readOnlyHint', async () => {
+  it('only the tools whose every code path is a GET carry readOnlyHint', async () => {
     stubFetch(() => jsonResponse([]));
     const api = new DevDigestApi(BASE_URL);
     const client = await connectClient(api);
 
     const { tools } = await client.listTools();
 
+    // `run_agent_on_pr` always POSTs; `get_blast_radius` POSTs when asked for
+    // a summary. The annotation is per tool, not per call, so a tool with a
+    // paid path must not advertise itself as auto-approvable.
+    const paid = new Set(['run_agent_on_pr', 'get_blast_radius']);
     for (const tool of tools) {
-      if (tool.name === 'run_agent_on_pr') {
+      if (paid.has(tool.name)) {
         expect(tool.annotations?.readOnlyHint).toBeUndefined();
       } else {
         expect(tool.annotations?.readOnlyHint).toBe(true);
@@ -667,6 +671,112 @@ describe('get_blast_radius', () => {
     expect(result.isError).toBe(true);
     expect(text(result)).toContain('pr_id');
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('makes no summary request unless one is asked for', async () => {
+    // The default path is the free one. A tool that quietly spends LLM money
+    // on every call is the reason this parameter is opt-in.
+    const fetchMock = stubBlast(okBlast);
+
+    await callBlast();
+
+    const posts = fetchMock.mock.calls.filter((c) => (c[1] as RequestInit | undefined)?.method === 'POST');
+    expect(posts).toHaveLength(0);
+  });
+
+  it('returns the paragraph beside the map when summary is requested', async () => {
+    const fetchMock = stubFetch((path, method) => {
+      if (path === '/pulls/pr-1/blast') return jsonResponse(okBlast);
+      if (path === '/pulls/pr-1/blast/summary' && method === 'POST')
+        return jsonResponse({ summary: 'One helper reaches one endpoint.', model: 'deepseek/x', nodes: 4 });
+      throw new Error(`unexpected ${method} ${path}`);
+    });
+    const api = new DevDigestApi(BASE_URL);
+    const client = await connectClient(api);
+
+    const result = (await client.callTool({
+      name: 'get_blast_radius',
+      arguments: { pr_id: 'pr-1', summary: true },
+    })) as CallToolResult;
+
+    const payload = structured<{ summary?: string; summary_model?: string; symbols: unknown[] }>(result);
+    expect(payload.summary).toBe('One helper reaches one endpoint.');
+    expect(payload.summary_model).toBe('deepseek/x');
+    // The map is still the answer — the paragraph is added, not substituted.
+    expect(payload.symbols).toHaveLength(1);
+    expect(fetchMock.mock.calls.some((c) => (c[1] as RequestInit | undefined)?.method === 'POST')).toBe(true);
+  });
+
+  it('still returns the map when the summary call fails', async () => {
+    // The summary route is rate-limited to 10/min and needs a configured
+    // provider. Discarding a map the caller already paid a round trip for,
+    // because its garnish failed, is the wrong trade.
+    stubFetch((path, method) => {
+      if (path === '/pulls/pr-1/blast') return jsonResponse(okBlast);
+      if (path === '/pulls/pr-1/blast/summary' && method === 'POST')
+        return jsonResponse({ error: { message: 'Rate limit exceeded' } }, 429);
+      throw new Error(`unexpected ${method} ${path}`);
+    });
+    const api = new DevDigestApi(BASE_URL);
+    const client = await connectClient(api);
+
+    const result = (await client.callTool({
+      name: 'get_blast_radius',
+      arguments: { pr_id: 'pr-1', summary: true },
+    })) as CallToolResult;
+
+    expect(result.isError).toBeFalsy();
+    const payload = structured<{ symbols: unknown[]; summary?: string; summary_error?: string }>(result);
+    expect(payload.symbols).toHaveLength(1);
+    expect(payload.summary).toBeUndefined();
+    // The client's own 429 translation reaches the model verbatim — it is
+    // actionable ("wait a minute"), which the raw upstream string is not.
+    expect(payload.summary_error).toContain('rate-limited');
+  });
+
+  it('does not pay for a summary of an empty map, and says why', async () => {
+    const fetchMock = stubFetch((path) => {
+      if (path === '/pulls/pr-1/blast')
+        return jsonResponse({ ...okBlast, symbols: [], totals: { ...okBlast.totals, symbols: 0 } });
+      throw new Error(`unexpected path ${path}`);
+    });
+    const api = new DevDigestApi(BASE_URL);
+    const client = await connectClient(api);
+
+    const result = (await client.callTool({
+      name: 'get_blast_radius',
+      arguments: { pr_id: 'pr-1', summary: true },
+    })) as CallToolResult;
+
+    const payload = structured<{ summary_skipped?: string }>(result);
+    expect(payload.summary_skipped).toContain('no mapped impact');
+    expect(fetchMock.mock.calls.some((c) => (c[1] as RequestInit | undefined)?.method === 'POST')).toBe(false);
+  });
+
+  it('does not pay for a summary of an unindexed repo, and says why', async () => {
+    const fetchMock = stubFetch((path) => {
+      if (path === '/pulls/pr-1/blast')
+        return jsonResponse({
+          state: 'degraded',
+          reason: 'no_data',
+          totals: { symbols: 0, callers: 0, callers_found: 0, endpoints: 0, crons: 0 },
+          symbols: [],
+          downstream_truncated: false,
+        });
+      throw new Error(`unexpected path ${path}`);
+    });
+    const api = new DevDigestApi(BASE_URL);
+    const client = await connectClient(api);
+
+    const result = (await client.callTool({
+      name: 'get_blast_radius',
+      arguments: { pr_id: 'pr-1', summary: true },
+    })) as CallToolResult;
+
+    const payload = structured<{ state: string; summary_skipped?: string }>(result);
+    expect(payload.state).toBe('degraded');
+    expect(payload.summary_skipped).toContain('not indexed');
+    expect(fetchMock.mock.calls.some((c) => (c[1] as RequestInit | undefined)?.method === 'POST')).toBe(false);
   });
 
   it('get_blast_radius returns the structured blast map for an indexed repo', async () => {

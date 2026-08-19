@@ -1,7 +1,14 @@
 /**
  * `get_blast_radius` — the downstream impact map of a pull request, read from
  * `GET /pulls/:id/blast` (`server/src/modules/blast/routes.ts`). Zero LLM
- * calls: the route only reads DevDigest's persistent code index.
+ * calls by default: the route only reads DevDigest's persistent code index.
+ *
+ * `summary: true` additionally posts to `/pulls/:id/blast/summary`, which
+ * spends one real LLM call. That is why this tool carries no `readOnlyHint`
+ * — the annotation is per tool, not per call, and a tool with a paid code
+ * path must not be auto-approved as a read (`AGENTS.md`, annotations). The
+ * paragraph is generated from the map's node list alone and is never
+ * persisted server-side, so it exists only inside this response.
  *
  * The payload is trimmed to what a model can act on (D21 of
  * docs/plans/2026-08-19-blast-radius.md): state, totals, and per changed
@@ -16,7 +23,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/server';
 import type { DevDigestApi } from '../api/client.js';
-import type { BlastResponse } from '../api/types.js';
+import type { BlastResponse, BlastSummaryResponse } from '../api/types.js';
 import {
   errorContent,
   jsonContent,
@@ -53,10 +60,13 @@ export function registerGetBlastRadius(server: McpServer, api: DevDigestApi): vo
       description: GET_BLAST_RADIUS_DESCRIPTION,
       inputSchema: z.object({
         pr_id: z.string().describe('pull request uuid, from the studio URL'),
+        summary: z
+          .boolean()
+          .optional()
+          .describe('also explain the map in one paragraph; costs one LLM call (default false)'),
       }),
-      annotations: { readOnlyHint: true },
     },
-    async ({ pr_id }) => {
+    async ({ pr_id, summary: wantSummary }) => {
       try {
         const blast = await api.get<BlastResponse>(`/pulls/${encodeURIComponent(pr_id)}/blast`);
 
@@ -68,6 +78,10 @@ export function registerGetBlastRadius(server: McpServer, api: DevDigestApi): vo
             ...(blast.reason ? { reason: blast.reason } : {}),
             totals: blast.totals,
             symbols: [],
+            // The server answers a summary request on a degraded map with a
+            // 409. Saying so here costs nothing and skips a round trip that
+            // can only fail.
+            ...(wantSummary ? { summary_skipped: 'the repository is not indexed, so there is no map to explain' } : {}),
             ...(hint ? { hint } : {}),
           });
         }
@@ -94,6 +108,29 @@ export function registerGetBlastRadius(server: McpServer, api: DevDigestApi): vo
           kept.length < blast.symbols.length ||
           kept.some((s) => s.callers.length > MAX_BLAST_CALLERS_PER_SYMBOL);
 
+        // Requested but pointless: an empty map is the server's other 409.
+        const summarySkipped =
+          wantSummary && symbols.length === 0
+            ? 'this pull request has no mapped impact to explain'
+            : undefined;
+
+        let paragraph: BlastSummaryResponse | undefined;
+        let summaryError: string | undefined;
+        if (wantSummary && !summarySkipped) {
+          try {
+            paragraph = await api.post<BlastSummaryResponse>(
+              `/pulls/${encodeURIComponent(pr_id)}/blast/summary`,
+              {},
+            );
+          } catch (err) {
+            // The map is the answer; the paragraph is a garnish. A rate limit
+            // (10/min) or an unconfigured provider must not discard work the
+            // caller already paid a round trip for — the same partial-failure
+            // shape `list_agents` uses for its skills fan-out.
+            summaryError = err instanceof Error ? err.message : String(err);
+          }
+        }
+
         return jsonContent({
           state: blast.state,
           ...(blast.reason ? { reason: blast.reason } : {}),
@@ -101,6 +138,9 @@ export function registerGetBlastRadius(server: McpServer, api: DevDigestApi): vo
           symbols,
           downstream_truncated: blast.downstream_truncated,
           ...(truncated ? { truncated: true } : {}),
+          ...(paragraph ? { summary: paragraph.summary, summary_model: paragraph.model } : {}),
+          ...(summarySkipped ? { summary_skipped: summarySkipped } : {}),
+          ...(summaryError ? { summary_error: summaryError } : {}),
           ...(hint ? { hint } : {}),
         });
       } catch (err) {

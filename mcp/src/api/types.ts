@@ -107,6 +107,17 @@ export interface ApiErrorBody {
 }
 
 /**
+ * Mirrors `BlastSummaryResponse` — `POST /pulls/:id/blast/summary`. The
+ * server persists none of it (no table, no migration), so this shape only
+ * ever exists inside one tool call.
+ */
+export interface BlastSummaryResponse {
+  summary: string;
+  model: string;
+  nodes: number;
+}
+
+/**
  * Mirrors `BlastResponse` in `server/src/vendor/shared/contracts/brief.ts`
  * (the L04 contract, not the older `BlastRadius` PrBrief block above it).
  *
