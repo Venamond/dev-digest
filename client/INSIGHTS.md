@@ -53,6 +53,15 @@ ground truth — wrap-ups can mischaracterize a session.
   to the next line rather than wrapping it in place — `#8` rendered as a bare
   number above its own title. Give the text `flexGrow: 1; flexShrink: 1;
   minWidth: 0` and `flexShrink: 0` to the fixed chips beside it.
+  **A repo path overflowing a card needs BOTH `overflow-wrap: anywhere` and
+  `minWidth: 0` on every flex column above it.** Paths in this product run to
+  90+ characters with no spaces (`client/src/app/repos/[repoId]/pulls/…`), and
+  `break-word` only breaks BETWEEN words — with no space to use it does
+  nothing, so the text runs past the card edge. `anywhere` is the value that
+  breaks inside a token. Fixing only that is still not enough: a flex column
+  will not shrink below its widest child, so the unbroken path widens the
+  whole card instead of wrapping in it. Any card rendering file paths
+  (findings, diff, blast) needs both.
 
 - **i18n namespace follows the component's location, not the feature it serves.**
   Shared components under `client/src/components/**` call
