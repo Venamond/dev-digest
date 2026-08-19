@@ -38,8 +38,15 @@ export const MAX_REVERSE_DEPENDENTS = 200;
  *
  * v2 (T3): graph + decl_file resolution + file_rank + repo-map landed, so every
  * T2 `partial` index must be rebuilt to gain the rank-driven data.
+ *
+ * v3 (L04): `extractCrons` changed shape — `file_facts.crons` now holds
+ * `reset-rate-buckets (hourly)` where v2 held the raw `0 * * * *`. Mixing the
+ * two would show one card half in words and half in cron syntax. The bump is
+ * self-healing: `pipeline/incremental.ts:75` turns a version mismatch into a
+ * full reindex, and until that runs `blast` reports `index_stale` with a
+ * re-analyze CTA rather than serving the old format silently.
  */
-export const INDEXER_VERSION = 2;
+export const INDEXER_VERSION = 3;
 
 // --- [T2] Full-index limits (documented now, enforced in the pipeline) ------
 export const MAX_INDEXED_FILES = 5000;

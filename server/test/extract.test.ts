@@ -4,6 +4,7 @@ import {
   extractReferences,
   extractEndpoints,
   extractCrons,
+  humanizeCron,
 } from '../src/adapters/codeindex/extract.js';
 
 /**
@@ -96,7 +97,48 @@ cron.schedule('*/5 * * * *', poll);
 jobs.register('poll_repo', handler);
 `;
     const crons = extractCrons(src);
-    expect(crons.some((c) => c.includes('*/5'))).toBe(true);
+    // The handler names the schedule; the expression is humanised.
+    expect(crons).toContain('poll (every 5 minutes)');
     expect(crons).toContain('job:poll_repo');
+  });
+
+  it('names a schedule from a quoted job name when the line carries one', () => {
+    const src = `
+cron.schedule('0 * * * *', resetBuckets, { name: 'reset-rate-buckets' });
+new CronJob('0 0 * * *', nightly);
+schedule('0 3 * * *');
+`;
+    const crons = extractCrons(src);
+    // A quoted kebab name wins over the handler identifier — it is what the
+    // operator sees in logs and dashboards.
+    expect(crons).toContain('reset-rate-buckets (hourly)');
+    expect(crons).toContain('nightly (daily)');
+    // No name on the line: the schedule stands alone rather than inventing one.
+    expect(crons).toContain('daily at 03:00');
+  });
+
+  it('keeps an expression it cannot name in words', () => {
+    // A wrong friendly label is worse than an unfriendly correct one.
+    expect(humanizeCron('15 2 * * 1-5')).toBe('15 2 * * 1-5');
+    expect(extractCrons("cron.schedule('15 2 * * 1-5');")).toContain('15 2 * * 1-5');
+  });
+});
+
+describe('humanizeCron', () => {
+  it.each([
+    ['* * * * *', 'every minute'],
+    ['*/5 * * * *', 'every 5 minutes'],
+    ['0 * * * *', 'hourly'],
+    ['0 */6 * * *', 'every 6 hours'],
+    ['0 0 * * *', 'daily'],
+    ['0 9 * * *', 'daily at 09:00'],
+    ['0 0 * * 0', 'weekly'],
+    ['0 0 1 * *', 'monthly'],
+  ])('%s → %s', (expr, expected) => {
+    expect(humanizeCron(expr)).toBe(expected);
+  });
+
+  it('returns a malformed expression untouched', () => {
+    expect(humanizeCron('nonsense')).toBe('nonsense');
   });
 });
