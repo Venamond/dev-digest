@@ -115,6 +115,23 @@ ground truth — wrap-ups can mischaracterize a session.
   depends on being remembered. The `dd-` escape-hatch guidance above is not
   machine-checkable and still applies.)
 
+- **A total can be correctly derived and still lie, when the SET it sums
+  includes rows a later row superseded. Name the scope on screen.** The PR
+  severity bar (`SeverityCounters` under `FindingsTab`) sums
+  `reviews.flatMap(r => r.findings)` — every review ever run. Re-running one
+  agent does not replace its earlier review, so a real PR read `4 CRITICAL`
+  while only three were still reported by anyone: Performance Reviewer had
+  re-run and dropped its critical, and the bar kept counting it. Meanwhile
+  `get_findings` in `mcp/` answers the same question with the newest review
+  per agent (D5) and returned 9 against the page's 11 — two surfaces, two
+  scopes, neither labelled. Fixed 2026-08-19 by captioning the bar ("across
+  every run", full text in `title`) and by a `hint` on the MCP side. **The
+  rule: whenever an aggregate spans rows that supersede one another, the
+  surface states which set it counted** — the arithmetic being right is not
+  the same as the number being true. The caption is a prop supplied by the
+  caller, not baked into `SeverityCounters`, because the same component also
+  renders a single run's tally, which needs no caveat.
+
 - **Every number on a card must be derived from the array the card renders —
   a count computed independently WILL drift from what is on screen.** Three
   times in one feature (`BlastCard`, 2026-08-19) a counter and the body
