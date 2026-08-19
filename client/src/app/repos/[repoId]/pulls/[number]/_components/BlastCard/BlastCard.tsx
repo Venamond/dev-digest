@@ -230,7 +230,12 @@ function SymbolBlock({
         {/* `rateLimit()` reads as the callable it is; the reference carries
             no separate uppercase kind label, and the parens say it better. */}
         <span style={s.symbolName}>{CALLABLE_KINDS.has(symbol.kind) ? `${symbol.name}()` : symbol.name}</span>
-        {!CALLABLE_KINDS.has(symbol.kind) && <span style={s.symbolKind}>{symbol.kind}</span>}
+        {/* Every symbol carries its kind, functions included. Showing it only
+            for non-callables read as an arbitrary gap: the parens do say
+            "callable", but from the row it just looked like some entries had a
+            label and others did not. The reference has no interfaces in it, so
+            it does not decide this either way. */}
+        <span style={s.symbolKind}>{symbol.kind}</span>
 
         {/* The count must describe everything listed below, or the row
             contradicts itself: an interface with no call sites but two
