@@ -1,0 +1,12 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+  server:
+    dependencies:
+      zod:
+        specifier: ^3.24.0
+        version: 3.24.0
