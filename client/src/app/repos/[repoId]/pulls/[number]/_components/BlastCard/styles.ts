@@ -364,43 +364,11 @@ export const s = {
     color: "var(--text-secondary)",
     overflowWrap: "anywhere",
   } satisfies CSSProperties,
-  /* The network graph takes the whole viewport: a force layout inside a
-     half-width card is either unreadable or too crowded to separate. */
-  overlay: {
-    position: "fixed",
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    zIndex: 60,
-    background: "var(--bg-primary)",
-    display: "flex",
-    flexDirection: "column",
-  } satisfies CSSProperties,
-  overlayBar: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-    paddingTop: 14,
-    paddingRight: 18,
-    paddingBottom: 14,
-    paddingLeft: 18,
-    borderBottomStyle: "solid",
-    borderBottomWidth: 1,
-    borderBottomColor: "var(--border)",
-  } satisfies CSSProperties,
-  overlayTitle: {
-    fontSize: 12,
-    fontWeight: 700,
-    letterSpacing: "0.08em",
-    textTransform: "uppercase",
-    color: "var(--text-muted)",
-  } satisfies CSSProperties,
   overlayActions: {
     display: "flex",
     alignItems: "center",
     gap: 6,
+    paddingBottom: 10,
   } satisfies CSSProperties,
   iconBtn: {
     display: "inline-flex",
@@ -422,23 +390,22 @@ export const s = {
     borderBottomColor: "var(--border)",
     borderLeftColor: "var(--border)",
   } satisfies CSSProperties,
-  /* flex:1 with minHeight:0 — without the second, the SVG's intrinsic size
-     wins and the canvas grows past the viewport instead of filling it. */
+  /* A fixed height, not flex:1 — inside the Modal's body an SVG with height
+     100% collapses to nothing, because the body has no definite height for the
+     percentage to resolve against. */
   overlayCanvas: {
-    flexGrow: 1,
-    flexShrink: 1,
-    minHeight: 0,
+    height: 560,
+    maxHeight: "60vh",
     overflow: "hidden",
     touchAction: "none",
+    borderRadius: 8,
+    background: "var(--bg-primary)",
   } satisfies CSSProperties,
   overlayLegend: {
     display: "flex",
     flexWrap: "wrap",
     gap: 16,
     paddingTop: 12,
-    paddingRight: 18,
-    paddingBottom: 16,
-    paddingLeft: 18,
     fontSize: 12,
     color: "var(--text-muted)",
   } satisfies CSSProperties,

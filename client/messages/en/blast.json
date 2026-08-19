@@ -8,7 +8,7 @@
   },
   "view": {
     "tree": "Tree",
-    "flow": "Flow",
+    "flow": "Graph",
     "network": "Network"
   },
   "callerCount": "{count, plural, one {# caller} other {# callers}}",
@@ -23,7 +23,8 @@
     "zoomIn": "Zoom in",
     "zoomOut": "Zoom out",
     "reset": "Fit to screen",
-    "close": "Close"
+    "rotateLeft": "Rotate left",
+    "rotateRight": "Rotate right"
   },
   "partial": "The index for this repo is partial — the map below shows what has been indexed so far.",
   "degraded": "This repo is not indexed well enough to compute a blast radius.",

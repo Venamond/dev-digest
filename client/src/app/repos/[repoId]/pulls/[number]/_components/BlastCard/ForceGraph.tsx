@@ -19,11 +19,24 @@ function label(text: string): string {
   return text.length > MAX_NODE_LABEL ? `${text.slice(0, MAX_NODE_LABEL - 1)}…` : text;
 }
 
-function Node({ node }: { node: PlacedNode }) {
+function Node({
+  node,
+  onPointerDown,
+}: {
+  node: PlacedNode;
+  onPointerDown?: (id: string, e: React.PointerEvent) => void;
+}) {
   const r = NODE_RADIUS[node.role];
   return (
     <g>
-      <circle cx={node.x} cy={node.y} r={r} fill={NODE_COLOR[node.role]} />
+      <circle
+        cx={node.x}
+        cy={node.y}
+        r={r}
+        fill={NODE_COLOR[node.role]}
+        onPointerDown={onPointerDown ? (e) => onPointerDown(node.id, e) : undefined}
+        style={onPointerDown ? { cursor: "grab" } : undefined}
+      />
       {/* Below the circle, as in the reference — beside it, long paths overlap
           their neighbours at any useful node count. */}
       <text
@@ -40,7 +53,14 @@ function Node({ node }: { node: PlacedNode }) {
   );
 }
 
-export function GraphContent({ layout }: { layout: ForceLayout }) {
+export function GraphContent({
+  layout,
+  onNodePointerDown,
+}: {
+  layout: ForceLayout;
+  /** Supplied by the live view; omitted where the graph is a still image. */
+  onNodePointerDown?: (id: string, e: React.PointerEvent) => void;
+}) {
   const byId = React.useMemo(
     () => new Map(layout.nodes.map((n) => [n.id, n])),
     [layout.nodes],
@@ -65,7 +85,7 @@ export function GraphContent({ layout }: { layout: ForceLayout }) {
         );
       })}
       {layout.nodes.map((n) => (
-        <Node key={n.id} node={n} />
+        <Node key={n.id} node={n} onPointerDown={onNodePointerDown} />
       ))}
     </>
   );

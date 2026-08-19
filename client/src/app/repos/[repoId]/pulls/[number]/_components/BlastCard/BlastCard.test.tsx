@@ -236,8 +236,31 @@ describe("BlastCard", () => {
     expect(within(dialog).getByRole("button", { name: "Zoom in" })).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: "Fit to screen" })).toBeInTheDocument();
 
-    fireEvent.click(within(dialog).getByRole("button", { name: "Close" }));
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    // Rotation is what "look at it from another angle" means for a 2D graph.
+    expect(within(dialog).getByRole("button", { name: "Rotate left" })).toBeInTheDocument();
+  });
+
+  it("re-renders the graph as the simulation moves a dragged node", () => {
+    renderCard();
+    fireEvent.click(screen.getByRole("button", { name: "Network" }));
+    const dialog = screen.getByRole("dialog");
+
+    // Scoped to the transformed group: the toolbar icons are SVGs with
+    // circles of their own, and they never move.
+    const graphNodes = () => dialog.querySelectorAll("g[transform] circle");
+    expect(graphNodes().length).toBeGreaterThan(0);
+    const before = graphNodes()[0]!.getAttribute("cx");
+
+    // A live simulation, not a still image: grabbing a node and moving the
+    // pointer must change what is drawn.
+    fireEvent.pointerDown(graphNodes()[0]!, { clientX: 100, clientY: 100, pointerId: 1 });
+    fireEvent.pointerMove(dialog.querySelector("svg")!.parentElement!, {
+      clientX: 400,
+      clientY: 300,
+      pointerId: 1,
+    });
+
+    expect(graphNodes()[0]!.getAttribute("cx")).not.toBe(before);
   });
 
   it("closes the network graph on Escape", () => {
@@ -459,7 +482,7 @@ describe("BlastCard", () => {
     expect(screen.getByText("formatMoney()")).toBeInTheDocument();
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Flow" }));
+    fireEvent.click(screen.getByRole("button", { name: "Graph" }));
     const graph = screen.getByRole("img", { name: "Blast radius graph" });
     expect(graph).toBeInTheDocument();
     expect(screen.queryByText("formatMoney")).not.toBeInTheDocument();
@@ -476,7 +499,7 @@ describe("BlastCard", () => {
     });
     renderCard();
 
-    fireEvent.click(screen.getByRole("button", { name: "Flow" }));
+    fireEvent.click(screen.getByRole("button", { name: "Graph" }));
     expect(screen.getByText("No downstream callers to graph.")).toBeInTheDocument();
   });
 

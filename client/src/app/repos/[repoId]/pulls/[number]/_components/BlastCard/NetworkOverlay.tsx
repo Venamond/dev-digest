@@ -2,22 +2,35 @@
 
 import React from "react";
 import { useTranslations } from "next-intl";
-import { Icon } from "@devdigest/ui";
+import { Icon, Modal } from "@devdigest/ui";
 import type { ForceLayout } from "./force-layout";
 import { GraphContent } from "./ForceGraph";
-import { fit, panBy, toTransform, zoomAt, ZOOM_STEP, type Viewport } from "./viewport";
+import { createLiveGraph, type LiveGraph } from "./live-graph";
+import {
+  fit,
+  panBy,
+  rotateBy,
+  toLayout,
+  toTransform,
+  zoomAt,
+  ROTATE_STEP,
+  ZOOM_STEP,
+  type Viewport,
+} from "./viewport";
 import { s } from "./styles";
 
 /**
- * The network graph, full screen and interactive: scroll to zoom, drag to move.
+ * The network graph in a modal: scroll to zoom, drag to move, buttons to turn.
  *
- * Full screen rather than inline because a force layout needs room. Inside a
- * half-width card the nodes are either too small to read or too crowded to
- * separate, which is the state the inline version was in.
+ * A modal rather than the card, because a force layout needs room — at half
+ * the page width its nodes are either too small to read or too crowded to
+ * separate, and there is no way to look closer. It uses the shared `Modal`
+ * primitive so it behaves like every other dialog here (backdrop click, the
+ * same chrome) instead of being a bespoke full-bleed panel.
  *
- * The maths lives in `viewport.ts` — this component only turns events into
- * calls. "The graph jumps when I scroll" is an arithmetic bug, and arithmetic
- * is cheaper to test than a pointer gesture.
+ * All the arithmetic lives in `viewport.ts` as pure functions with their own
+ * tests. This component only turns events into calls: "the graph jumps when I
+ * scroll" is a maths bug, and maths is far cheaper to test than a gesture.
  */
 export function NetworkOverlay({
   layout,
@@ -27,19 +40,52 @@ export function NetworkOverlay({
   onClose: () => void;
 }) {
   const t = useTranslations("blast");
-  const [view, setView] = React.useState<Viewport>(() => fit(layout.width, layout.height, 1200, 700));
+  const [view, setView] = React.useState<Viewport>(() =>
+    fit(layout.width, layout.height, 1000, 620),
+  );
   const frameRef = React.useRef<HTMLDivElement | null>(null);
   const dragRef = React.useRef<{ x: number; y: number } | null>(null);
+  /** Which node the pointer is holding, if any. */
+  const heldRef = React.useRef<string | null>(null);
 
-  // Fit to the real window once mounted; the initial state above is only a
-  // sensible guess for the first paint (and for jsdom, which has no layout).
+  // The simulation keeps running while the modal is open, so the graph answers
+  // a drag instead of being a picture that can be panned.
+  const graphRef = React.useRef<LiveGraph | null>(null);
+  const [nodes, setNodes] = React.useState(layout.nodes);
   React.useEffect(() => {
-    const el = frameRef.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    if (r.width > 0 && r.height > 0) setView(fit(layout.width, layout.height, r.width, r.height));
+    const g = createLiveGraph(layout);
+    graphRef.current = g;
+    const off = g.subscribe(() => setNodes(g.snapshot()));
+    return () => {
+      off();
+      g.stop();
+      graphRef.current = null;
+    };
   }, [layout]);
 
+  /** Pointer → layout coordinates, through the current pan, zoom and angle. */
+  const atPointer = (clientX: number, clientY: number) => {
+    const r = frameRef.current?.getBoundingClientRect();
+    return toLayout(
+      view,
+      layout.width / 2,
+      layout.height / 2,
+      clientX - (r?.left ?? 0),
+      clientY - (r?.top ?? 0),
+    );
+  };
+
+  // Fit to the real frame once mounted. The initial state above is only a
+  // guess for the first paint — and for jsdom, which reports no layout at all.
+  React.useEffect(() => {
+    const r = frameRef.current?.getBoundingClientRect();
+    if (r && r.width > 0 && r.height > 0) {
+      setView(fit(layout.width, layout.height, r.width, r.height));
+    }
+  }, [layout]);
+
+  // The shared Modal has a backdrop and a close button but no Escape handling,
+  // and `vendor/ui` is do-not-touch — so the dialog adds it here.
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -48,34 +94,45 @@ export function NetworkOverlay({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const zoomBy = (factor: number) => {
+  const centre = (): { cx: number; cy: number } => {
     const r = frameRef.current?.getBoundingClientRect();
-    setView((v) => zoomAt(v, factor, (r?.width ?? 0) / 2, (r?.height ?? 0) / 2));
+    return { cx: (r?.width ?? 0) / 2, cy: (r?.height ?? 0) / 2 };
+  };
+
+  const zoomBy = (factor: number) => {
+    const { cx, cy } = centre();
+    setView((v) => zoomAt(v, factor, cx, cy));
   };
 
   const reset = () => {
     const r = frameRef.current?.getBoundingClientRect();
-    setView(fit(layout.width, layout.height, r?.width ?? 1200, r?.height ?? 700));
+    setView(fit(layout.width, layout.height, r?.width ?? 1000, r?.height ?? 620));
   };
 
+  const controls: Array<[label: string, icon: React.ReactNode, run: () => void]> = [
+    [t("graph.zoomIn"), <Icon.Plus key="i" size={15} />, () => zoomBy(ZOOM_STEP)],
+    [t("graph.zoomOut"), <Icon.Slash key="o" size={15} />, () => zoomBy(1 / ZOOM_STEP)],
+    [
+      t("graph.rotateLeft"),
+      <Icon.RefreshCw key="l" size={15} style={{ transform: "scaleX(-1)" }} />,
+      () => setView((v) => rotateBy(v, -ROTATE_STEP)),
+    ],
+    [
+      t("graph.rotateRight"),
+      <Icon.RefreshCw key="r" size={15} />,
+      () => setView((v) => rotateBy(v, ROTATE_STEP)),
+    ],
+    [t("graph.reset"), <Icon.Target key="f" size={15} />, reset],
+  ];
+
   return (
-    <div style={s.overlay} role="dialog" aria-modal="true" aria-label={t("graph.ariaLabel")}>
-      <div style={s.overlayBar}>
-        <span style={s.overlayTitle}>{t("title")}</span>
-        <div style={s.overlayActions}>
-          <button type="button" style={s.iconBtn} onClick={() => zoomBy(ZOOM_STEP)} aria-label={t("graph.zoomIn")}>
-            <Icon.Plus size={15} />
+    <Modal width={1100} title={t("title")} onClose={onClose} bodyScroll={false}>
+      <div style={s.overlayActions}>
+        {controls.map(([label, icon, run]) => (
+          <button key={label} type="button" style={s.iconBtn} onClick={run} aria-label={label}>
+            {icon}
           </button>
-          <button type="button" style={s.iconBtn} onClick={() => zoomBy(1 / ZOOM_STEP)} aria-label={t("graph.zoomOut")}>
-            <Icon.Slash size={15} style={{ transform: "rotate(90deg)" }} />
-          </button>
-          <button type="button" style={s.iconBtn} onClick={reset} aria-label={t("graph.reset")}>
-            <Icon.RefreshCw size={15} />
-          </button>
-          <button type="button" style={s.iconBtn} onClick={onClose} aria-label={t("graph.close")}>
-            <Icon.X size={16} />
-          </button>
-        </div>
+        ))}
       </div>
 
       <div
@@ -97,21 +154,45 @@ export function NetworkOverlay({
           e.currentTarget.setPointerCapture(e.pointerId);
         }}
         onPointerMove={(e) => {
+          const held = heldRef.current;
+          if (held) {
+            const p = atPointer(e.clientX, e.clientY);
+            graphRef.current?.drag(held, p.x, p.y);
+            return;
+          }
           const from = dragRef.current;
           if (!from) return;
-          setView((v) => panBy(v, e.clientX - from.x, e.clientY - from.y));
+          // Shift turns the drag into a spin, so the graph can be seen from
+          // another angle without leaving the pointer.
+          if (e.shiftKey) setView((v) => rotateBy(v, (e.clientX - from.x) * 0.5));
+          else setView((v) => panBy(v, e.clientX - from.x, e.clientY - from.y));
           dragRef.current = { x: e.clientX, y: e.clientY };
         }}
         onPointerUp={() => {
+          if (heldRef.current) graphRef.current?.release(heldRef.current);
+          heldRef.current = null;
           dragRef.current = null;
         }}
         onPointerLeave={() => {
+          if (heldRef.current) graphRef.current?.release(heldRef.current);
+          heldRef.current = null;
           dragRef.current = null;
         }}
       >
         <svg width="100%" height="100%" style={{ display: "block", cursor: "grab" }}>
-          <g transform={toTransform(view)}>
-            <GraphContent layout={layout} />
+          <g transform={toTransform(view, layout.width / 2, layout.height / 2)}>
+            <GraphContent
+              layout={{ ...layout, nodes }}
+              onNodePointerDown={(id, e) => {
+                // Stop the canvas handler: this gesture moves ONE node, not
+                // the whole viewport.
+                e.stopPropagation();
+                const p = atPointer(e.clientX, e.clientY);
+                heldRef.current = id;
+                graphRef.current?.grab(id, p.x, p.y);
+                (e.target as Element).setPointerCapture?.(e.pointerId);
+              }}
+            />
           </g>
         </svg>
       </div>
@@ -131,6 +212,6 @@ export function NetworkOverlay({
           </span>
         ))}
       </div>
-    </div>
+    </Modal>
   );
 }
