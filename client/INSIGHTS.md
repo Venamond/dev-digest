@@ -82,6 +82,27 @@ ground truth — wrap-ups can mischaracterize a session.
   it — three rounds of "the design is completely different" here were volume,
   not styling.
 
+- **Every number on a card must be derived from the array the card renders —
+  a count computed independently WILL drift from what is on screen.** Three
+  times in one feature (`BlastCard`, 2026-08-19) a counter and the body
+  disagreed on the same screen, each time because they were computed from
+  different places:
+  1. the per-symbol heading counted `callers_total` (distinct caller FILES,
+     from SQL) while the list rendered call sites — different units, so
+     "1 caller" sat above two rows;
+  2. the heading counted callers while the body listed callers AND importers,
+     so an interface read "0 callers" with a row underneath it;
+  3. the tree was gated on `totals.callers > 0` while `partitionSymbols`
+     already treated endpoints, crons and importers as impact — so a symbol
+     reaching two endpoints was replaced by "no downstream callers found",
+     directly under a counter saying "2 endpoints".
+  None of these is caught by typecheck or by a test that renders one fixture:
+  every one needs a fixture where the two sources *disagree*.
+  **Do:** compute the rendered collection once, then derive counts, headings
+  and empty-state gates from THAT — never re-ask the payload. When a payload
+  total must also be shown (`totals.callers_found`), label the unit, and add a
+  test whose fixture makes the two numbers differ.
+
 - **`--bg-primary` is the page BACKDROP, not the main surface — it is the
   darkest token, and using it to raise something makes that thing darker than
   what it sits on.** The dark scale in `vendor/ui/styles.css:11-14` runs
