@@ -214,7 +214,7 @@ function SymbolBlock({
     <div style={s.symbol}>
       <button
         type="button"
-        style={s.symbolHeader}
+        style={s.symbolHeader(open)}
         aria-expanded={open}
         // The reference shows the name and the caller count on this line and
         // nothing else. The declaring file is reachable on hover.
@@ -254,6 +254,7 @@ function SymbolBlock({
           {symbol.callers.map((caller) => (
             <li key={`${caller.file}:${caller.symbol}:${caller.line}`} style={s.listItem}>
               <span style={s.listRow}>
+                <span style={s.listTick} aria-hidden="true" />
                 <Icon.CornerDownRight
                   size={12}
                   style={{ color: "var(--text-muted)", flexShrink: 0 }}
@@ -292,6 +293,7 @@ function SymbolBlock({
                   there is no line to point at. The link icon is what tells
                   them apart from the callers above. */}
               <span style={s.listRow} title={t("importerHint")}>
+                <span style={s.listTick} aria-hidden="true" />
                 <Icon.Link size={12} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
                 <span style={{ minWidth: 0 }}>
                   <FileRef link={link} file={file} label={shortPath(file)} />

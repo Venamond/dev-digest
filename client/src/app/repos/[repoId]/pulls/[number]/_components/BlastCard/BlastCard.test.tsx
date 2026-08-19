@@ -166,6 +166,18 @@ describe("BlastCard", () => {
     expect(screen.getByText("interface")).toBeInTheDocument();
   });
 
+  it("highlights a symbol header only while it is expanded", () => {
+    renderCard();
+    const openRow = screen.getByRole("button", { expanded: true });
+    const closedRow = screen
+      .getAllByRole("button", { expanded: false })
+      .find((r) => r.textContent?.includes("applyTax"));
+
+    // The band ties the header to the rows under it; a collapsed row has none.
+    expect(openRow.style.background).not.toBe("none");
+    expect(closedRow?.style.background).toBe("none");
+  });
+
   it("collapses every symbol but the first", () => {
     renderCard();
 

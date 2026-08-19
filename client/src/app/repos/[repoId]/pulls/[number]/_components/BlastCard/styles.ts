@@ -224,25 +224,29 @@ export const s = {
   /* A row, not a heading: the whole strip is the disclosure control, with the
      caller count parked on the right so a collapsed list still says how much
      is hidden. */
-  symbolHeader: {
+  symbolHeader: (open: boolean): CSSProperties => ({
     display: "flex",
     alignItems: "center",
     gap: 8,
     width: "100%",
-    background: "none",
+    // Highlighted only while expanded, as on the reference: it ties the header
+    // to the rows that just appeared under it. A permanent band turned every
+    // collapsed row into a slab.
+    background: open ? "var(--bg-primary)" : "none",
+    borderRadius: 6,
     borderStyle: "none",
     borderTopWidth: 0,
     borderRightWidth: 0,
     borderBottomWidth: 0,
     borderLeftWidth: 0,
-    paddingTop: 2,
-    paddingRight: 0,
-    paddingBottom: 2,
-    paddingLeft: 0,
+    paddingTop: 6,
+    paddingRight: 8,
+    paddingBottom: 6,
+    paddingLeft: 6,
     cursor: "pointer",
     textAlign: "left",
     fontFamily: "inherit",
-  } satisfies CSSProperties,
+  }),
   symbolCount: {
     marginLeft: "auto",
     fontSize: 12,
@@ -279,19 +283,32 @@ export const s = {
   } satisfies CSSProperties,
   /* The rail is what makes a caller list read as a branch of the symbol above
      it rather than a second, unrelated list. */
+  /* The rail runs unbroken down the whole list — `gap` would cut it, so rows
+     carry their own spacing as padding instead. `--text-muted` rather than
+     `--border`: at this width the border token is nearly invisible on the
+     card. */
   list: {
     margin: 0,
-    paddingTop: 0,
+    paddingTop: 2,
     paddingRight: 0,
-    paddingBottom: 0,
-    paddingLeft: 10,
+    paddingBottom: 2,
+    paddingLeft: 0,
+    marginLeft: 9,
     listStyleType: "none",
     display: "flex",
     flexDirection: "column",
-    gap: 4,
     borderLeftStyle: "solid",
     borderLeftWidth: 1,
-    borderLeftColor: "var(--border)",
+    borderLeftColor: "var(--text-muted)",
+  } satisfies CSSProperties,
+  /** The ├ tick: a short horizontal stub joining the rail to one row. */
+  listTick: {
+    width: 10,
+    flexShrink: 0,
+    alignSelf: "center",
+    borderTopStyle: "solid",
+    borderTopWidth: 1,
+    borderTopColor: "var(--text-muted)",
   } satisfies CSSProperties,
   listRow: {
     display: "flex",
@@ -303,6 +320,8 @@ export const s = {
     fontFamily: MONO,
     fontSize: 12,
     lineHeight: 1.45,
+    paddingTop: 3,
+    paddingBottom: 3,
     color: "var(--text-secondary)",
     overflowWrap: "anywhere",
     minWidth: 0,
@@ -329,6 +348,10 @@ export const s = {
     display: "flex",
     flexWrap: "wrap",
     gap: 6,
+    // Indented to sit under the caller paths, as on the reference — they are
+    // reached THROUGH those callers, not alongside the symbol.
+    marginLeft: 19,
+    marginTop: 2,
   } satisfies CSSProperties,
   chip: (kind: "endpoint" | "cron"): CSSProperties => ({
     display: "inline-flex",
