@@ -230,9 +230,13 @@ export const s = {
     gap: 8,
     width: "100%",
     // Highlighted only while expanded, as on the reference: it ties the header
-    // to the rows that just appeared under it. A permanent band turned every
-    // collapsed row into a slab.
-    background: open ? "var(--bg-primary)" : "none",
+    // to the rows that just appeared under it.
+    //
+    // `--bg-hover` (#242424) — LIGHTER than the card's `--bg-elevated`
+    // (#1c1c1c). I reached for `--bg-primary` first, which is #0a0a0a, i.e.
+    // the page behind everything: on a card that reads as a black slab, not a
+    // raised row. Raised surfaces here go up the scale, never down.
+    background: open ? "var(--bg-hover)" : "none",
     borderRadius: 6,
     borderStyle: "none",
     borderTopWidth: 0,
