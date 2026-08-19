@@ -21,14 +21,11 @@ source via `tsx`, the same way `reviewer-core/` does.
 ### Naming a pull request
 
 The three PR-scoped tools — `run_agent_on_pr`, `get_findings`,
-`get_blast_radius` — take it either way:
+`get_blast_radius` — all take a single **`pr_id`**: the uuid in the studio
+URL. Open the Pull Request in DevDigest and copy it from the address bar.
 
-- **`pr_id`** — the uuid in the studio URL. Open the Pull Request in DevDigest
-  and copy it; the tool then makes no lookup at all.
-- **`repo` + `pr`** — `owner/name` and the number, for when you are talking to
-  a model that has "PR 8 in dev-digest" and no uuid anywhere.
-
-Supply one or the other. Supplying neither returns an error that names both.
+There is deliberately no second way to name a PR. `repo` survives only on
+`get_conventions`, which is repo-scoped and has no pull request.
 
 Successful results are returned as `structuredContent` — a real JSON object
 on the wire, with `content` left empty — never as prose, because

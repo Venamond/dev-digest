@@ -106,21 +106,21 @@ records twice.
   tokens are paid once, description tokens at every chat startup.
   `mcp/test/tools.test.ts`'s `'get_blast_radius surfaces an unindexed repo as
   state degraded with a hint, not an error'` is the guard.
-- **The `repo` example — in `INSTRUCTIONS` (`src/server.ts`) and in
-  `run_agent_on_pr`'s `.describe()` — is a deliberate placeholder,
-  `octocat/hello-world`, and must not be replaced with a real repository.**
-  It illustrates the `owner/name` shape, nothing else. Two reasons it stays
-  fake: (1) this server exposes no `list_repos` tool, so a real-looking
-  example is the only repository name in the model's context and it will
-  substitute that instead of asking which repo the user means — harmless on
-  the read tools, but `run_agent_on_pr` would spend LLM money reviewing the
-  wrong PR; (2) a fork-specific name baked into shared source ships upstream
-  to every student of the course. Changed from `Venamond/dev-digest` on
-  2026-08-18; the same string is mirrored in the plan's S4 table
-  (`docs/plans/2026-08-18-mcp-server.md`) — keep both in sync. No test pins
-  the example (`token-budget.test.ts` checks only
-  `toContain('owner/name')`), and the token numbers below are unchanged by
-  the swap.
+- **There is no example repository name in the tool surface any more, and if
+  one is ever added back it must be a placeholder, never a real repo.** The
+  `octocat/hello-world` example went out with `repo` when the PR tools
+  collapsed to `pr_id` (2026-08-19); `owner/name` in `get_conventions`'
+  `.describe()` and in `INSTRUCTIONS` now carries the shape on its own.
+  The rule survives the example. Two reasons it must stay fake if it returns:
+  (1) this server exposes no `list_repos` tool, so a real-looking example
+  would be the only repository name in the model's context and it will
+  substitute that instead of asking which repo the user means; (2) a
+  fork-specific name baked into shared source ships upstream to every student
+  of the course — which is why it was changed away from `Venamond/dev-digest`
+  on 2026-08-18. The plan's S4 table
+  (`docs/plans/2026-08-18-mcp-server.md`) still shows the old two-parameter
+  schemas; it is the record of what was decided then, not of what ships now.
+  `token-budget.test.ts` pins only `toContain('owner/name')`.
 - **The five tool `description` strings are fixed text, copied
   character-for-character from the plan's S4 table.** They are English on
   purpose in a Ukrainian-language course repo: the description is read by
@@ -205,11 +205,11 @@ encoder the server uses (`js-tiktoken`). Measured on this branch:
 | Tool | Tokens |
 |---|---|
 | `list_agents` | 57 |
-| `run_agent_on_pr` | 186 |
-| `get_findings` | 200 |
+| `run_agent_on_pr` | 141 |
+| `get_findings` | 171 |
 | `get_conventions` | 69 |
-| `get_blast_radius` | 128 |
-| **Total (`tools` + `instructions`)** | **713** (cap 900) |
+| `get_blast_radius` | 93 |
+| **Total (`tools` + `instructions`)** | **609** (cap 900) |
 
 **The per-tool cap is 200, not the plan's 150, and there is no per-tool
 override.** Two changes stacked. First, Zod 4's JSON-Schema conversion for
@@ -286,22 +286,20 @@ was performed.
   (`server/src/db/schema/agents.ts:13`), so `resolveAgentId` must never take
   `[0]` on a name match — collect every match and fail loudly when there is
   more than one, or a paid LLM run can silently target the wrong agent.
-- **A pull request can be named two ways, and `resolvePullTarget`
-  (`src/api/resolve.ts`) is the single place that decides.** `pr_id` is the
-  uuid a person copies out of the studio URL; `repo` + `pr` is what a model
-  has in conversation ("PR 8 in dev-digest") when no uuid exists anywhere.
-  All three PR-scoped tools accept either, all three fields are optional, and
-  supplying none produces a forward-leading error naming both routes. A
-  supplied `pr_id` is passed through unverified — the endpoints it feeds 404
-  on their own, and a pre-flight lookup would cost a round trip on every call
-  to improve a message on a typo.
-  Adding the field cost 29 tokens across the surface and took `get_findings`
-  to exactly the 200-token per-tool cap. Two rounds of trimming got it there
-  — `.describe()` on `pr_id` is `'uuid from the studio URL'`, not a sentence
-  explaining the alternative, because that alternative is already named in the
-  error. **There is no headroom left on `get_findings`:** the next parameter
-  added to it has to be paid for by shortening something else, per the rule
-  above.
+- **A pull request is named by `pr_id` and nothing else — one identifier, no
+  alternatives.** It is the uuid in the studio URL: open the PR in DevDigest
+  and copy it. `repo` + `pr` was offered alongside it for one commit and then
+  removed on request: two ways to say the same thing meant every call site,
+  every test and every error message had to handle both, and a model choosing
+  between them is a way to get it wrong. `repo` now survives only on
+  `get_conventions`, which is repo-scoped and has no PR.
+  The uuid is passed through **unverified** — the endpoints it feeds answer
+  404 themselves, and a pre-flight lookup would cost a round trip on every
+  call to improve the message on a typo. `resolvePullId` was deleted with the
+  second route; `resolveRepoId` and `resolveAgentId` remain.
+  Collapsing to one identifier took the surface from 713 tokens to **609**,
+  below even the 684 it cost before `pr_id` existed. Fewer parameters is the
+  cheapest optimisation available here.
 
 - `run_agent_on_pr` deliberately has neither `detail` nor `severity_min` in
   its schema, unlike `get_findings` — it's the one tool that spends money, so

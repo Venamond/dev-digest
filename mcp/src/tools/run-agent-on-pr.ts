@@ -9,7 +9,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/server';
 import type { DevDigestApi } from '../api/client.js';
-import { resolveAgentId, resolvePullTarget } from '../api/resolve.js';
+import { resolveAgentId } from '../api/resolve.js';
 import type { ReviewRecord, ReviewRunResponse, RunSummary } from '../api/types.js';
 import { errorContent, jsonContent, selectFindings } from '../format.js';
 import { logError, logInfo } from '../log.js';
@@ -51,7 +51,7 @@ function sleep(ms: number): Promise<void> {
  */
 export async function pollRunUntilTerminal(
   api: DevDigestApi,
-  prId: string,
+  pr_id: string,
   runId: string,
   timeoutMs: number,
   log: PollLogger,
@@ -61,7 +61,7 @@ export async function pollRunUntilTerminal(
   while (Date.now() < deadline) {
     await sleep(POLL_INTERVAL_MS);
     pollCount += 1;
-    const runs = await api.get<RunSummary[]>(`/pulls/${encodeURIComponent(prId)}/runs`);
+    const runs = await api.get<RunSummary[]>(`/pulls/${encodeURIComponent(pr_id)}/runs`);
     const run = runs.find((r) => r.run_id === runId);
     log.info('run_agent_on_pr: poll', { runId, pollCount, status: run?.status ?? null });
     if (run && (run.status === 'done' || run.status === 'failed' || run.status === 'cancelled')) {
@@ -77,20 +77,17 @@ export function registerRunAgentOnPr(server: McpServer, api: DevDigestApi): void
     {
       description: RUN_AGENT_ON_PR_DESCRIPTION,
       inputSchema: z.object({
-        pr_id: z.string().optional().describe('uuid from the studio URL'),
-        repo: z.string().optional().describe('owner/name, e.g. octocat/hello-world'),
-        pr: z.number().int().positive().optional().describe('pull request number'),
+        pr_id: z.string().describe('pull request uuid, from the studio URL'),
         agent: z.string().describe('agent name or id from list_agents'),
         timeout_s: z.number().int().min(10).max(900).default(180).optional().describe('seconds to wait for the run'),
       }),
     },
-    async ({ pr_id, repo, pr, agent, timeout_s }) => {
+    async ({ pr_id, agent, timeout_s }) => {
       const timeoutS = timeout_s ?? 180;
       try {
-        const { prId } = await resolvePullTarget(api, { pr_id, repo, pr });
         const { agentId } = await resolveAgentId(api, agent);
 
-        const response = await api.post<ReviewRunResponse>(`/pulls/${encodeURIComponent(prId)}/review`, {
+        const response = await api.post<ReviewRunResponse>(`/pulls/${encodeURIComponent(pr_id)}/review`, {
           agentId,
         });
         const firstRun = response.runs[0];
@@ -101,14 +98,14 @@ export function registerRunAgentOnPr(server: McpServer, api: DevDigestApi): void
         }
         const runId = firstRun.run_id;
 
-        const outcome = await pollRunUntilTerminal(api, prId, runId, timeoutS * 1000, {
+        const outcome = await pollRunUntilTerminal(api, pr_id, runId, timeoutS * 1000, {
           info: logInfo,
           error: logError,
         });
 
         if (outcome.timedOut) {
           return errorContent(
-            `Review run ${runId} is still going after ${timeoutS}s. It is not lost — call get_findings with repo "${repo}", pr ${pr} and agent "${agent}" in a minute to collect the result.`,
+            `Review run ${runId} is still going after ${timeoutS}s. It is not lost — call get_findings with pr_id "${pr_id}" and agent "${agent}" in a minute to collect the result.`,
           );
         }
 
@@ -120,7 +117,7 @@ export function registerRunAgentOnPr(server: McpServer, api: DevDigestApi): void
           return errorContent(`Review run ${runId} was cancelled.`);
         }
 
-        const reviews = await api.get<ReviewRecord[]>(`/pulls/${encodeURIComponent(prId)}/reviews`);
+        const reviews = await api.get<ReviewRecord[]>(`/pulls/${encodeURIComponent(pr_id)}/reviews`);
         const review = reviews.find((r) => r.run_id === runId);
         if (!review) {
           return errorContent(

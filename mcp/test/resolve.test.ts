@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { DevDigestApi } from '../src/api/client.js';
-import { resolveAgentId, resolvePullId, resolveRepoId } from '../src/api/resolve.js';
-import type { Agent, PrMeta, Repo } from '../src/api/types.js';
+import { resolveAgentId, resolveRepoId } from '../src/api/resolve.js';
+import type { Agent, Repo } from '../src/api/types.js';
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
@@ -32,42 +32,6 @@ describe('resolveRepoId', () => {
     const api = new DevDigestApi('http://localhost:3001');
 
     await expect(resolveRepoId(api, 'x/y')).rejects.toThrow(/Add it in the studio/);
-  });
-});
-
-describe('resolvePullId', () => {
-  it('resolvePullId skips a PrMeta row whose id is null', async () => {
-    const pulls: PrMeta[] = [
-      { number: 482, id: null },
-      { number: 7, id: 'uuid-7' },
-    ];
-    vi.stubGlobal('fetch', vi.fn().mockImplementation(() => Promise.resolve(jsonResponse(pulls))));
-    const api = new DevDigestApi('http://localhost:3001');
-
-    // The trap: a naive `.find(p => p.number === pr)` would return the row
-    // with `id: null` and later callers would address `undefined`/`null`.
-    await expect(resolvePullId(api, 'repo1', 482)).rejects.toThrow();
-    await expect(resolvePullId(api, 'repo1', 7)).resolves.toBe('uuid-7');
-  });
-
-  it('resolvePullId names the given repo label, not the internal id, in its not-found message', async () => {
-    const pulls: PrMeta[] = [{ number: 7, id: 'uuid-7' }];
-    vi.stubGlobal('fetch', vi.fn().mockImplementation(() => Promise.resolve(jsonResponse(pulls))));
-    const api = new DevDigestApi('http://localhost:3001');
-
-    // Callers pass the human `owner/name` as the 4th arg so the model sees a
-    // readable name instead of an internal uuid it never typed.
-    await expect(resolvePullId(api, 'internal-uuid-1', 999, 'acme/payments-api')).rejects.toThrow(
-      /acme\/payments-api/,
-    );
-  });
-
-  it('resolvePullId falls back to the repo id when no label is given', async () => {
-    const pulls: PrMeta[] = [{ number: 7, id: 'uuid-7' }];
-    vi.stubGlobal('fetch', vi.fn().mockImplementation(() => Promise.resolve(jsonResponse(pulls))));
-    const api = new DevDigestApi('http://localhost:3001');
-
-    await expect(resolvePullId(api, 'internal-uuid-1', 999)).rejects.toThrow(/internal-uuid-1/);
   });
 });
 

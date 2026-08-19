@@ -186,7 +186,7 @@ describe('run_agent_on_pr', () => {
     vi.useFakeTimers();
     const resultPromise = client.callTool({
       name: 'run_agent_on_pr',
-      arguments: { repo: 'acme/repo', pr: 42, agent: 'Agent One', timeout_s: 30 },
+      arguments: { pr_id: 'pr-1', agent: 'Agent One', timeout_s: 30 },
     });
     await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
     await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
@@ -220,7 +220,7 @@ describe('run_agent_on_pr', () => {
     vi.useFakeTimers();
     const resultPromise = client.callTool({
       name: 'run_agent_on_pr',
-      arguments: { repo: 'acme/repo', pr: 42, agent: 'Agent One', timeout_s: 10 },
+      arguments: { pr_id: 'pr-1', agent: 'Agent One', timeout_s: 10 },
     });
     for (let i = 0; i < 5; i += 1) {
       await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
@@ -262,7 +262,7 @@ describe('run_agent_on_pr', () => {
     vi.useFakeTimers();
     const resultPromise = client.callTool({
       name: 'run_agent_on_pr',
-      arguments: { repo: 'acme/repo', pr: 42, agent: 'Agent One', timeout_s: 10 },
+      arguments: { pr_id: 'pr-1', agent: 'Agent One', timeout_s: 10 },
     });
     await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS); // the 2s sleep before the first poll
     await vi.advanceTimersByTimeAsync(8000); // the slow fetch resolving
@@ -297,7 +297,7 @@ describe('run_agent_on_pr', () => {
     vi.useFakeTimers();
     const resultPromise = client.callTool({
       name: 'run_agent_on_pr',
-      arguments: { repo: 'acme/repo', pr: 42, agent: 'Agent One', timeout_s: 30 },
+      arguments: { pr_id: 'pr-1', agent: 'Agent One', timeout_s: 30 },
     });
     await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
     const result = (await resultPromise) as CallToolResult;
@@ -366,7 +366,7 @@ describe('get_findings', () => {
 
     const result = (await client.callTool({
       name: 'get_findings',
-      arguments: { repo: 'acme/repo', pr: 42 },
+      arguments: { pr_id: 'pr-1' },
     })) as CallToolResult;
 
     expect(result.isError).toBeFalsy();
@@ -387,7 +387,7 @@ describe('get_findings', () => {
 
     const result = (await client.callTool({
       name: 'get_findings',
-      arguments: { repo: 'acme/repo', pr: 42 },
+      arguments: { pr_id: 'pr-1' },
     })) as CallToolResult;
 
     expect(result.isError).toBeUndefined();
@@ -429,7 +429,7 @@ describe('get_findings', () => {
 
     const full = (await client.callTool({
       name: 'get_findings',
-      arguments: { repo: 'acme/repo', pr: 42, detail: 'full' },
+      arguments: { pr_id: 'pr-1', detail: 'full' },
     })) as CallToolResult;
 
     const fullPayload = structured<{ findings: unknown[]; total: number; hint?: string }>(full);
@@ -439,7 +439,7 @@ describe('get_findings', () => {
 
     const summary = (await client.callTool({
       name: 'get_findings',
-      arguments: { repo: 'acme/repo', pr: 42 },
+      arguments: { pr_id: 'pr-1' },
     })) as CallToolResult;
 
     const summaryPayload = structured<{ findings: unknown[]; hint?: string }>(summary);
@@ -461,7 +461,7 @@ describe('get_findings', () => {
 
     const result = (await client.callTool({
       name: 'get_findings',
-      arguments: { repo: 'acme/repo', pr: 42 },
+      arguments: { pr_id: 'pr-1' },
     })) as CallToolResult;
 
     expect(result.isError).toBe(true);
@@ -623,7 +623,7 @@ describe('get_blast_radius', () => {
     const client = await connectClient(api);
     return (await client.callTool({
       name: 'get_blast_radius',
-      arguments: { repo: 'acme/repo', pr: 42 },
+      arguments: { pr_id: 'pr-1' },
     })) as CallToolResult;
   }
 
@@ -650,8 +650,10 @@ describe('get_blast_radius', () => {
     expect(paths.some((u) => u.includes('/repos'))).toBe(false);
   });
 
-  it('says how to identify the PR when neither route is supplied', async () => {
-    stubFetch(() => {
+  it('rejects a call with no pr_id at the schema, before any request', async () => {
+    // pr_id is required now, so the SDK refuses the call itself — the tool
+    // body never runs and nothing is fetched.
+    const fetchMock = stubFetch(() => {
       throw new Error('no request should be made');
     });
     const api = new DevDigestApi(BASE_URL);
@@ -663,10 +665,8 @@ describe('get_blast_radius', () => {
     })) as CallToolResult;
 
     expect(result.isError).toBe(true);
-    // Forward-leading, per this package's error principle: it names both ways
-    // in rather than reporting that something was missing.
     expect(text(result)).toContain('pr_id');
-    expect(text(result)).toContain('repo');
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('get_blast_radius returns the structured blast map for an indexed repo', async () => {
@@ -764,21 +764,22 @@ describe('get_blast_radius', () => {
     expect(payload.truncated).toBe(true);
   });
 
-  it('get_blast_radius reports an unknown PR as an error naming the known numbers', async () => {
-    stubFetch((path) => {
-      if (path === '/repos') return jsonResponse(repos);
-      if (path === '/repos/repo-1/pulls') return jsonResponse(pulls);
-      throw new Error(`unexpected path ${path}`);
-    });
+  it('surfaces an unknown pr_id as the API 404, not a lookup error', async () => {
+    // A uuid is passed through unverified on purpose — the endpoint answers
+    // for itself. There is no local list of known ids to suggest, so the
+    // message that reaches the model is the API's own.
+    stubFetch(() =>
+      jsonResponse({ error: { code: 'not_found', message: 'Pull request not found' } }, 404),
+    );
     const api = new DevDigestApi(BASE_URL);
     const client = await connectClient(api);
 
     const result = (await client.callTool({
       name: 'get_blast_radius',
-      arguments: { repo: 'acme/repo', pr: 999 },
+      arguments: { pr_id: 'pr-999' },
     })) as CallToolResult;
 
     expect(result.isError).toBe(true);
-    expect(text(result)).toContain('acme/repo');
+    expect(text(result)).toMatch(/not found/i);
   });
 });

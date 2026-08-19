@@ -137,15 +137,21 @@ describe('startup token budget', () => {
     expect(capabilities?.tools?.listChanged).toBe(false);
   });
 
-  it('the repo description survives into the published inputSchema', async () => {
+  it('parameter descriptions survive into the published inputSchema', async () => {
+    // The tripwire for the zod@^4.2.0 floor: under 4.0-4.1 the SDK falls back
+    // to a conversion path that silently drops `.describe()`. Checked on the
+    // two fields that carry the most: where a person finds a pr_id, and the
+    // owner/name shape.
     const client = await connectClient();
     const { tools } = await client.listTools();
 
-    const runAgentOnPr = tools.find((tool) => tool.name === 'run_agent_on_pr');
-    expect(runAgentOnPr).toBeDefined();
-    const schema = runAgentOnPr?.inputSchema as { properties?: Record<string, { description?: string }> };
+    const props = (name: string) =>
+      (tools.find((tool) => tool.name === name)?.inputSchema as {
+        properties?: Record<string, { description?: string }>;
+      }).properties;
 
-    expect(schema.properties?.repo?.description).toContain('owner/name');
+    expect(props('run_agent_on_pr')?.pr_id?.description).toContain('studio');
+    expect(props('get_conventions')?.repo?.description).toContain('owner/name');
   });
 
   it('timeout_s defaults to 180 in the published schema', async () => {

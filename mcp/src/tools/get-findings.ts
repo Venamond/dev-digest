@@ -9,7 +9,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/server';
 import type { DevDigestApi } from '../api/client.js';
-import { resolveAgentId, resolvePullTarget } from '../api/resolve.js';
+import { resolveAgentId } from '../api/resolve.js';
 import type { ReviewRecord } from '../api/types.js';
 import {
   errorContent,
@@ -53,9 +53,7 @@ export function registerGetFindings(server: McpServer, api: DevDigestApi): void 
     {
       description: GET_FINDINGS_DESCRIPTION,
       inputSchema: z.object({
-        pr_id: z.string().optional().describe('uuid from the studio URL'),
-        repo: z.string().optional().describe('owner/name'),
-        pr: z.number().int().positive().optional().describe('pull request number'),
+        pr_id: z.string().describe('pull request uuid, from the studio URL'),
         agent: z.string().optional().describe('name or id from list_agents; omit to union every agent'),
         severity_min: z.enum(['CRITICAL', 'WARNING', 'SUGGESTION']).optional().describe('lowest severity to keep'),
         detail: z
@@ -66,16 +64,15 @@ export function registerGetFindings(server: McpServer, api: DevDigestApi): void 
       }),
       annotations: { readOnlyHint: true },
     },
-    async ({ pr_id, repo, pr, agent, severity_min, detail }) => {
+    async ({ pr_id, agent, severity_min, detail }) => {
       try {
-        const { prId } = await resolvePullTarget(api, { pr_id, repo, pr });
 
         let agentId: string | undefined;
         if (agent !== undefined) {
           agentId = (await resolveAgentId(api, agent)).agentId;
         }
 
-        const reviews = await api.get<ReviewRecord[]>(`/pulls/${encodeURIComponent(prId)}/reviews`);
+        const reviews = await api.get<ReviewRecord[]>(`/pulls/${encodeURIComponent(pr_id)}/reviews`);
         const scoped = agentId === undefined ? reviews : reviews.filter((r) => r.agent_id === agentId);
 
         if (scoped.length === 0) {

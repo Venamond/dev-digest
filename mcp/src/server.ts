@@ -19,7 +19,7 @@ import { registerGetBlastRadius } from './tools/get-blast-radius.js';
 export const INSTRUCTIONS = [
   'DevDigest reviews GitHub pull requests with local AI agents.',
   'Call list_agents first, then run_agent_on_pr; use get_findings to re-read a past review.',
-  'repo is always "owner/name" (e.g. octocat/hello-world); pr is the PR number.',
+  'pr_id is the pull request uuid from the studio URL; repo is "owner/name".',
   'Requires the DevDigest API running on localhost:3001 (./scripts/dev.sh).',
 ].join('\n');
 
