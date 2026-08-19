@@ -9,7 +9,39 @@ cold-test every entry, append-only, treat as a draft to spot-check.
 
 ## What Doesn't Work
 
+- **Gating on `getIndexState().status === 'full' | 'partial'` does NOT mean
+  the rank/resolved-reference data exists.** `RepoIntelRepository.
+  tryGetIndexState` (`repository.ts:205-238`) projects the persisted row and
+  never compares `repo_index_state.indexer_version` against
+  `constants.INDEXER_VERSION` (currently 2). A repo last indexed by v1
+  therefore reports `status: 'full'` while `file_rank` is empty and
+  `references.decl_file` is unresolved. `getResolvedCallers`
+  (`repository.ts:503`) **INNER JOINs `file_rank`**, so such a repo returns
+  **zero callers** with no error and no degraded flag — a consumer prints
+  "no downstream callers" as if it were a fact. `constants.ts:35-41` states
+  outright that every pre-v2 index must be rebuilt to gain the rank data, so
+  this state is reachable, not theoretical.
+  **Do:** any consumer that needs rank or `decl_file` must additionally check
+  `state.indexerVersion === INDEXER_VERSION` and treat a mismatch as
+  degraded (remedy: `POST /repos/:id/resync`). Checking `status` alone is the
+  bug.
+
 ## Codebase Patterns
+
+- **Every line number this subsystem stores is relative to the repo's DEFAULT
+  BRANCH, never to a pull request.** The indexer stamps
+  `repo_index_state.last_indexed_sha` from `git.currentHead(ref)`
+  (`pipeline/full.ts:94`, `pipeline/incremental.ts:82`), and the clone tracks
+  `repos.default_branch` (`db/schema/repos.ts:15`, default `main`) — no PR ref
+  is ever checked out. So `symbols.line` and `references.line` describe the
+  indexed commit, which is a *different commit* from any
+  `pull_requests.head_sha`.
+  **Do:** when turning an indexed `file:line` into a permalink or correlating
+  it with a PR diff, use `state.lastIndexedSha` — building a GitHub blob URL
+  from `head_sha` yields a well-formed link to the wrong line (and a 404 for a
+  file added to the default branch after the PR branched). The URL looks
+  correct, so a test that only asserts URL construction will not catch it;
+  assert the ref itself, with a fixture where the two SHAs differ.
 
 - Application code (`service.ts`, `pipeline/*`) takes `RepoIntelDeps`
   (`deps.ts`), not `Container`. The composition root still passes the
