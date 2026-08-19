@@ -293,12 +293,12 @@ describe("BlastCard", () => {
     expect(screen.getByText("formatMoney")).toBeInTheDocument();
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "graph" }));
+    fireEvent.click(screen.getByRole("button", { name: "Graph" }));
     const graph = screen.getByRole("img", { name: "Blast radius graph" });
     expect(graph).toBeInTheDocument();
     expect(screen.queryByText("formatMoney")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "tree" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tree" }));
     expect(screen.getByText("formatMoney")).toBeInTheDocument();
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
   });
@@ -310,7 +310,7 @@ describe("BlastCard", () => {
     });
     renderCard();
 
-    fireEvent.click(screen.getByRole("button", { name: "graph" }));
+    fireEvent.click(screen.getByRole("button", { name: "Graph" }));
     expect(screen.getByText("No downstream callers to graph.")).toBeInTheDocument();
   });
 
