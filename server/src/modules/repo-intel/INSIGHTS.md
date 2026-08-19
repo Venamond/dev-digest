@@ -27,6 +27,13 @@ cold-test every entry, append-only, treat as a draft to spot-check.
   Guarded for the caller case by `server/test/repo-intel-blast-facade.test.ts`
   "does not report truncation when the list merely deduplicated"; a new
   `importers_total` / `endpoints_total` would need its own.
+  **The same applies to every FILTER, not just the unit.** When test files were
+  excluded from callers (`EXCLUDED_CALLER_PATTERNS`, `constants.ts`) the
+  predicate had to go into `getResolvedCallers` *and* `countResolvedCallers`;
+  adding it to one would have made the total count rows the list can never
+  contain, and the truncation flag lie again — the same bug in a new disguise.
+  Treat the two queries as one thing with two projections: any `where` added to
+  either belongs in both.
 
 - **Gating on `getIndexState().status === 'full' | 'partial'` does NOT mean
   the rank/resolved-reference data exists.** `RepoIntelRepository.
