@@ -68,14 +68,20 @@ export function shapeBlastResponse(input: ShapeBlastInput): BlastResponse {
       truncated: false,
     };
 
-    // Reverse dependents reached from THIS symbol's declaring file. `via` is a
-    // list of seeds, not a single seed — a `===` test would silently drop
-    // dependents shared by two changed files.
-    const reached = reverse.dependents.filter((d) => d.via.includes(sym.file));
+    // Reverse dependents reached from THIS symbol's declaring file, with the
+    // hop count measured against THAT file. `via` carries a depth per seed on
+    // purpose: a barrel one hop from one changed file can be two hops from
+    // another, and taking the row's overall `depth` here would print a
+    // transitive dependent as a direct importer.
+    const reached = reverse.dependents
+      .map((d) => ({ row: d, via: d.via.find((v) => v.seed === sym.file) }))
+      .filter((x): x is { row: typeof x.row; via: { seed: string; depth: number } } =>
+        x.via !== undefined,
+      );
 
     const importers = reached
-      .filter((d) => d.depth === 1)
-      .map((d) => ({ file: d.file, depth: d.depth }))
+      .filter((x) => x.via.depth === 1)
+      .map((x) => ({ file: x.row.file, depth: x.via.depth }))
       .sort((a, b) => a.file.localeCompare(b.file));
 
     const endpoints = new Set<string>();
@@ -86,9 +92,9 @@ export function shapeBlastResponse(input: ShapeBlastInput): BlastResponse {
       for (const e of facts.endpoints) endpoints.add(e);
       for (const cr of facts.crons) crons.add(cr);
     }
-    for (const d of reached) {
-      for (const e of d.endpoints) endpoints.add(e);
-      for (const cr of d.crons) crons.add(cr);
+    for (const { row } of reached) {
+      for (const e of row.endpoints) endpoints.add(e);
+      for (const cr of row.crons) crons.add(cr);
     }
     for (const e of endpoints) endpointsAll.add(e);
     for (const cr of crons) cronsAll.add(cr);

@@ -477,7 +477,7 @@ export class RepoIntelService implements RepoIntel {
     files: string[],
     depth: number = BFS_DEPTH,
   ): Promise<ReverseDependentsResult> {
-    const empty: ReverseDependentsResult = { dependents: [], truncated: false };
+    const empty = { dependents: [], truncated: false };
     if (!this.deps.config.repoIntelEnabled) return empty;
     if (files.length === 0) return empty;
     const state = await this.repo.tryGetIndexState(repoId);
@@ -485,51 +485,57 @@ export class RepoIntelService implements RepoIntel {
 
     const levels = Math.max(0, Math.min(depth, BFS_DEPTH)); // hard cap
     const seedSet = new Set(files);
-    const viaOf = new Map<string, Set<string>>(files.map((f) => [f, new Set([f])]));
-    const rows = new Map<string, ReverseDependentRow>();
+    // file -> seed -> hops. Per seed, because one dependent can sit one hop
+    // from a changed file and two from another; a single depth beside a list
+    // of seeds would let a consumer read the near distance as applying to the
+    // far seed.
+    const viaOf = new Map<string, Map<string, number>>(
+      files.map((f) => [f, new Map([[f, 0]])]),
+    );
+    const seen = new Set<string>();
     let frontier = files;
     let truncated = false;
 
     for (let d = 1; d <= levels && frontier.length > 0; d++) {
       const edges = await this.repo.getReverseEdges(repoId, frontier, MAX_REVERSE_DEPENDENTS);
       if (edges.length >= MAX_REVERSE_DEPENDENTS) truncated = true;
-      const changed = new Set<string>(); // seed set new OR widened
+      const advanced = new Set<string>();
       for (const e of edges) {
-        const inherited = viaOf.get(e.toFile) ?? new Set([e.toFile]);
-        const seeds = viaOf.get(e.fromFile) ?? new Set<string>();
-        const before = seeds.size;
-        for (const v of inherited) seeds.add(v);
-        viaOf.set(e.fromFile, seeds);
-        if (seeds.size !== before) changed.add(e.fromFile);
-
-        if (seedSet.has(e.fromFile)) continue; // a seed is never its own dependent
-        const existing = rows.get(e.fromFile);
-        if (existing) {
-          existing.via = [...seeds].sort(); // widen; depth stays the SHORTEST
-        } else {
-          rows.set(e.fromFile, {
-            file: e.fromFile,
-            via: [...seeds].sort(),
-            depth: d,
-            endpoints: [],
-            crons: [],
-          });
+        const inherited = viaOf.get(e.toFile);
+        if (!inherited) continue;
+        const mine = viaOf.get(e.fromFile) ?? new Map<string, number>();
+        let grew = false;
+        for (const [seed, hops] of inherited) {
+          const candidate = hops + 1;
+          const known = mine.get(seed);
+          if (known === undefined || candidate < known) {
+            mine.set(seed, candidate);
+            grew = true;
+          }
         }
+        if (!grew) continue;
+        viaOf.set(e.fromFile, mine);
+        if (!seedSet.has(e.fromFile)) seen.add(e.fromFile);
+        advanced.add(e.fromFile);
       }
-      // Advance on every file whose seed set changed — NOT only on newly
-      // discovered files. A file already seen at depth 1 that gains a second
-      // seed must re-propagate, or its downstream keeps the narrow
-      // attribution. Termination holds anyway: seed sets only grow, they are
-      // bounded by files.length, and the loop runs at most BFS_DEPTH times.
-      frontier = [...changed];
+      frontier = [...advanced];
     }
 
-    const out = [...rows.values()];
+    const out: ReverseDependentRow[] = [...seen].map((file) => {
+      const via = [...(viaOf.get(file) ?? new Map())]
+        .map(([seed, d]) => ({ seed, depth: d }))
+        .sort((a, b) => a.depth - b.depth || a.seed.localeCompare(b.seed));
+      return {
+        file,
+        via,
+        depth: via[0]?.depth ?? 1,
+        endpoints: [] as string[],
+        crons: [] as string[],
+      };
+    });
     if (out.length === 0) return { dependents: [], truncated };
-    const facts = await this.repo.getFileFacts(
-      repoId,
-      out.map((o) => o.file),
-    );
+
+    const facts = await this.repo.getFileFacts(repoId, out.map((o) => o.file));
     const byFile = new Map(facts.map((f) => [f.filePath, f]));
     return {
       dependents: out.map((o) => {

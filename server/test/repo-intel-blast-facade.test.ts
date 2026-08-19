@@ -315,14 +315,26 @@ describe('RepoIntel.getReverseDependents', () => {
       const { dependents } = await svc.getReverseDependents('r1', ['a.ts', 'b.ts']);
       const x = dependents.filter((d) => d.file === 'x.ts');
       expect(x).toHaveLength(1);
-      expect(x[0].via).toEqual(['a.ts', 'b.ts']);
+      // A hop count PER SEED: both changed files are one hop from x.ts.
+      expect(x[0].via).toEqual([
+        { seed: 'a.ts', depth: 1 },
+        { seed: 'b.ts', depth: 1 },
+      ]);
       expect(x[0].depth).toBe(1);
 
       const y = dependents.filter((d) => d.file === 'y.ts');
       expect(y).toHaveLength(1);
-      expect(y[0].via).toEqual(['a.ts', 'b.ts']);
+      expect(y[0].via).toEqual([
+        { seed: 'a.ts', depth: 2 },
+        { seed: 'b.ts', depth: 2 },
+      ]);
       expect(y[0].depth).toBe(2);
 
+      // The bug this shape exists to prevent: when a dependent sits ONE hop
+      // from one changed file and TWO from another, a single `depth` beside a
+      // flat seed list let a consumer call it a direct importer of the far
+      // seed. Here y.ts is 2 hops from both, and x.ts 1 from both — the per
+      // seed numbers are what a consumer must attribute with.
       // A seed is never its own dependent.
       expect(dependents.map((d) => d.file)).not.toContain('a.ts');
     }
@@ -366,6 +378,29 @@ describe('RepoIntel.getReverseDependents', () => {
     expect(notCapped.truncated).toBe(false);
   });
 
+  it('measures depth per seed when one dependent sits at two distances', async () => {
+    // a.ts and b.ts are BOTH changed. b.ts imports a.ts, and barrel.ts imports
+    // b.ts — so barrel.ts is one hop from b.ts and two from a.ts. Before this
+    // was tracked per seed, barrel.ts carried `depth: 1` with both seeds in
+    // `via`, and the card printed it as a direct importer of a.ts.
+    const svc = buildService({
+      repo: {
+        getReverseEdges: async (_r: string, toFiles: string[]) => {
+          if (toFiles.includes('a.ts')) return [{ fromFile: 'b.ts', toFile: 'a.ts' }];
+          if (toFiles.includes('b.ts')) return [{ fromFile: 'barrel.ts', toFile: 'b.ts' }];
+          return [];
+        },
+      },
+    });
+
+    const { dependents } = await svc.getReverseDependents('r1', ['a.ts', 'b.ts']);
+    const barrel = dependents.find((d) => d.file === 'barrel.ts');
+    expect(barrel!.via).toEqual([
+      { seed: 'b.ts', depth: 1 },
+      { seed: 'a.ts', depth: 2 },
+    ]);
+  });
+
   it('enriches dependents with their precomputed file facts', async () => {
     const svc = buildService({
       repo: {
@@ -377,7 +412,13 @@ describe('RepoIntel.getReverseDependents', () => {
     });
     const { dependents } = await svc.getReverseDependents('r1', ['a.ts'], 1);
     expect(dependents).toEqual([
-      { file: 'x.ts', via: ['a.ts'], depth: 1, endpoints: ['GET /x'], crons: ['nightly'] },
+      {
+        file: 'x.ts',
+        via: [{ seed: 'a.ts', depth: 1 }],
+        depth: 1,
+        endpoints: ['GET /x'],
+        crons: ['nightly'],
+      },
     ]);
   });
 });

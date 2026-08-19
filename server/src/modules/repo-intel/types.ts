@@ -92,15 +92,29 @@ export interface BlastResult {
   reason?: DegradedReason;
 }
 
+/** One seed this file reaches, and how many hops away that seed is. */
+export interface ReverseDependentVia {
+  seed: string;
+  depth: number;
+}
+
 /**
  * A file that (transitively) imports one or more of the seed files.
- * `via` lists EVERY seed that reaches this file, not just the first one BFS
- * happened to arrive from. `depth` is 1-based and records the SHORTEST hop
- * count to any seed.
+ *
+ * `via` carries a hop count PER SEED rather than a seed list beside one shared
+ * depth. Those are different facts, and conflating them asserts a relationship
+ * that does not exist: when both `FindingsPanel.tsx` and `hooks/reviews.ts`
+ * are changed files, the barrel `FindingsPanel/index.ts` is ONE hop from the
+ * first and TWO from the second — a single `depth: 1` beside a `via`
+ * containing both let a consumer call it a direct importer of `reviews.ts`,
+ * which it is not.
+ *
+ * `depth` stays as the shortest hop to ANY seed: useful for ordering, never
+ * for attribution. Attribute with `via`.
  */
 export interface ReverseDependentRow {
   file: string;
-  via: string[];
+  via: ReverseDependentVia[];
   depth: number;
   endpoints: string[];
   crons: string[];
