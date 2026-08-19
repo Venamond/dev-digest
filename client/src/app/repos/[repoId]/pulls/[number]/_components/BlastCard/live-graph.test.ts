@@ -51,6 +51,50 @@ describe("createLiveGraph", () => {
     g.stop();
   });
 
+  it("leaves a dropped node exactly where it was put", () => {
+    // The bug this replaces: d3's drag examples unpin on drop, so every node
+    // you place springs back and the graph cannot be arranged at all.
+    const g = createLiveGraph(LAYOUT);
+    g.grab("a", 400, 280);
+    g.drag("a", 800, 500);
+    g.release("a");
+    g.tick(120);
+
+    const a = g.snapshot().find((n) => n.id === "a")!;
+    expect(a.x).toBe(800);
+    expect(a.y).toBe(500);
+    expect(g.pinned().has("a")).toBe(true);
+    g.stop();
+  });
+
+  it("lets a pinned node go again", () => {
+    const g = createLiveGraph(LAYOUT);
+    g.grab("a", 400, 280);
+    g.drag("a", 800, 500);
+    g.release("a");
+
+    g.unpin("a");
+    expect(g.pinned().has("a")).toBe(false);
+    g.tick(120);
+    // Released, the simulation pulls it back towards its neighbours.
+    const a = g.snapshot().find((n) => n.id === "a")!;
+    expect(a.x).not.toBe(800);
+    g.stop();
+  });
+
+  it("unpinAll releases everything the reader placed", () => {
+    const g = createLiveGraph(LAYOUT);
+    g.grab("a", 400, 280);
+    g.release("a");
+    g.grab("b", 100, 100);
+    g.release("b");
+    expect(g.pinned().size).toBe(2);
+
+    g.unpinAll();
+    expect(g.pinned().size).toBe(0);
+    g.stop();
+  });
+
   it("notifies subscribers and stops notifying once unsubscribed", () => {
     const g = createLiveGraph(LAYOUT);
     let ticks = 0;

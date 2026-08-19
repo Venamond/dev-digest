@@ -21,10 +21,14 @@ function label(text: string): string {
 
 function Node({
   node,
+  isPinned,
   onPointerDown,
+  onDoubleClick,
 }: {
   node: PlacedNode;
+  isPinned?: boolean;
   onPointerDown?: (id: string, e: React.PointerEvent) => void;
+  onDoubleClick?: (id: string) => void;
 }) {
   const r = NODE_RADIUS[node.role];
   return (
@@ -35,8 +39,23 @@ function Node({
         r={r}
         fill={NODE_COLOR[node.role]}
         onPointerDown={onPointerDown ? (e) => onPointerDown(node.id, e) : undefined}
+        onDoubleClick={onDoubleClick ? () => onDoubleClick(node.id) : undefined}
         style={onPointerDown ? { cursor: "grab" } : undefined}
       />
+      {/* A ring marks a node the reader has placed by hand: without it there
+          is no way to tell a pinned node from one the simulation settled
+          there, and no hint that double-clicking releases it. */}
+      {isPinned && (
+        <circle
+          cx={node.x}
+          cy={node.y}
+          r={r + 4}
+          fill="none"
+          stroke={NODE_COLOR[node.role]}
+          strokeWidth={1}
+          strokeDasharray="2 2"
+        />
+      )}
       {/* Below the circle, as in the reference — beside it, long paths overlap
           their neighbours at any useful node count. */}
       <text
@@ -55,11 +74,15 @@ function Node({
 
 export function GraphContent({
   layout,
+  pinned,
   onNodePointerDown,
+  onNodeDoubleClick,
 }: {
   layout: ForceLayout;
+  pinned?: Set<string>;
   /** Supplied by the live view; omitted where the graph is a still image. */
   onNodePointerDown?: (id: string, e: React.PointerEvent) => void;
+  onNodeDoubleClick?: (id: string) => void;
 }) {
   const byId = React.useMemo(
     () => new Map(layout.nodes.map((n) => [n.id, n])),
@@ -85,7 +108,13 @@ export function GraphContent({
         );
       })}
       {layout.nodes.map((n) => (
-        <Node key={n.id} node={n} onPointerDown={onNodePointerDown} />
+        <Node
+          key={n.id}
+          node={n}
+          isPinned={pinned?.has(n.id)}
+          onPointerDown={onNodePointerDown}
+          onDoubleClick={onNodeDoubleClick}
+        />
       ))}
     </>
   );

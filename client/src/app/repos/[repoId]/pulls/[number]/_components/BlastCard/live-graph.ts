@@ -26,8 +26,17 @@ export interface LiveGraph {
   grab(id: string, x: number, y: number): void;
   /** Move the pinned node. */
   drag(id: string, x: number, y: number): void;
-  /** Unpin and let the graph settle again. */
+  /**
+   * Stop dragging. The node STAYS where it was dropped — see the note on the
+   * implementation for why this is not d3's usual release.
+   */
   release(id: string): void;
+  /** Let a pinned node go, so the simulation can pull it back into shape. */
+  unpin(id: string): void;
+  /** Release every pinned node at once. */
+  unpinAll(): void;
+  /** Ids currently held in place by the reader. */
+  pinned(): Set<string>;
   subscribe(onTick: () => void): () => void;
   /**
    * Advance the simulation by hand. The running loop does this on its own;
@@ -118,14 +127,38 @@ export function createLiveGraph(layout: ForceLayout): LiveGraph {
       notify();
     },
     release(id) {
-      const n = byId.get(id);
-      if (n) {
-        n.fx = null;
-        n.fy = null;
-      }
+      // Deliberately does NOT clear fx/fy. d3's drag examples unpin on drop,
+      // and the node springs back to equilibrium — which makes arranging a
+      // graph impossible: every node you place undoes itself. Here a reader
+      // drags nodes apart to READ the map, so a dropped node stays put and is
+      // released explicitly (double-click, or Fit).
+      void id;
       // Back to zero target: the graph coasts to a stop instead of freezing
       // mid-motion, which is what makes it feel like a physical object.
       sim.alphaTarget(0);
+    },
+    unpin(id) {
+      const n = byId.get(id);
+      if (!n) return;
+      n.fx = null;
+      n.fy = null;
+      // A nudge of heat, or a released node just sits there and the release
+      // looks like it did nothing.
+      sim.alpha(Math.max(sim.alpha(), 0.2)).restart();
+    },
+    unpinAll() {
+      let any = false;
+      for (const n of nodes) {
+        if (n.fx != null || n.fy != null) {
+          n.fx = null;
+          n.fy = null;
+          any = true;
+        }
+      }
+      if (any) sim.alpha(0.4).restart();
+    },
+    pinned() {
+      return new Set(nodes.filter((n) => n.fx != null).map((n) => n.id));
     },
     subscribe(onTick) {
       listeners.add(onTick);

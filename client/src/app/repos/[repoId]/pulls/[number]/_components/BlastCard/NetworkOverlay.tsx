@@ -52,10 +52,14 @@ export function NetworkOverlay({
   // a drag instead of being a picture that can be panned.
   const graphRef = React.useRef<LiveGraph | null>(null);
   const [nodes, setNodes] = React.useState(layout.nodes);
+  const [pinned, setPinned] = React.useState<Set<string>>(() => new Set());
   React.useEffect(() => {
     const g = createLiveGraph(layout);
     graphRef.current = g;
-    const off = g.subscribe(() => setNodes(g.snapshot()));
+    const off = g.subscribe(() => {
+      setNodes(g.snapshot());
+      setPinned(g.pinned());
+    });
     return () => {
       off();
       g.stop();
@@ -107,6 +111,10 @@ export function NetworkOverlay({
   const reset = () => {
     const r = frameRef.current?.getBoundingClientRect();
     setView(fit(layout.width, layout.height, r?.width ?? 1000, r?.height ?? 620));
+    // Fit restores the arrangement too, not just the camera — otherwise a
+    // graph pinned into a shape you no longer want has no way back.
+    graphRef.current?.unpinAll();
+    setPinned(new Set());
   };
 
   const controls: Array<[label: string, icon: React.ReactNode, run: () => void]> = [
@@ -183,6 +191,11 @@ export function NetworkOverlay({
           <g transform={toTransform(view, layout.width / 2, layout.height / 2)}>
             <GraphContent
               layout={{ ...layout, nodes }}
+              pinned={pinned}
+              onNodeDoubleClick={(id) => {
+                graphRef.current?.unpin(id);
+                setPinned(graphRef.current?.pinned() ?? new Set());
+              }}
               onNodePointerDown={(id, e) => {
                 // Stop the canvas handler: this gesture moves ONE node, not
                 // the whole viewport.
@@ -190,6 +203,7 @@ export function NetworkOverlay({
                 const p = atPointer(e.clientX, e.clientY);
                 heldRef.current = id;
                 graphRef.current?.grab(id, p.x, p.y);
+                setPinned(graphRef.current?.pinned() ?? new Set());
                 (e.target as Element).setPointerCapture?.(e.pointerId);
               }}
             />

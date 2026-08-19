@@ -234,7 +234,7 @@ describe("BlastCard", () => {
     expect(within(dialog).getByText("changed symbol")).toBeInTheDocument();
     // Zoom and fit are the reason it is a window rather than a card slot.
     expect(within(dialog).getByRole("button", { name: "Zoom in" })).toBeInTheDocument();
-    expect(within(dialog).getByRole("button", { name: "Fit to screen" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Fit and release pinned" })).toBeInTheDocument();
 
     // Rotation is what "look at it from another angle" means for a 2D graph.
     expect(within(dialog).getByRole("button", { name: "Rotate left" })).toBeInTheDocument();

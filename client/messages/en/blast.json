@@ -22,7 +22,7 @@
     "legendCrons": "cron / jobs",
     "zoomIn": "Zoom in",
     "zoomOut": "Zoom out",
-    "reset": "Fit to screen",
+    "reset": "Fit and release pinned",
     "rotateLeft": "Rotate left",
     "rotateRight": "Rotate right"
   },
