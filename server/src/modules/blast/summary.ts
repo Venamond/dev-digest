@@ -40,6 +40,22 @@ export function buildBlastSummaryPrompt(res: BlastResponse): {
   nodes: Set<string>;
 } {
   const nodes = new Set<string>();
+  /**
+   * A path contributes its segments too, not just the whole string.
+   * `client/.../SettingsModels/SettingsModels.tsx` legitimately lets the model
+   * write `SettingsModels` — that name is in the map, character for character,
+   * just not as a standalone entry. Rejecting it made a correct summary a 422,
+   * which is the validator being stricter than the instruction it enforces.
+   * Segments of one or two characters are dropped: they match noise.
+   */
+  const addPath = (path: string) => {
+    nodes.add(path);
+    for (const seg of path.split('/')) {
+      if (seg.length > 2) nodes.add(seg);
+      const bare = seg.replace(/\.[a-z0-9]+$/i, '');
+      if (bare.length > 2) nodes.add(bare);
+    }
+  };
   const lines: string[] = [];
 
   lines.push(`state: ${res.state}`);
@@ -50,7 +66,7 @@ export function buildBlastSummaryPrompt(res: BlastResponse): {
 
   for (const sym of res.symbols) {
     nodes.add(sym.name);
-    nodes.add(sym.file);
+    addPath(sym.file);
     lines.push('');
     lines.push(`symbol: ${sym.name} (${sym.kind}) in ${sym.file}`);
     lines.push(
@@ -58,14 +74,14 @@ export function buildBlastSummaryPrompt(res: BlastResponse): {
         `${sym.callers_truncated ? ', truncated' : ''}):`,
     );
     for (const c of sym.callers) {
-      nodes.add(c.file);
+      addPath(c.file);
       nodes.add(c.symbol);
       lines.push(`    - ${c.symbol} in ${c.file}:${c.line}`);
     }
     if (sym.importers.length > 0) {
       lines.push('  importers:');
       for (const imp of sym.importers) {
-        nodes.add(imp.file);
+        addPath(imp.file);
         lines.push(`    - ${imp.file} (depth ${imp.depth})`);
       }
     }

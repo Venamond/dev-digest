@@ -52,12 +52,23 @@ describe('buildBlastSummaryPrompt', () => {
     expect(mapText).not.toContain('diff');
   });
 
-  it('collects exactly the names the model may mention', () => {
+  it('collects the names the model may mention, paths broken into segments', () => {
+    // Whole paths, plus each segment and each segment without its extension:
+    // a model quoting `mw.ts` or a directory out of a path it was given is
+    // quoting the map, not inventing.
     expect([...nodes].sort()).toEqual([
       'POST /pay',
+      'app',
+      'app.ts',
+      // no bare 'mw': two characters, dropped as noise
+      'mw.ts',
       'nightly-settle',
+      'pay',
+      'pay.ts',
       'payHandler',
       'rateLimit',
+      'routes',
+      'src',
       'src/app.ts',
       'src/mw.ts',
       'src/routes/pay.ts',
@@ -94,6 +105,26 @@ describe('ungroundedNodes', () => {
       ungroundedNodes('`rateLimit()` in `src/mw.ts:12` is called by `payHandler()`.', nodes),
     ).toEqual([]);
     expect(ungroundedNodes('See `src/routes/pay.ts:12-18`.', nodes)).toEqual([]);
+  });
+
+  it('accepts a directory or basename lifted out of a path in the map', () => {
+    // Regression: a real summary named `SettingsModels`, which is a segment of
+    // a path the map contains — the model quoted the map, and the check
+    // rejected the whole paragraph with a 422 because the segment was not a
+    // standalone entry.
+    const { nodes } = buildBlastSummaryPrompt({
+      ...RESPONSE,
+      symbols: [
+        {
+          ...RESPONSE.symbols[0]!,
+          file: 'client/src/app/settings/SettingsModels/SettingsModels.tsx',
+        },
+      ],
+    });
+    expect(ungroundedNodes('Touches `SettingsModels`.', nodes)).toEqual([]);
+    expect(ungroundedNodes('Touches `SettingsModels.tsx`.', nodes)).toEqual([]);
+    // One- and two-character segments stay out: they would match noise.
+    expect(ungroundedNodes('Touches `src`.', nodes)).toEqual([]);
   });
 
   it('still catches a hallucination that merely looks like a call', () => {
