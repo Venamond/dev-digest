@@ -71,3 +71,73 @@ export function buildFlowchart(res: BlastResponse): string {
   for (const [from, to] of drawn) lines.push(`  ${id.get(from)} --> ${id.get(to)}`);
   return lines.join("\n");
 }
+
+/**
+ * Every string in this payload that we KNOW names code: a file the index
+ * recorded, an endpoint or cron it extracted, a path a prior PR shares with
+ * this one. Used to decide what to highlight inside free prose.
+ *
+ * The point of matching against this set rather than a path-shaped regex is
+ * that a highlight then means "this really is a file in this repository",
+ * not "this word had a slash in it". A regex would chip `и т.д.` and every
+ * `README.md` mentioned in passing that does not exist here.
+ */
+export function codeTokens(data: BlastResponse): string[] {
+  const out = new Set<string>();
+  for (const sym of data.symbols) {
+    out.add(sym.file);
+    out.add(sym.name);
+    for (const c of sym.callers) {
+      out.add(c.file);
+      out.add(c.symbol);
+    }
+    for (const imp of sym.importers) out.add(imp.file);
+    for (const e of sym.endpoints) out.add(e);
+    for (const c of sym.crons) out.add(c);
+  }
+  for (const p of data.prior_pulls) for (const f of p.shared_files) out.add(f);
+  return [...out].filter((t) => t.length > 1);
+}
+
+export interface TextPart {
+  text: string;
+  code: boolean;
+}
+
+function escapeRe(v: string): string {
+  return v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Split `text` into plain and code runs.
+ *
+ * Two sources of truth, in order: an explicit backtick span is always code
+ * (the author said so), and anything else is code only if it appears in
+ * `tokens`. Longest tokens are tried first so `src/a/b.ts` wins over `b.ts`.
+ */
+export function splitHighlight(text: string, tokens: string[]): TextPart[] {
+  const parts: TextPart[] = [];
+  const pushPlain = (chunk: string) => {
+    if (!chunk) return;
+    if (tokens.length === 0) {
+      parts.push({ text: chunk, code: false });
+      return;
+    }
+    const ordered = [...tokens].sort((a, b) => b.length - a.length);
+    const re = new RegExp(`(${ordered.map(escapeRe).join("|")})`, "g");
+    for (const piece of chunk.split(re)) {
+      if (!piece) continue;
+      parts.push({ text: piece, code: tokens.includes(piece) });
+    }
+  };
+
+  for (const span of text.split(/(`[^`]+`)/g)) {
+    if (!span) continue;
+    if (span.length >= 2 && span.startsWith("`") && span.endsWith("`")) {
+      parts.push({ text: span.slice(1, -1), code: true });
+    } else {
+      pushPlain(span);
+    }
+  }
+  return parts;
+}

@@ -435,6 +435,21 @@ export const s = {
     textTransform: "uppercase",
     color: "var(--warn)",
   } satisfies CSSProperties,
+  /* Same chip as IntentCard's inline code: a highlight here means "this names
+     real code in this repository", verified against the payload — not "this
+     word looked path-shaped". */
+  inlineCode: {
+    fontFamily: MONO,
+    fontSize: 12,
+    fontStyle: "normal",
+    background: "var(--accent-bg)",
+    color: "var(--accent-text)",
+    borderRadius: 4,
+    paddingTop: 1,
+    paddingRight: 5,
+    paddingBottom: 1,
+    paddingLeft: 5,
+  } satisfies CSSProperties,
   /* What that PR set out to do, in its own words — the intent line the Intent
      layer already derived for it, or its description. A fact about that PR,
      never a claim about how it relates to this one. */
@@ -445,11 +460,11 @@ export const s = {
   } satisfies CSSProperties,
   /* The join made visible: which path this PR and that one have in common. */
   priorFiles: {
-    fontFamily: MONO,
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 6,
     fontSize: 12,
-    lineHeight: 1.45,
-    color: "var(--text-secondary)",
-    overflowWrap: "anywhere",
+    lineHeight: 1.9,
   } satisfies CSSProperties,
   priorFinding: {
     display: "flex",

@@ -9,7 +9,7 @@ import { useBlast, useBlastSummary, useDeriveBlastSummary } from "@/lib/hooks/re
 import { useResyncRepoIntel } from "@/lib/hooks/repo-intel";
 import { MermaidDiagram } from "@/components/mermaid-diagram/MermaidDiagram";
 import { githubBlobUrl } from "@/lib/github-urls";
-import { buildFlowchart, countGraphNodes } from "./helpers";
+import { buildFlowchart, codeTokens, countGraphNodes, splitHighlight } from "./helpers";
 import { MAX_GRAPH_NODES, REASON_KEY, REASON_KEY_FALLBACK } from "./constants";
 import { s } from "./styles";
 
@@ -41,6 +41,23 @@ function FileRef({
     >
       {label}
     </a>
+  );
+}
+
+/** Prose with the code it names chipped — see `splitHighlight`. */
+function CodeText({ text, tokens }: { text: string; tokens: string[] }) {
+  return (
+    <>
+      {splitHighlight(text, tokens).map((part, i) =>
+        part.code ? (
+          <code key={i} style={s.inlineCode}>
+            {part.text}
+          </code>
+        ) : (
+          <React.Fragment key={i}>{part.text}</React.Fragment>
+        ),
+      )}
+    </>
   );
 }
 
@@ -88,7 +105,13 @@ function SummaryBox({ text }: { text: string }) {
 }
 
 /** Prior PRs that touched the same files — history beside the structural map. */
-function PriorPulls({ pulls }: { pulls: BlastResponse["prior_pulls"] }) {
+function PriorPulls({
+  pulls,
+  tokens,
+}: {
+  pulls: BlastResponse["prior_pulls"];
+  tokens: string[];
+}) {
   const t = useTranslations("blast");
   const [open, setOpen] = React.useState(false);
   return (
@@ -130,10 +153,18 @@ function PriorPulls({ pulls }: { pulls: BlastResponse["prior_pulls"] }) {
                   )}
                 </div>
                 {pull.description && (
-                  <div style={s.priorDescription}>{pull.description}</div>
+                  <div style={s.priorDescription}>
+                    <CodeText text={pull.description} tokens={tokens} />
+                  </div>
                 )}
                 {pull.shared_files.length > 0 && (
-                  <div style={s.priorFiles}>{pull.shared_files.join(", ")}</div>
+                  <div style={s.priorFiles}>
+                    {pull.shared_files.map((f) => (
+                      <code key={f} style={s.inlineCode}>
+                        {f}
+                      </code>
+                    ))}
+                  </div>
                 )}
                 {pull.unresolved_findings.map((f) => (
                   <div key={f.title} style={s.priorFinding}>
@@ -252,6 +283,7 @@ export function BlastCard({ prId }: { prId: string | null }) {
 
   const chart = React.useMemo(() => (data ? buildFlowchart(data) : ""), [data]);
   const graphNodes = React.useMemo(() => (data ? countGraphNodes(data) : 0), [data]);
+  const tokens = React.useMemo(() => (data ? codeTokens(data) : []), [data]);
 
   const summaryText = summary.data?.summary;
   const hasMap = data != null && (data.state === "ok" || data.state === "partial");
@@ -368,7 +400,7 @@ export function BlastCard({ prId }: { prId: string | null }) {
         {data.prior_pulls.length > 0 && (
           <>
             <div style={s.divider} />
-            <PriorPulls pulls={data.prior_pulls} />
+            <PriorPulls pulls={data.prior_pulls} tokens={tokens} />
           </>
         )}
       </>

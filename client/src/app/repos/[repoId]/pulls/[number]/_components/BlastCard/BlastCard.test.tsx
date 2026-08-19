@@ -360,9 +360,11 @@ describe("BlastCard", () => {
     renderCard();
     fireEvent.click(screen.getByRole("button", { name: /Prior PRs touching these files/ }));
 
-    expect(screen.getByText("src/lib/tax-table.ts")).toBeInTheDocument();
+    // The shared path renders as a code chip, not plain text.
+    const chip = screen.getByText("src/lib/tax-table.ts");
+    expect(chip.tagName).toBe("CODE");
     expect(
-      screen.getByText("Rounded refunds to the nearest cent across the money helpers."),
+      screen.getByText(/Rounded refunds to the nearest cent/),
     ).toBeInTheDocument();
     expect(
       screen.getByText("WARNING raised here and dismissed: Rounding drifts on refunds"),
