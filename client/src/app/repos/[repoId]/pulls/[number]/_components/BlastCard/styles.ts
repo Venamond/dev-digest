@@ -321,7 +321,11 @@ export const s = {
     borderRightColor: "var(--border)",
     borderBottomColor: "var(--border)",
     borderLeftColor: "var(--border)",
-    background: "var(--bg-primary)",
+    // The block itself is NOT filled: only its header is. Filling the whole
+    // thing made the body a second surface floating inside the card; the
+    // reference keeps the body at the card's own colour and lets borders do
+    // the separating.
+    background: "transparent",
     overflow: "hidden",
   } satisfies CSSProperties,
   priorToggle: {
@@ -329,7 +333,8 @@ export const s = {
     alignItems: "center",
     gap: 8,
     width: "100%",
-    background: "none",
+    // The one filled surface in the block — the body stays at the card colour.
+    background: "var(--bg-primary)",
     borderStyle: "none",
     borderTopWidth: 0,
     borderRightWidth: 0,
@@ -345,6 +350,12 @@ export const s = {
     color: "var(--text-secondary)",
     textAlign: "left",
   } satisfies CSSProperties,
+  /** Closes the header off from the body once the block is open. */
+  priorToggleOpen: {
+    borderBottomStyle: "solid",
+    borderBottomWidth: 1,
+    borderBottomColor: "var(--border)",
+  } satisfies CSSProperties,
   priorCountBadge: {
     fontSize: 11,
     fontWeight: 600,
@@ -359,23 +370,34 @@ export const s = {
     paddingBottom: 0,
     paddingLeft: 5,
   } satisfies CSSProperties,
+  /* No padding of its own: each row is full-bleed so its separator line spans
+     the block, the way the reference draws it. */
   priorList: {
     display: "flex",
     flexDirection: "column",
-    gap: 14,
-    paddingTop: 2,
-    paddingRight: 14,
-    paddingBottom: 14,
-    paddingLeft: 14,
   } satisfies CSSProperties,
-  priorRow: {
+  priorRow: (first: boolean): CSSProperties => ({
+    display: "flex",
+    gap: 10,
+    paddingTop: 12,
+    paddingRight: 14,
+    paddingBottom: 12,
+    paddingLeft: 14,
+    borderTopStyle: "solid",
+    borderTopWidth: first ? 0 : 1,
+    borderTopColor: "var(--border)",
+  }),
+  priorBullet: {
+    fontSize: 12,
+    lineHeight: 1.4,
+    color: "var(--text-muted)",
+    flexShrink: 0,
+  } satisfies CSSProperties,
+  priorBody: {
     display: "flex",
     flexDirection: "column",
     gap: 4,
-    borderLeftStyle: "solid",
-    borderLeftWidth: 2,
-    borderLeftColor: "var(--border)",
-    paddingLeft: 12,
+    minWidth: 0,
   } satisfies CSSProperties,
   priorTitleLine: {
     display: "flex",

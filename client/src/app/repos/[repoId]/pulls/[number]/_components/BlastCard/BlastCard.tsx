@@ -93,7 +93,12 @@ function PriorPulls({ pulls }: { pulls: BlastResponse["prior_pulls"] }) {
   const [open, setOpen] = React.useState(false);
   return (
     <div style={s.priorCard}>
-      <button type="button" style={s.priorToggle} aria-expanded={open} onClick={() => setOpen(!open)}>
+      <button
+        type="button"
+        style={open ? { ...s.priorToggle, ...s.priorToggleOpen } : s.priorToggle}
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+      >
         <Icon.History size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
         <span>{t("priorPulls")}</span>
         <span style={s.priorCountBadge}>{pulls.length}</span>
@@ -101,17 +106,24 @@ function PriorPulls({ pulls }: { pulls: BlastResponse["prior_pulls"] }) {
       </button>
       {open && (
         <div style={s.priorList}>
-          {pulls.map((pull) => (
-            <div key={pull.number} style={s.priorRow}>
-              <div style={s.priorTitleLine}>
-                <span style={s.priorNumber}>{`#${pull.number}`}</span>
-                <span style={s.priorTitle}>{pull.title}</span>
-              </div>
-              <div style={s.priorMeta}>
-                <Avatar name={pull.author} size={16} />
-                <span>{pull.author}</span>
-                {pull.updated_at && <span>{`· ${new Date(pull.updated_at).toLocaleDateString()}`}</span>}
-                <span>{`· ${pull.status}`}</span>
+          {pulls.map((pull, i) => (
+            <div key={pull.number} style={s.priorRow(i === 0)}>
+              <span style={s.priorBullet} aria-hidden="true">
+                •
+              </span>
+              <div style={s.priorBody}>
+                <div style={s.priorTitleLine}>
+                  <span style={s.priorNumber}>{`#${pull.number}`}</span>
+                  <span style={s.priorTitle}>{pull.title}</span>
+                </div>
+                <div style={s.priorMeta}>
+                  <Avatar name={pull.author} size={16} />
+                  <span>{pull.author}</span>
+                  {pull.updated_at && (
+                    <span>{`· ${new Date(pull.updated_at).toLocaleDateString()}`}</span>
+                  )}
+                  <span>{`· ${pull.status}`}</span>
+                </div>
               </div>
             </div>
           ))}
