@@ -364,6 +364,28 @@ export const s = {
     color: "var(--text-secondary)",
     overflowWrap: "anywhere",
   } satisfies CSSProperties,
+  /* Names the three kinds of box the graph draws. Without it the colours are
+     decoration; with it they are a key. */
+  legend: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 16,
+    marginTop: 10,
+    fontSize: 12,
+    color: "var(--text-muted)",
+  } satisfies CSSProperties,
+  legendItem: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+  } satisfies CSSProperties,
+  legendDot: (color: string): CSSProperties => ({
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    background: color,
+    flexShrink: 0,
+  }),
   /* Endpoints and crons are the ANSWER the map exists to give — what this
      change can reach from outside. The reference gives them chips, in two
      colours, so they read at a glance instead of as two more grey lines. */

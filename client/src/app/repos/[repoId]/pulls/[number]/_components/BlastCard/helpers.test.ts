@@ -191,3 +191,61 @@ describe("partitionSymbols", () => {
     expect(emptyCount).toBe(1);
   });
 });
+
+describe("buildFlowchart node roles", () => {
+  const res = {
+    state: "ok",
+    index: { status: "full", last_indexed_sha: "a", updated_at: "" },
+    totals: { symbols: 2, callers: 1, callers_found: 1, endpoints: 1, crons: 1 },
+    downstream_truncated: false,
+    prior_pulls: [],
+    link: { repo_full_name: "o/r", indexed_sha: "a", head_sha: "b" },
+    symbols: [
+      {
+        file: "src/mw.ts",
+        name: "rateLimit",
+        kind: "function",
+        callers: [{ file: "src/api/public/index.ts", symbol: "reg", line: 1, rank: 1 }],
+        callers_total: 1,
+        callers_truncated: false,
+        importers: [],
+        endpoints: ["GET /items"],
+        crons: ["reset (hourly)"],
+      },
+      // Reaches nothing at all — a legitimate tree row, but nothing to draw.
+      {
+        file: "src/lonely.ts",
+        name: "orphan",
+        kind: "function",
+        callers: [],
+        callers_total: 0,
+        callers_truncated: false,
+        importers: [],
+        endpoints: [],
+        crons: [],
+      },
+    ],
+  } as never;
+
+  it("omits a symbol that no edge touches", () => {
+    const chart = buildFlowchart(res);
+    // A box floating in white space states no relationship, which is the one
+    // thing a graph is for.
+    expect(chart).not.toContain("orphan");
+    expect(chart).toContain("rateLimit");
+  });
+
+  it("classes every drawn node so the legend means something", () => {
+    const chart = buildFlowchart(res);
+    expect(chart).toContain("classDef symbol");
+    expect(chart).toContain("classDef endpoint");
+    expect(chart).toContain("classDef cron");
+    expect(chart).toContain("classDef caller");
+    // Literal hex, not var(--…): mermaid writes these into SVG presentation
+    // attributes, where a CSS custom property does not resolve.
+    expect(chart).not.toContain("var(--");
+    for (const line of chart.split("\n").filter((l) => l.trim().startsWith("class "))) {
+      expect(line).toMatch(/^ {2}class n\d+(,n\d+)* (symbol|endpoint|cron|caller)$/);
+    }
+  });
+});

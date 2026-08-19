@@ -468,6 +468,24 @@ export function BlastCard({ prId }: { prId: string | null }) {
             <div role="img" aria-label={t("graph.ariaLabel")}>
               <MermaidDiagram chart={chart} />
             </div>
+            <div style={s.legend}>
+              <span style={s.legendItem}>
+                <span style={s.legendDot("#93bbfc")} />
+                {t("graph.legendSymbol")}
+              </span>
+              <span style={s.legendItem}>
+                <span style={s.legendDot("#cccccc")} />
+                {t("graph.legendCallers")}
+              </span>
+              <span style={s.legendItem}>
+                <span style={s.legendDot("#93bbfc")} />
+                {t("graph.legendEndpoints")}
+              </span>
+              <span style={s.legendItem}>
+                <span style={s.legendDot("#f59e0b")} />
+                {t("graph.legendCrons")}
+              </span>
+            </div>
             {graphNodes > MAX_GRAPH_NODES && (
               <p style={s.note}>
                 {t("truncated", { shown: MAX_GRAPH_NODES, total: graphNodes })}

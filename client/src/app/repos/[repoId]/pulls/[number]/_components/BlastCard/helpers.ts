@@ -7,13 +7,19 @@ import { MAX_GRAPH_NODES } from "./constants";
 
 type Edge = readonly [from: string, to: string];
 
+/** What a node IS, which decides how the graph paints it and what the legend
+ *  has to explain. */
+export type NodeRole = "symbol" | "caller" | "endpoint" | "cron";
+
 /** Mermaid labels must be quoted, single-line and free of `"`. */
 function sanitize(label: string): string {
   return label.replace(/"/g, "").replace(/[\r\n]+/g, " ").trim();
 }
 
-function symbolLabel(name: string, file: string): string {
-  return `${name} (${file})`;
+/** The graph labels a symbol by name alone: the file is one line of context in
+ *  a tree and a wall of characters inside a box. */
+function symbolLabel(name: string, _file: string): string {
+  return name;
 }
 
 /**
@@ -23,28 +29,34 @@ function symbolLabel(name: string, file: string): string {
  * walk over all of that symbol's callers), so drawing caller → endpoint would
  * assert a call path the payload does not actually claim.
  */
-function collectGraph(res: BlastResponse): { nodes: string[]; edges: Edge[] } {
+function collectGraph(res: BlastResponse): {
+  nodes: string[];
+  roles: Map<string, NodeRole>;
+  edges: Edge[];
+} {
   const nodes: string[] = [];
+  const roles = new Map<string, NodeRole>();
   const seen = new Set<string>();
   const edges: Edge[] = [];
 
-  const add = (raw: string): string => {
+  const add = (raw: string, role: NodeRole): string => {
     const label = sanitize(raw);
     if (!seen.has(label)) {
       seen.add(label);
       nodes.push(label);
+      roles.set(label, role);
     }
     return label;
   };
 
   for (const sym of res.symbols) {
-    const from = add(symbolLabel(sym.name, sym.file));
-    for (const caller of sym.callers) edges.push([from, add(caller.file)]);
-    for (const endpoint of sym.endpoints) edges.push([from, add(endpoint)]);
-    for (const cron of sym.crons) edges.push([from, add(cron)]);
+    const from = add(symbolLabel(sym.name, sym.file), "symbol");
+    for (const caller of sym.callers) edges.push([from, add(shortPath(caller.file, 2), "caller")]);
+    for (const endpoint of sym.endpoints) edges.push([from, add(endpoint, "endpoint")]);
+    for (const cron of sym.crons) edges.push([from, add(cron, "cron")]);
   }
 
-  return { nodes, edges };
+  return { nodes, roles, edges };
 }
 
 /** Uncapped node count — the card compares it with MAX_GRAPH_NODES to decide
@@ -59,16 +71,42 @@ export function countGraphNodes(res: BlastResponse): number {
  * a file path is not a legal mermaid id — and every label is quoted.
  */
 export function buildFlowchart(res: BlastResponse): string {
-  const { nodes, edges } = collectGraph(res);
+  const { nodes, roles, edges } = collectGraph(res);
   const kept = nodes.slice(0, MAX_GRAPH_NODES);
   const id = new Map<string, string>(kept.map((label, i) => [label, `n${i}`]));
 
   const drawn = edges.filter(([from, to]) => id.has(from) && id.has(to));
   if (drawn.length === 0) return "";
 
+  // Only nodes that an edge actually touches. A changed symbol nothing reaches
+  // is a legitimate row in the tree, where the heading says "0 callers"; in a
+  // graph it is a box floating in white space that states no relationship —
+  // which is the one thing a graph is for.
+  const connected = new Set<string>();
+  for (const [from, to] of drawn) {
+    connected.add(from);
+    connected.add(to);
+  }
+
   const lines = ["flowchart LR"];
-  for (const label of kept) lines.push(`  ${id.get(label)}["${label}"]`);
+  for (const label of kept) {
+    if (connected.has(label)) lines.push(`  ${id.get(label)}["${label}"]`);
+  }
   for (const [from, to] of drawn) lines.push(`  ${id.get(from)} --> ${id.get(to)}`);
+
+  // Literal hex, not `var(--…)`: mermaid writes these into SVG presentation
+  // attributes, where a CSS custom property does not resolve. Values mirror
+  // vendor/ui/styles.css — accent #93bbfc, warn #f59e0b, border #2a2a2a.
+  lines.push('  classDef symbol stroke:#93bbfc,stroke-width:2px,fill:#111c2e,color:#e8e8e8');
+  lines.push('  classDef endpoint stroke:#93bbfc,stroke-width:1px,fill:#0f1622,color:#93bbfc');
+  lines.push('  classDef cron stroke:#f59e0b,stroke-width:1px,fill:#241a08,color:#f59e0b');
+  lines.push('  classDef caller stroke:#2a2a2a,stroke-width:1px,fill:#1c1c1c,color:#cccccc');
+  for (const role of ["symbol", "endpoint", "cron", "caller"] as const) {
+    const ids = kept
+      .filter((l) => connected.has(l) && roles.get(l) === role)
+      .map((l) => id.get(l)!);
+    if (ids.length > 0) lines.push(`  class ${ids.join(",")} ${role}`);
+  }
   return lines.join("\n");
 }
 
