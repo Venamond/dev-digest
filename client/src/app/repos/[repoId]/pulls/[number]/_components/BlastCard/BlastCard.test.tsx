@@ -262,7 +262,24 @@ describe("BlastCard", () => {
     renderCard();
     // Both fixture symbols render one call site each, so the label appears
     // twice — the point is that it counts rows, not `callers_total`.
-    expect(screen.getAllByText("1 callers")).toHaveLength(2);
+    // A regex, because a symbol that also has an importer reads
+    // "1 caller · 1 importer" — the header names everything it lists.
+    expect(screen.getAllByText(/^1 caller\b/)).toHaveLength(2);
+  });
+
+  it("counts importers in the header too, so the row cannot contradict itself", () => {
+    // A symbol with no call sites but an importer read as "0 callers" with a
+    // row underneath it. The header now names everything it lists.
+    h.data = makeBlast({
+      symbols: makeBlast().symbols.map((sym, i) =>
+        i === 0
+          ? { ...sym, callers: [], importers: [{ file: "src/only-imports.ts", depth: 1 }] }
+          : sym,
+      ),
+    });
+    renderCard();
+    expect(screen.getByText("1 importer")).toBeInTheDocument();
+    expect(screen.queryByText("0 callers")).not.toBeInTheDocument();
   });
 
   it("reports a headline caller count that was capped as N / M", () => {

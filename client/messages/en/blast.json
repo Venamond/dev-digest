@@ -10,7 +10,7 @@
     "tree": "Tree",
     "graph": "Graph"
   },
-  "callerCount": "{count} callers",
+  "callerCount": "{count, plural, one {# caller} other {# callers}}",
   "noDownstream": "{count} changed symbol(s), no downstream callers found.",
   "graph": {
     "empty": "No downstream callers to graph.",
@@ -32,5 +32,6 @@
   "retry": "Try again",
   "dismissedFinding": "{severity} raised here and dismissed: {title}",
   "importerHint": "Imports this file; no call site was resolved",
-  "noImpactSymbols": "{count} more changed symbols with no downstream callers"
+  "noImpactSymbols": "{count} more changed symbols with no downstream callers",
+  "importerCount": "{count, plural, one {# importer} other {# importers}}"
 }

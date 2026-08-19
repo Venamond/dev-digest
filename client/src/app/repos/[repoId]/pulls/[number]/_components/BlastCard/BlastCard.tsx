@@ -229,10 +229,23 @@ function SymbolBlock({
         <span style={s.symbolName}>{CALLABLE_KINDS.has(symbol.kind) ? `${symbol.name}()` : symbol.name}</span>
         {!CALLABLE_KINDS.has(symbol.kind) && <span style={s.symbolKind}>{symbol.kind}</span>}
 
-        {/* The count follows the call sites actually listed below.
-            `callers_total` counts distinct caller FILES (see the contract
-            JSDoc), so using it here would label N rows with another unit. */}
-        <span style={s.symbolCount}>{t("callerCount", { count: symbol.callers.length })}</span>
+        {/* The count must describe everything listed below, or the row
+            contradicts itself: an interface with no call sites but two
+            importers read as "0 callers" with two rows under it. Counts follow
+            the rows actually rendered — `callers_total` is a count of distinct
+            caller FILES (see the contract JSDoc) and would be another unit. */}
+        <span style={s.symbolCount}>
+          {[
+            symbol.callers.length > 0 || extraImporters.length === 0
+              ? t("callerCount", { count: symbol.callers.length })
+              : null,
+            extraImporters.length > 0
+              ? t("importerCount", { count: extraImporters.length })
+              : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </span>
       </button>
       {open && (
       <div style={s.symbolBody}>
