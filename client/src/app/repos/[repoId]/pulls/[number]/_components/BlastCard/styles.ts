@@ -50,6 +50,8 @@ export const s = {
   } satisfies CSSProperties,
   toggle: {
     display: "inline-flex",
+    // Never squeezed, never wrapped away from the counters row.
+    flexShrink: 0,
     borderRadius: 6,
     overflow: "hidden",
     borderStyle: "solid",
@@ -85,17 +87,25 @@ export const s = {
      as four large tiles competing with the symbol names below. */
   statBar: {
     display: "flex",
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "space-between",
-    flexWrap: "wrap",
+    // NOT wrap: the card lives in a two-column grid, and at that width four
+    // counters plus the toggle exceed one line. Wrapping the BAR pushed the
+    // whole toggle onto a second row; wrapping only the counters keeps the
+    // toggle pinned to the right of the first line, which is the reference.
+    flexWrap: "nowrap",
     gap: 12,
   } satisfies CSSProperties,
   stats: {
     display: "flex",
     alignItems: "center",
     flexWrap: "wrap",
-    columnGap: 18,
+    columnGap: 14,
     rowGap: 6,
+    // Take the slack and be the thing that wraps.
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: "auto",
     minWidth: 0,
   } satisfies CSSProperties,
   stat: {
@@ -104,6 +114,7 @@ export const s = {
     gap: 6,
     fontSize: 13,
     lineHeight: 1.2,
+    whiteSpace: "nowrap",
   } satisfies CSSProperties,
   statValue: {
     fontWeight: 600,
