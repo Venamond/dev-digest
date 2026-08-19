@@ -22,7 +22,6 @@
   "stale": "This repo was indexed by an older indexer and lacks the caller ranking data — re-index it before trusting an empty map.",
   "reindex": "Re-index repo",
   "error": "Blast radius is unavailable for this PR.",
-  "importers": "importers",
   "truncated": "showing callers from {shown} of {total} files",
   "downstreamTruncated": "The dependency walk hit its cap, so the endpoints and cron jobs below are a subset of what this PR can reach.",
   "unlinked": "No indexed commit for this repo — file paths are shown without a link, because a line number from the index would point at the wrong commit.",
@@ -31,5 +30,6 @@
   "summaryTitle": "Summary",
   "summaryFailed": "The generated summary named something that is not in this map, so it was discarded.",
   "retry": "Try again",
-  "dismissedFinding": "{severity} raised here and dismissed: {title}"
+  "dismissedFinding": "{severity} raised here and dismissed: {title}",
+  "importerHint": "Imports this file; no call site was resolved"
 }

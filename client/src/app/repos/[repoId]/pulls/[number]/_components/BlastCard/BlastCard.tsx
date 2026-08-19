@@ -218,11 +218,19 @@ function SymbolBlock({
         onClick={() => setOpen(!open)}
       >
         <Chevron size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
-        <Icon.Code size={13} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+        {/* Blue, as on the reference — it marks the symbol, not chrome. */}
+        <Icon.Code size={13} style={{ color: "var(--accent-text)", flexShrink: 0 }} />
         {/* `rateLimit()` reads as the callable it is; the reference carries
             no separate uppercase kind label, and the parens say it better. */}
         <span style={s.symbolName}>{CALLABLE_KINDS.has(symbol.kind) ? `${symbol.name}()` : symbol.name}</span>
         {!CALLABLE_KINDS.has(symbol.kind) && <span style={s.symbolKind}>{symbol.kind}</span>}
+        {/* The declaring file rides the header line rather than taking one of
+            its own. The reference has no separate file row, but with dozens of
+            same-named symbols (three DiffTabProps in one map) the path is the
+            only thing telling them apart. */}
+        <span style={s.symbolFile} title={symbol.file}>
+          {shortPath(symbol.file, 2)}
+        </span>
         {/* The count follows the call sites actually listed below.
             `callers_total` counts distinct caller FILES (see the contract
             JSDoc), so using it here would label N rows with another unit. */}
@@ -230,9 +238,6 @@ function SymbolBlock({
       </button>
       {open && (
       <div style={s.symbolBody}>
-      <div style={s.symbolFile} title={symbol.file}>
-        {shortPath(symbol.file)}
-      </div>
       {symbol.callers.length > 0 && (
         <ul style={s.list}>
           {symbol.callers.map((caller) => (
@@ -265,16 +270,22 @@ function SymbolBlock({
         </p>
       )}
       {extraImporters.length > 0 && (
-        <>
-          <div style={s.sectionLabel}>{t("importers")}</div>
-          <ul style={s.list}>
-            {extraImporters.map((file) => (
-              <li key={file} style={s.listItem}>
-                <FileRef link={link} file={file} label={shortPath(file)} />
-              </li>
-            ))}
-          </ul>
-        </>
+        <ul style={s.list}>
+          {extraImporters.map((file) => (
+            <li key={file} style={s.listItem}>
+              {/* No heading and no line number: these are files that import
+                  the symbol's file with NO call site we could resolve, so
+                  there is no line to point at. The link icon is what tells
+                  them apart from the callers above. */}
+              <span style={s.listRow} title={t("importerHint")}>
+                <Icon.Link size={12} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+                <span style={{ minWidth: 0 }}>
+                  <FileRef link={link} file={file} label={shortPath(file)} />
+                </span>
+              </span>
+            </li>
+          ))}
+        </ul>
       )}
       {(symbol.endpoints.length > 0 || symbol.crons.length > 0) && (
         <div style={s.chipRow}>

@@ -292,11 +292,15 @@ describe("BlastCard", () => {
     expect(screen.queryByText(/Blast radius is unavailable/)).not.toBeInTheDocument();
   });
 
-  it("renders callers and importers as two distinct groups", () => {
+  it("marks an importer with no resolved call site apart from the callers", () => {
+    // No heading and no line number: an importer has no call site to point at.
+    // The distinction is the icon and the tooltip, not a section label — the
+    // reference has no such label and it duplicated the rows above it.
     renderCard();
-
-    expect(screen.getByText("importers")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "src/api/routes.ts" })).toBeInTheDocument();
+    expect(screen.queryByText(/^importers$/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByTitle("Imports this file; no call site was resolved"),
+    ).toBeInTheDocument();
   });
 
   it("triggers the summary once and then renders the cached paragraph", () => {

@@ -229,19 +229,16 @@ export const s = {
     alignItems: "center",
     gap: 8,
     width: "100%",
-    // A band, as in the reference: it separates one symbol's subtree from the
-    // next, which a flat row could not do once a symbol had six lines under it.
-    background: "var(--bg-primary)",
-    borderRadius: 6,
+    background: "none",
     borderStyle: "none",
     borderTopWidth: 0,
     borderRightWidth: 0,
     borderBottomWidth: 0,
     borderLeftWidth: 0,
-    paddingTop: 7,
-    paddingRight: 10,
-    paddingBottom: 7,
-    paddingLeft: 8,
+    paddingTop: 2,
+    paddingRight: 0,
+    paddingBottom: 2,
+    paddingLeft: 0,
     cursor: "pointer",
     textAlign: "left",
     fontFamily: "inherit",
@@ -277,6 +274,7 @@ export const s = {
     fontFamily: MONO,
     fontSize: 12,
     color: "var(--text-muted)",
+    flexShrink: 1,
     // Repo paths here run to 90+ chars with no space in them, so the default
     // break-word (which only breaks BETWEEN words) lets them run past the
     // card. `anywhere` is the one value that breaks inside a long token.
@@ -320,8 +318,11 @@ export const s = {
     overflowWrap: "anywhere",
     minWidth: 0,
   } satisfies CSSProperties,
+  /* The reference renders caller paths as plain light text, not blue links —
+     the blue in that column belongs to the `<>` marks and the endpoint chips.
+     Still an anchor: it deep-links, it just does not shout. */
   link: {
-    color: "var(--accent-text)",
+    color: "var(--text-secondary)",
     textDecorationLine: "none",
     overflowWrap: "anywhere",
   } satisfies CSSProperties,
