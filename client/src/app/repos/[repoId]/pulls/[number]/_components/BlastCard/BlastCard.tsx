@@ -355,7 +355,12 @@ export function BlastCard({ prId }: { prId: string | null }) {
   const summaryText = summary.data?.summary;
   const hasMap = data != null && (data.state === "ok" || data.state === "partial");
   // The map is worth drawing only when something downstream was actually found.
-  const hasImpact = data != null && data.symbols.length > 0 && data.totals.callers > 0;
+  // Whether there is a tree to draw is exactly "did any symbol survive the
+  // partition", and nothing else. Asking `totals.callers > 0` separately hid
+  // the whole tree for a symbol that reaches endpoints but has no call sites —
+  // while the counter above it said "2 endpoints", so the card contradicted
+  // itself. One source of truth, not two rules that agree most of the time.
+  const hasImpact = withImpact.length > 0;
 
   let body: React.ReactNode;
   if (isLoading) {

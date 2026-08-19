@@ -196,6 +196,30 @@ describe("BlastCard", () => {
     expect(caller.style.color).toBe("var(--text-secondary)");
   });
 
+  it("draws the tree for a symbol that reaches endpoints but has no callers", () => {
+    // Regression: the tree was gated on totals.callers > 0, so a symbol whose
+    // only impact is an endpoint was hidden behind "no downstream callers
+    // found" while the counter above said "2 endpoints" — the card
+    // contradicting itself.
+    h.data = makeBlast({
+      totals: { symbols: 1, callers: 0, callers_found: 0, endpoints: 2, crons: 0 },
+      symbols: [
+        {
+          ...makeBlast().symbols[0]!,
+          callers: [],
+          callers_total: 0,
+          importers: [],
+          endpoints: ["GET /invoices", "POST /invoices"],
+          crons: [],
+        },
+      ],
+    });
+    renderCard();
+
+    expect(screen.getByText("GET /invoices")).toBeInTheDocument();
+    expect(screen.queryByText(/no downstream callers found/)).not.toBeInTheDocument();
+  });
+
   it("collapses every symbol but the first", () => {
     renderCard();
 
