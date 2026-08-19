@@ -19,7 +19,11 @@
     "legendSymbol": "changed symbol",
     "legendCallers": "callers",
     "legendEndpoints": "endpoints affected",
-    "legendCrons": "cron / jobs"
+    "legendCrons": "cron / jobs",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "reset": "Fit to screen",
+    "close": "Close"
   },
   "partial": "The index for this repo is partial — the map below shows what has been indexed so far.",
   "degraded": "This repo is not indexed well enough to compute a blast radius.",

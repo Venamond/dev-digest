@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
-import { render, screen, cleanup, fireEvent } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import type { BlastResponse } from "@devdigest/shared";
 import blast from "../../../../../../../../messages/en/blast.json";
@@ -220,18 +220,33 @@ describe("BlastCard", () => {
     expect(screen.queryByText(/no downstream callers found/)).not.toBeInTheDocument();
   });
 
-  it("switches to the network view and draws the same nodes as the flow view", () => {
+  it("opens the network graph full screen and closes it again", () => {
     renderCard();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
     fireEvent.click(screen.getByRole("button", { name: "Network" }));
+    const dialog = screen.getByRole("dialog");
 
     // Both graph views read from collectGraph, so they can differ in layout
     // but never in what the map contains.
-    expect(screen.getByLabelText("Blast radius graph")).toBeInTheDocument();
-    // Twice: the visible <text> label and the <title> that carries the full
-    // string for a truncated label.
     expect(screen.getAllByText("formatMoney").length).toBeGreaterThan(0);
-    // The legend is shared, so the colours mean the same thing in both.
-    expect(screen.getByText("changed symbol")).toBeInTheDocument();
+    // The legend is shared, so a colour means the same thing in both views.
+    expect(within(dialog).getByText("changed symbol")).toBeInTheDocument();
+    // Zoom and fit are the reason it is a window rather than a card slot.
+    expect(within(dialog).getByRole("button", { name: "Zoom in" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Fit to screen" })).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("closes the network graph on Escape", () => {
+    renderCard();
+    fireEvent.click(screen.getByRole("button", { name: "Network" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("collapses every symbol but the first", () => {

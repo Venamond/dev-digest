@@ -5,11 +5,14 @@ import type { ForceLayout, PlacedNode } from "./force-layout";
 import { NODE_COLOR, NODE_RADIUS, MAX_NODE_LABEL } from "./constants";
 
 /**
- * The network view: the same nodes and edges as the flowchart, arranged by a
- * force simulation instead of in ranks.
+ * The drawn contents of the network view: edges, then nodes with their labels.
  *
- * Plain SVG on purpose. d3-force computes the positions (see `force-layout.ts`)
- * and nothing else — no d3 selections, no imperative DOM. React owns the
+ * No `<svg>` wrapper and no viewport maths — this renders inside whatever
+ * transform its parent applies, so the same markup serves the pannable,
+ * zoomable overlay without a second copy that could drift from it.
+ *
+ * Plain SVG on purpose. d3-force computes the coordinates (`force-layout.ts`)
+ * and nothing else: no d3 selections, no imperative DOM. React owns the
  * markup, so this renders under test in jsdom like any other component.
  */
 function label(text: string): string {
@@ -21,8 +24,8 @@ function Node({ node }: { node: PlacedNode }) {
   return (
     <g>
       <circle cx={node.x} cy={node.y} r={r} fill={NODE_COLOR[node.role]} />
-      {/* The label sits below the circle, as in the reference — beside it, long
-          paths overlap their neighbours at any useful node count. */}
+      {/* Below the circle, as in the reference — beside it, long paths overlap
+          their neighbours at any useful node count. */}
       <text
         x={node.x}
         y={node.y + r + 13}
@@ -37,21 +40,14 @@ function Node({ node }: { node: PlacedNode }) {
   );
 }
 
-export function ForceGraph({ layout }: { layout: ForceLayout }) {
+export function GraphContent({ layout }: { layout: ForceLayout }) {
   const byId = React.useMemo(
     () => new Map(layout.nodes.map((n) => [n.id, n])),
     [layout.nodes],
   );
 
   return (
-    <svg
-      viewBox={`0 0 ${layout.width} ${layout.height}`}
-      width="100%"
-      // Height follows the viewBox ratio; a fixed height would letterbox the
-      // graph inside a card whose width is already constrained.
-      style={{ display: "block", height: "auto" }}
-      role="img"
-    >
+    <>
       {layout.edges.map((e) => {
         const from = byId.get(e.from);
         const to = byId.get(e.to);
@@ -71,6 +67,6 @@ export function ForceGraph({ layout }: { layout: ForceLayout }) {
       {layout.nodes.map((n) => (
         <Node key={n.id} node={n} />
       ))}
-    </svg>
+    </>
   );
 }

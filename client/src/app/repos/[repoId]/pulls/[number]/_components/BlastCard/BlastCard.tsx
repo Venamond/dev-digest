@@ -8,7 +8,7 @@ import type { BlastLink, BlastResponse, BlastSymbolImpact } from "@devdigest/sha
 import { useBlast, useBlastSummary, useDeriveBlastSummary } from "@/lib/hooks/reviews";
 import { useResyncRepoIntel } from "@/lib/hooks/repo-intel";
 import { MermaidDiagram } from "@/components/mermaid-diagram/MermaidDiagram";
-import { ForceGraph } from "./ForceGraph";
+import { NetworkOverlay } from "./NetworkOverlay";
 import { computeForceLayout } from "./force-layout";
 import { githubBlobUrl } from "@/lib/github-urls";
 import {
@@ -367,7 +367,10 @@ export function BlastCard({ prId }: { prId: string | null }) {
   const summary = useBlastSummary(prId);
   const derive = useDeriveBlastSummary(prId);
   const resync = useResyncRepoIntel(repoId);
-  const [view, setView] = React.useState<"tree" | "flow" | "network">("tree");
+  const [view, setView] = React.useState<"tree" | "flow">("tree");
+  // The network graph opens full screen rather than in the card — see
+  // NetworkOverlay for why.
+  const [networkOpen, setNetworkOpen] = React.useState(false);
 
   const chart = React.useMemo(() => (data ? buildFlowchart(data) : ""), [data]);
   // Same nodes and edges as the chart, arranged by simulation instead of ranks.
@@ -440,18 +443,25 @@ export function BlastCard({ prId }: { prId: string | null }) {
                 not from dropping counters. */}
             <Stat icon="Clock" value={String(totals.crons)} label={t("stat.crons")} />
           </div>
-          <div style={s.toggle}>
-            {(["tree", "flow", "network"] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                aria-pressed={view === mode}
-                style={s.toggleButton(view === mode)}
-                onClick={() => setView(mode)}
-              >
-                {t(`view.${mode}`)}
-              </button>
-            ))}
+          <div style={s.actions}>
+            <div style={s.toggle}>
+              {(["tree", "flow"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  aria-pressed={view === mode}
+                  style={s.toggleButton(view === mode)}
+                  onClick={() => setView(mode)}
+                >
+                  {t(`view.${mode}`)}
+                </button>
+              ))}
+            </div>
+            {layout && layout.nodes.length > 0 && (
+              <Button kind="ghost" size="sm" icon="Workflow" onClick={() => setNetworkOpen(true)}>
+                {t("view.network")}
+              </Button>
+            )}
           </div>
         </div>
         {summaryText ? (
@@ -487,17 +497,6 @@ export function BlastCard({ prId }: { prId: string | null }) {
             </div>
           ) : (
             <p style={s.empty}>{t("noDownstream", { count: totals.symbols })}</p>
-          )
-        ) : view === "network" ? (
-          layout && layout.nodes.length > 0 ? (
-            <>
-              <div aria-label={t("graph.ariaLabel")}>
-                <ForceGraph layout={layout} />
-              </div>
-              <GraphLegend />
-            </>
-          ) : (
-            <p style={s.empty}>{t("graph.empty")}</p>
           )
         ) : chart ? (
           <>
@@ -550,6 +549,9 @@ export function BlastCard({ prId }: { prId: string | null }) {
         </div>
         {body}
       </div>
+      {networkOpen && layout && (
+        <NetworkOverlay layout={layout} onClose={() => setNetworkOpen(false)} />
+      )}
     </section>
   );
 }
