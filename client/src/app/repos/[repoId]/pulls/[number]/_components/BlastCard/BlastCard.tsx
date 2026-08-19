@@ -95,7 +95,7 @@ function PriorPulls({ pulls }: { pulls: BlastResponse["prior_pulls"] }) {
     <div style={s.priorCard}>
       <button
         type="button"
-        style={open ? { ...s.priorToggle, ...s.priorToggleOpen } : s.priorToggle}
+        style={s.priorToggle(open)}
         aria-expanded={open}
         onClick={() => setOpen(!open)}
       >

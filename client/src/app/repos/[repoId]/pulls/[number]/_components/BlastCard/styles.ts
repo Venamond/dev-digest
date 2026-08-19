@@ -328,18 +328,25 @@ export const s = {
     background: "transparent",
     overflow: "hidden",
   } satisfies CSSProperties,
-  priorToggle: {
+  /**
+   * Closed, the block is an outline and nothing else — same colour as the card
+   * around it, set apart only by its border. The fill appears only once it is
+   * OPEN, where it marks the header off from the rows it now has beneath it.
+   * A permanently filled strip read as a black slab sitting on the card.
+   */
+  priorToggle: (open: boolean): CSSProperties => ({
     display: "flex",
     alignItems: "center",
     gap: 8,
     width: "100%",
-    // The one filled surface in the block — the body stays at the card colour.
-    background: "var(--bg-primary)",
+    background: open ? "var(--bg-primary)" : "transparent",
     borderStyle: "none",
     borderTopWidth: 0,
     borderRightWidth: 0,
-    borderBottomWidth: 0,
     borderLeftWidth: 0,
+    borderBottomStyle: "solid",
+    borderBottomWidth: open ? 1 : 0,
+    borderBottomColor: "var(--border)",
     paddingTop: 12,
     paddingRight: 14,
     paddingBottom: 12,
@@ -349,13 +356,7 @@ export const s = {
     fontSize: 13,
     color: "var(--text-secondary)",
     textAlign: "left",
-  } satisfies CSSProperties,
-  /** Closes the header off from the body once the block is open. */
-  priorToggleOpen: {
-    borderBottomStyle: "solid",
-    borderBottomWidth: 1,
-    borderBottomColor: "var(--border)",
-  } satisfies CSSProperties,
+  }),
   priorCountBadge: {
     fontSize: 11,
     fontWeight: 600,
