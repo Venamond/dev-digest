@@ -331,13 +331,11 @@ export function BlastCard({ prId }: { prId: string | null }) {
               label={t("stat.callers")}
             />
             <Stat icon="Globe" value={String(totals.endpoints)} label={t("stat.endpoints")} />
-            {/* Endpoints stay even at zero — "this change reaches no HTTP
-                surface" is an answer a reviewer wants. Crons at zero are the
-                default expectation and say nothing, and dropping that slot is
-                what keeps the row on one line on a half-width card. */}
-            {totals.crons > 0 && (
-              <Stat icon="Clock" value={String(totals.crons)} label={t("stat.crons")} />
-            )}
+            {/* All four always render, zeros included: "reaches no HTTP
+                surface" and "schedules nothing" are answers a reviewer wants.
+                The room for them comes from the page width (PrDetailView),
+                not from dropping counters. */}
+            <Stat icon="Clock" value={String(totals.crons)} label={t("stat.crons")} />
           </div>
           <div style={s.toggle}>
             <button

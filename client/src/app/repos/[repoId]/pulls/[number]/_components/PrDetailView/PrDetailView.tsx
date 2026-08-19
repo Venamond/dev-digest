@@ -104,7 +104,7 @@ function PrDetailViewInner() {
 
   if (isLoading) {
     return (
-      <div style={{ padding: "28px 32px", display: "flex", flexDirection: "column", gap: 16, maxWidth: 1080, margin: "0 auto" }}>
+      <div style={{ padding: "28px 32px", display: "flex", flexDirection: "column", gap: 16, maxWidth: 1400, margin: "0 auto" }}>
         <Skeleton height={28} width={420} />
         <Skeleton height={16} width={300} />
         <Skeleton height={200} />
@@ -140,7 +140,22 @@ function PrDetailViewInner() {
         onRunsStarted={() => invalidateActiveRuns()}
       />
 
-      <div ref={rootRef} style={{ padding: "24px 32px 44px", display: "flex", flexDirection: "column", gap: 24, maxWidth: 1080, margin: "0 auto" }}>
+      <div
+        ref={rootRef}
+        style={{
+          padding: "24px 32px 44px",
+          display: "flex",
+          flexDirection: "column",
+          gap: 24,
+          // 1080 left ~460px of content per Overview card once the 32px
+          // padding, the 16px grid gap and the cards' own 20px padding came
+          // off — under the ~520px the Blast Radius counter row needs, so a
+          // counter wrapped no matter how tight the row got. A cap, not a
+          // floor: narrower viewports still use whatever they have.
+          maxWidth: 1400,
+          margin: "0 auto",
+        }}
+      >
         {tab === "overview" && <OverviewTab prBody={pr.body} prId={prId} />}
 
         {tab === "findings" && (
