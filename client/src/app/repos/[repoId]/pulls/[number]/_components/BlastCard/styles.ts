@@ -171,6 +171,35 @@ export const s = {
     flexDirection: "column",
     gap: 6,
   } satisfies CSSProperties,
+  /* The whole header is the disclosure control, so a generated summary can be
+     folded away without losing it — it was paid for once and re-deriving costs
+     another model call. */
+  summaryHeader: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    width: "100%",
+    background: "none",
+    borderStyle: "none",
+    borderTopWidth: 0,
+    borderRightWidth: 0,
+    borderBottomWidth: 0,
+    borderLeftWidth: 0,
+    paddingTop: 0,
+    paddingRight: 0,
+    paddingBottom: 0,
+    paddingLeft: 0,
+    cursor: "pointer",
+    fontFamily: "inherit",
+    textAlign: "left",
+  } satisfies CSSProperties,
+  /* One chevron, rotated: the icon set has no ChevronUp. */
+  chevron: (open: boolean): CSSProperties => ({
+    color: "var(--text-muted)",
+    marginLeft: "auto",
+    flexShrink: 0,
+    transform: open ? "rotate(180deg)" : "none",
+  }),
   summaryText: {
     margin: 0,
     fontSize: 13,

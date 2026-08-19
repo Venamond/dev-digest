@@ -278,6 +278,27 @@ describe("BlastCard", () => {
     expect(screen.queryByRole("button", { name: "Explain" })).not.toBeInTheDocument();
   });
 
+  it("folds the generated summary away without losing it", () => {
+    // Not a dismiss: the paragraph is never persisted, so discarding it would
+    // cost another model call to see again. Collapsing keeps it in reach.
+    h.summary = { summary: "This PR reaches `GET /invoices`." };
+    renderCard();
+
+    const toggle = screen.getByRole("button", { name: /Summary/i });
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("This PR reaches `GET /invoices`.")).toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("This PR reaches `GET /invoices`.")).not.toBeInTheDocument();
+    // The header stays, so it can be reopened — and Explain does not come back.
+    expect(screen.getByRole("button", { name: /Summary/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Explain" })).not.toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    expect(screen.getByText("This PR reaches `GET /invoices`.")).toBeInTheDocument();
+  });
+
   it("says so when the generated summary was discarded, and offers a retry", () => {
     h.deriveError = true;
     renderCard();

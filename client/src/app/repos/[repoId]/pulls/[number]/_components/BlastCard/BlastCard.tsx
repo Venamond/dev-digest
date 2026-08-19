@@ -63,18 +63,41 @@ function Stat({
   );
 }
 
+/**
+ * The generated paragraph, foldable. It cannot be dismissed outright: it is
+ * not persisted, so throwing it away would mean paying for another model call
+ * to see it again. Collapsing keeps it in reach.
+ */
+function SummaryBox({ text }: { text: string }) {
+  const t = useTranslations("blast");
+  const [open, setOpen] = React.useState(true);
+  return (
+    <div style={s.summaryBox}>
+      <button
+        type="button"
+        style={s.summaryHeader}
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+      >
+        <span style={s.sectionLabel}>{t("summaryTitle")}</span>
+        <Icon.ChevronDown size={16} style={s.chevron(open)} />
+      </button>
+      {open && <p style={s.summaryText}>{text}</p>}
+    </div>
+  );
+}
+
 /** Prior PRs that touched the same files — history beside the structural map. */
 function PriorPulls({ pulls }: { pulls: BlastResponse["prior_pulls"] }) {
   const t = useTranslations("blast");
   const [open, setOpen] = React.useState(false);
-  const Chevron = open ? Icon.ChevronDown : Icon.ChevronRight;
   return (
     <div style={s.priorCard}>
       <button type="button" style={s.priorToggle} aria-expanded={open} onClick={() => setOpen(!open)}>
         <Icon.History size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
         <span>{t("priorPulls")}</span>
         <span style={s.priorCountBadge}>{pulls.length}</span>
-        <Chevron size={14} style={{ color: "var(--text-muted)", marginLeft: "auto" }} />
+        <Icon.ChevronDown size={16} style={s.chevron(open)} />
       </button>
       {open && (
         <div style={s.priorList}>
@@ -269,10 +292,7 @@ export function BlastCard({ prId }: { prId: string | null }) {
           </div>
         </div>
         {summaryText ? (
-          <div style={s.summaryBox}>
-            <span style={s.sectionLabel}>{t("summaryTitle")}</span>
-            <p style={s.summaryText}>{summaryText}</p>
-          </div>
+          <SummaryBox text={summaryText} />
         ) : derive.isError ? (
           <div style={s.summaryBox}>
             <p style={s.note}>{t("summaryFailed")}</p>
