@@ -212,13 +212,15 @@ export const s = {
   tree: {
     display: "flex",
     flexDirection: "column",
-    gap: 16,
+    // Tight on purpose: a symbol row plus its subtree is one unit, and 16px
+    // between units left enough space to fit another row in the gap.
+    gap: 2,
     minWidth: 0,
   } satisfies CSSProperties,
   symbol: {
     display: "flex",
     flexDirection: "column",
-    gap: 8,
+    gap: 4,
     minWidth: 0,
   } satisfies CSSProperties,
   /* A row, not a heading: the whole strip is the disclosure control, with the
@@ -243,9 +245,9 @@ export const s = {
     borderRightWidth: 0,
     borderBottomWidth: 0,
     borderLeftWidth: 0,
-    paddingTop: 6,
+    paddingTop: 4,
     paddingRight: 8,
-    paddingBottom: 6,
+    paddingBottom: 4,
     paddingLeft: 6,
     cursor: "pointer",
     textAlign: "left",
@@ -260,7 +262,8 @@ export const s = {
   symbolBody: {
     display: "flex",
     flexDirection: "column",
-    gap: 8,
+    gap: 5,
+    paddingBottom: 4,
     paddingLeft: 22,
     // Without this a flex column refuses to shrink below its widest child, so
     // a long path widens the whole card instead of wrapping inside it.
@@ -328,8 +331,8 @@ export const s = {
     fontFamily: MONO,
     fontSize: 12,
     lineHeight: 1.45,
-    paddingTop: 3,
-    paddingBottom: 3,
+    paddingTop: 2,
+    paddingBottom: 2,
     color: "var(--text-muted)",
     overflowWrap: "anywhere",
     minWidth: 0,

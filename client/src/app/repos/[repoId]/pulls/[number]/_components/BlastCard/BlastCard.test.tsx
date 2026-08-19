@@ -115,6 +115,15 @@ afterEach(() => {
 });
 
 describe("BlastCard", () => {
+  /** Open a symbol's subtree. Nothing is expanded on arrival — the card does
+   *  not presume which symbol the reader came for. */
+  function expandSymbol(name: string): void {
+    const row = screen
+      .getAllByRole("button")
+      .find((b) => b.textContent?.includes(name));
+    fireEvent.click(row!);
+  }
+
   /** The value rendered beside a stat label — scoped, because bare digits also
    *  appear in the prior-PR count badge and the per-symbol caller counts. */
   function statValue(label: string): string {
@@ -156,6 +165,7 @@ describe("BlastCard", () => {
       ),
     });
     renderCard();
+    expandSymbol("formatMoney");
 
     // Endpoints and crons are the answer the map exists to give — the
     // reference gives them chips, not two more grey list rows.
@@ -168,6 +178,7 @@ describe("BlastCard", () => {
 
   it("highlights a symbol header only while it is expanded", () => {
     renderCard();
+    expandSymbol("formatMoney");
     const openRow = screen.getByRole("button", { expanded: true });
     const closedRow = screen
       .getAllByRole("button", { expanded: false })
@@ -187,6 +198,7 @@ describe("BlastCard", () => {
       ),
     });
     renderCard();
+    expandSymbol("formatMoney");
 
     const importer = screen.getByRole("link", { name: "src/only-imports.ts" });
     const caller = screen.getByRole("link", { name: "…/api/public/index.ts:23" });
@@ -215,6 +227,7 @@ describe("BlastCard", () => {
       ],
     });
     renderCard();
+    expandSymbol("formatMoney");
 
     expect(screen.getByText("GET /invoices")).toBeInTheDocument();
     expect(screen.queryByText(/no downstream callers found/)).not.toBeInTheDocument();
@@ -272,18 +285,20 @@ describe("BlastCard", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("collapses every symbol but the first", () => {
+  it("starts with every symbol collapsed", () => {
     renderCard();
 
-    // The first symbol's body is open on arrival so the card shows real
-    // content; the second is a closed disclosure row.
+    // Nothing is opened for the reader: on a wide map the first symbol is
+    // usually not the one they came for.
+    expect(screen.queryByRole("button", { expanded: true })).not.toBeInTheDocument();
     const rows = screen.getAllByRole("button", { expanded: false });
+    expect(rows.some((r) => r.textContent?.includes("formatMoney"))).toBe(true);
     expect(rows.some((r) => r.textContent?.includes("applyTax"))).toBe(true);
-    expect(screen.getByRole("button", { expanded: true }).textContent).toContain("formatMoney");
   });
 
   it("deep-links a caller at the INDEXED commit, not the PR head", () => {
     renderCard();
+    expandSymbol("formatMoney");
 
     const link = screen.getByRole("link", { name: "…/api/public/index.ts:23" });
     expect(link).toHaveAttribute(
@@ -303,6 +318,7 @@ describe("BlastCard", () => {
       link: { repo_full_name: "acme/payments-api", indexed_sha: "", head_sha: "deadbee" },
     });
     renderCard();
+    expandSymbol("formatMoney");
 
     expect(
       screen.queryByRole("link", { name: "…/api/public/index.ts:23" }),
@@ -345,6 +361,7 @@ describe("BlastCard", () => {
       ),
     });
     renderCard();
+    expandSymbol("formatMoney");
 
     // Both numbers are FILE counts: `callers_total` is distinct caller files,
     // and the shown side is the distinct files among the rendered call sites.
@@ -423,6 +440,7 @@ describe("BlastCard", () => {
     // The distinction is the icon and the tooltip, not a section label — the
     // reference has no such label and it duplicated the rows above it.
     renderCard();
+    expandSymbol("formatMoney");
     expect(screen.queryByText(/^importers$/i)).not.toBeInTheDocument();
     expect(
       screen.getByTitle("Imports this file; no call site was resolved"),

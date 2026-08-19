@@ -225,14 +225,14 @@ function PriorPulls({
 function SymbolBlock({
   symbol,
   link,
-  defaultOpen,
 }: {
   symbol: BlastSymbolImpact;
   link: BlastLink;
-  defaultOpen: boolean;
 }) {
   const t = useTranslations("blast");
-  const [open, setOpen] = React.useState(defaultOpen);
+  // Everything starts collapsed. Opening the first symbol for the reader
+  // presumes it is the one they came for, and on a wide map it is usually not.
+  const [open, setOpen] = React.useState(false);
   const Chevron = open ? Icon.ChevronDown : Icon.ChevronRight;
   // Only importers with no resolved call site: the rest repeat the callers.
   const extraImporters = React.useMemo(
@@ -481,14 +481,11 @@ export function BlastCard({ prId }: { prId: string | null }) {
         {view === "tree" ? (
           hasImpact ? (
             <div style={s.tree}>
-              {withImpact.map((symbol, i) => (
+              {withImpact.map((symbol) => (
                 <SymbolBlock
                   key={`${symbol.file}:${symbol.name}`}
                   symbol={symbol}
                   link={link}
-                  // The first symbol opens so the card shows real content on
-                  // arrival; the rest stay collapsed so a wide PR is scannable.
-                  defaultOpen={i === 0}
                 />
               ))}
               {emptyCount > 0 && (
