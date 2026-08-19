@@ -498,6 +498,7 @@ d('Blast Radius (Testcontainers pg)', () => {
         repoId: repo.id,
         number: 7,
         title: 'Earlier rounding fix',
+        body: 'Rounded refunds to the nearest cent.\n\nSecond paragraph is dropped.',
         author: 'ana',
         branch: 'feat/old',
         base: 'main',
@@ -547,10 +548,14 @@ d('Blast Radius (Testcontainers pg)', () => {
     expect(res.statusCode).toBe(200);
     const [row] = res.json().prior_pulls as Array<{
       number: number;
+      description: string | null;
       shared_files: string[];
       unresolved_findings: Array<{ severity: string; title: string }>;
     }>;
     expect(row!.number).toBe(7);
+    // No intent was derived for that PR, so the description falls back to the
+    // FIRST paragraph of its body — not the whole thing.
+    expect(row!.description).toBe('Rounded refunds to the nearest cent.');
     // Only the overlap, not everything that PR touched.
     expect(row!.shared_files).toEqual(['src/lib/money.ts']);
     // Only the DISMISSED one — an accepted finding was dealt with.

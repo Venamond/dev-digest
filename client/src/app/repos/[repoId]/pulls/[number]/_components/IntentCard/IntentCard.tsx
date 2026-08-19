@@ -105,7 +105,7 @@ export function IntentCard({ prId }: { prId: string | null }) {
   };
 
   return (
-    <section>
+    <section style={{ display: "flex", flexDirection: "column" }}>
       <div style={s.card}>
         <div style={s.header}>
           <div style={s.headerLabel}>

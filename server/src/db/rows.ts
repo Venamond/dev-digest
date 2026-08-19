@@ -38,4 +38,8 @@ export interface PriorPullRow {
   author: string;
   status: string;
   updatedAt: Date | null;
+  /** That PR's derived intent, if the Intent layer ever ran on it. */
+  intent: string | null;
+  /** Its description — the fallback when no intent was derived. */
+  body: string | null;
 }

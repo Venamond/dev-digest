@@ -245,6 +245,12 @@ export const BlastPriorPull = z.object({
   author: z.string(),
   status: z.string(),
   updated_at: z.string().nullable(),
+  /**
+   * What that PR set out to do, in one line — its derived intent, or the
+   * first paragraph of its description, trimmed. `null` when it has neither.
+   * A fact about that PR; never a claim about how it relates to this one.
+   */
+  description: z.string().nullable(),
   /** Paths this PR and that one both touch. Never empty — it is the join. */
   shared_files: z.array(z.string()),
   /** Findings raised on that PR and dismissed. Capped per PR. */

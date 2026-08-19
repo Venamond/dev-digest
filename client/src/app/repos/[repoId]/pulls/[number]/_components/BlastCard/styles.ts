@@ -4,6 +4,9 @@ const MONO = "ui-monospace, SFMono-Regular, Menlo, monospace";
 
 export const s = {
   card: {
+    // Fills the grid cell so the pair stays level (OverviewTab/styles.ts).
+    height: "100%",
+    boxSizing: "border-box",
     borderRadius: 8,
     borderStyle: "solid",
     borderTopWidth: 1,
@@ -400,28 +403,45 @@ export const s = {
     gap: 4,
     minWidth: 0,
   } satisfies CSSProperties,
+  /* The number and the title share ONE line. Without `minWidth: 0` on the
+     title, flex refuses to break it and pushes the whole title to its own
+     row — which is what made #8 render as a bare number above its heading. */
   priorTitleLine: {
     display: "flex",
     alignItems: "baseline",
-    flexWrap: "wrap",
+    flexWrap: "nowrap",
     gap: 8,
   } satisfies CSSProperties,
   priorNumber: {
     fontFamily: MONO,
     fontSize: 12,
     color: "var(--accent-text)",
+    flexShrink: 0,
   } satisfies CSSProperties,
   priorTitle: {
     fontSize: 13,
     fontWeight: 600,
     color: "var(--text-primary)",
+    flexGrow: 1,
+    flexShrink: 1,
+    minWidth: 0,
+    overflowWrap: "anywhere",
   } satisfies CSSProperties,
   priorStatus: {
+    flexShrink: 0,
     fontSize: 11,
     fontWeight: 600,
     letterSpacing: "0.04em",
     textTransform: "uppercase",
     color: "var(--warn)",
+  } satisfies CSSProperties,
+  /* What that PR set out to do, in its own words — the intent line the Intent
+     layer already derived for it, or its description. A fact about that PR,
+     never a claim about how it relates to this one. */
+  priorDescription: {
+    fontSize: 12,
+    lineHeight: 1.5,
+    color: "var(--text-secondary)",
   } satisfies CSSProperties,
   /* The join made visible: which path this PR and that one have in common. */
   priorFiles: {

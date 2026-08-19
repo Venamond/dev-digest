@@ -3,3 +3,6 @@ export const MAX_PRIOR_PULLS = 5;
 
 /** Dismissed findings shown per prior PR — enough to notice, not a review. */
 export const MAX_FINDINGS_PER_PRIOR_PULL = 3;
+
+/** A prior PR's description is a pointer, not a second review. */
+export const MAX_PRIOR_DESCRIPTION_CHARS = 180;

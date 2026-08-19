@@ -59,9 +59,15 @@ export class BlastRepository {
         author: t.pullRequests.author,
         status: t.pullRequests.status,
         updatedAt: t.pullRequests.updatedAt,
+        // The Intent layer's one-line "why" for that PR when it exists, its
+        // description otherwise. LEFT join: most older PRs never had intent
+        // derived, and a missing row must not drop the PR from the list.
+        intent: t.prIntent.intent,
+        body: t.pullRequests.body,
       })
       .from(t.prFiles)
       .innerJoin(t.pullRequests, eq(t.pullRequests.id, t.prFiles.prId))
+      .leftJoin(t.prIntent, eq(t.prIntent.prId, t.pullRequests.id))
       .where(
         and(
           eq(t.pullRequests.repoId, repoId),

@@ -82,6 +82,7 @@ function makeBlast(over: Partial<BlastResponse> = {}): BlastResponse {
         author: "octocat",
         status: "merged",
         updated_at: "2026-08-01T00:00:00.000Z",
+        description: "Rounded refunds to the nearest cent across the money helpers.",
         shared_files: ["src/lib/tax-table.ts"],
         unresolved_findings: [{ severity: "WARNING", title: "Rounding drifts on refunds" }],
       },
@@ -360,6 +361,9 @@ describe("BlastCard", () => {
     fireEvent.click(screen.getByRole("button", { name: /Prior PRs touching these files/ }));
 
     expect(screen.getByText("src/lib/tax-table.ts")).toBeInTheDocument();
+    expect(
+      screen.getByText("Rounded refunds to the nearest cent across the money helpers."),
+    ).toBeInTheDocument();
     expect(
       screen.getByText("WARNING raised here and dismissed: Rounding drifts on refunds"),
     ).toBeInTheDocument();

@@ -129,6 +129,9 @@ function PriorPulls({ pulls }: { pulls: BlastResponse["prior_pulls"] }) {
                     <span>{`· ${new Date(pull.updated_at).toLocaleDateString()}`}</span>
                   )}
                 </div>
+                {pull.description && (
+                  <div style={s.priorDescription}>{pull.description}</div>
+                )}
                 {pull.shared_files.length > 0 && (
                   <div style={s.priorFiles}>{pull.shared_files.join(", ")}</div>
                 )}
@@ -373,7 +376,7 @@ export function BlastCard({ prId }: { prId: string | null }) {
   }
 
   return (
-    <section>
+    <section style={{ display: "flex", flexDirection: "column" }}>
       <div style={s.card}>
         <div style={s.header}>
           <div style={s.headerLabel}>

@@ -11,6 +11,7 @@ import type {
   ReverseDependentsResult,
 } from '../repo-intel/types.js';
 import type { PriorPullRow } from '../../db/rows.js';
+import { MAX_PRIOR_DESCRIPTION_CHARS } from './constants.js';
 
 /**
  * Pure response shaping — no I/O, no drizzle, no LLM. Everything this file
@@ -29,6 +30,20 @@ export interface ShapeBlastInput {
   link: { repo_full_name: string; head_sha: string };
   state: BlastState;
   reason?: BlastReason;
+}
+
+/**
+ * What that PR set out to do, in one line. The Intent layer's derived
+ * `intent` when it ran on that PR, otherwise the first paragraph of its
+ * description. Trimmed hard: this is a pointer, not a second review.
+ */
+function priorDescription(p: PriorPullRow): string | null {
+  const raw = p.intent?.trim() || p.body?.split(/\n\s*\n/)[0]?.trim() || '';
+  if (raw.length === 0) return null;
+  const oneLine = raw.replace(/\s+/g, ' ');
+  return oneLine.length > MAX_PRIOR_DESCRIPTION_CHARS
+    ? `${oneLine.slice(0, MAX_PRIOR_DESCRIPTION_CHARS - 1).trimEnd()}…`
+    : oneLine;
 }
 
 export function shapeBlastResponse(input: ShapeBlastInput): BlastResponse {
@@ -117,6 +132,7 @@ export function shapeBlastResponse(input: ShapeBlastInput): BlastResponse {
       author: p.author,
       status: p.status,
       updated_at: p.updatedAt?.toISOString() ?? null,
+      description: priorDescription(p),
       shared_files: sharedFiles.get(p.id) ?? [],
       unresolved_findings: unresolved.get(p.id) ?? [],
     })),

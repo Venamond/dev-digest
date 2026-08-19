@@ -263,6 +263,7 @@ describe('Blast Radius API contracts (L04)', () => {
         author: 'a',
         status: 'merged',
         updated_at: null,
+        description: null,
         shared_files: ['src/a.ts'],
         unresolved_findings: [],
       }),

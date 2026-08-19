@@ -26,7 +26,12 @@ export const s = {
      */
     gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
     gap: 16,
-    alignItems: "start",
+    // Stretch, not start: the taller card sets the row height and the other
+    // grows to match, so the pair reads as one band. Shrinking Blast Radius
+    // lets Intent shrink back with it — the row is only ever as tall as its
+    // tallest member. Each card also needs height:100% to fill the cell its
+    // <section> wrapper stretches to.
+    alignItems: "stretch",
   } satisfies CSSProperties,
   descriptionBox: {
     border: "1px solid var(--border)",
