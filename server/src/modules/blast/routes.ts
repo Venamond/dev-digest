@@ -3,6 +3,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { BlastResponse, BlastSummaryResponse } from '@devdigest/shared';
 import { getContext } from '../_shared/context.js';
 import { IdParams } from '../_shared/schemas.js';
+import { resolveFeatureModel } from '../settings/feature-models.js';
 import { BlastService } from './service.js';
 
 /**
@@ -13,7 +14,14 @@ import { BlastService } from './service.js';
 export default async function blastRoutes(appBase: FastifyInstance) {
   const app = appBase.withTypeProvider<ZodTypeProvider>();
   const { container } = app;
-  const service = new BlastService(container);
+  // Composition happens here, at the ring-3 edge: the service itself declares
+  // four ports (blast/deps.ts) instead of taking the Container.
+  const service = new BlastService({
+    db: container.db,
+    repoIntel: () => container.repoIntel,
+    llm: (id) => container.llm(id),
+    featureModel: (workspaceId, id) => resolveFeatureModel(container, workspaceId, id),
+  });
 
   app.get(
     '/pulls/:id/blast',

@@ -418,15 +418,26 @@ export class RepoIntelService implements RepoIntel {
       cappedCallers.push(c);
     }
 
-    // Exact pre-cap totals per symbol, so consumers report honest truncation.
+    // Pre-cap totals per symbol, so consumers report honest truncation.
+    //
+    // Both sides count DISTINCT CALLER FILES. Comparing a raw reference count
+    // against the kept ROW count conflated deduplication with truncation: a
+    // function calling the symbol twice yields two `references` rows and one
+    // caller, which reported `truncated: true` with nothing truncated.
     const totalRows = await this.repo.countResolvedCallers(repoId, changedFiles, names);
     const totalsBySymbol = new Map(totalRows.map((r) => [r.toSymbol, Number(r.total)]));
+    const keptFilesPerSymbol = new Map<string, Set<string>>();
+    for (const c of cappedCallers) {
+      const set = keptFilesPerSymbol.get(c.viaSymbol);
+      if (set) set.add(c.file);
+      else keptFilesPerSymbol.set(c.viaSymbol, new Set([c.file]));
+    }
     const callerStatsBySymbol: Record<string, { total: number; truncated: boolean }> = {};
     for (const name of names) {
       const total = totalsBySymbol.get(name) ?? 0;
       callerStatsBySymbol[name] = {
         total,
-        truncated: total > (keptPerSymbol.get(name) ?? 0),
+        truncated: total > (keptFilesPerSymbol.get(name)?.size ?? 0),
       };
     }
 

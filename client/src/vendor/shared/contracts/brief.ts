@@ -167,10 +167,13 @@ export const BlastIndexInfo = z.object({
 export type BlastIndexInfo = z.infer<typeof BlastIndexInfo>;
 
 /**
- * `callers` counts the rows actually rendered (post-cap); `callers_found`
- * is the sum of the per-symbol pre-cap totals. The stat row renders
- * "N of M" whenever they differ — a headline number that silently showed
- * only the capped count would under-report impact with no signal.
+ * `callers` counts the call sites actually rendered (post-cap). `callers_found`
+ * is the sum of the per-symbol `callers_total`, i.e. DISTINCT CALLER FILES
+ * found before capping — a different unit on purpose, because it is the only
+ * count SQL can produce that never exceeds what the in-JS dedup by
+ * (file, enclosing symbol) can yield. The stat row renders "N of M" only when
+ * something was really dropped; a headline number that silently showed the
+ * capped count alone would under-report impact with no signal.
  */
 export const BlastTotals = z.object({
   symbols: z.number().int(),
@@ -191,9 +194,17 @@ export type BlastCallerRef = z.infer<typeof BlastCallerRef>;
 
 /**
  * `callers` is deduplicated by (file, enclosing symbol) and capped at
- * MAX_CALLERS_PER_SYMBOL, so `callers.length <= callers_total`.
- * `callers_total` is the exact number of RESOLVED references to this
- * symbol; `callers_truncated` means the list is not everything we found.
+ * MAX_CALLERS_PER_SYMBOL.
+ *
+ * `callers_total` is the number of DISTINCT FILES that reference this symbol,
+ * counted before the cap. It is deliberately NOT a count of `references` rows:
+ * a function calling the symbol twice is two rows and one caller, and
+ * comparing rows against callers made `callers_truncated` fire when nothing
+ * had been dropped. `callers.length` can therefore exceed `callers_total`
+ * (two functions in one file are two call sites in one file) — do not present
+ * the two as "N of M call sites".
+ *
+ * `callers_truncated` is true only when caller files were actually dropped.
  */
 export const BlastSymbolImpact = z.object({
   file: z.string(),

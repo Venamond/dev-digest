@@ -182,12 +182,32 @@ describe("BlastCard", () => {
     });
     renderCard();
 
-    expect(screen.getByText("showing 1 of 25 callers")).toBeInTheDocument();
+    // Both numbers are FILE counts: `callers_total` is distinct caller files,
+    // and the shown side is the distinct files among the rendered call sites.
+    // Mixing units here is what made the old string claim "1 of 2 callers"
+    // about a single caller that had simply been called twice.
+    expect(screen.getByText("showing callers from 1 of 25 files")).toBeInTheDocument();
 
     cleanup();
     h.data = makeBlast();
     renderCard();
-    expect(screen.queryByText(/showing \d+ of \d+ callers/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/showing callers from \d+ of \d+ files/)).not.toBeInTheDocument();
+  });
+
+  it("labels the caller list with the number of call sites it actually renders", () => {
+    // Regression: the heading used `callers_total` (distinct FILES), so a file
+    // calling the symbol from two functions rendered two rows under a "1
+    // caller" label — and one calling it twice from one function rendered one
+    // row under "2 callers".
+    h.data = makeBlast({
+      symbols: makeBlast().symbols.map((sym, i) =>
+        i === 0 ? { ...sym, callers_total: 1, callers_truncated: false } : sym,
+      ),
+    });
+    renderCard();
+    // Both fixture symbols render one call site each, so the label appears
+    // twice — the point is that it counts rows, not `callers_total`.
+    expect(screen.getAllByText("1 callers")).toHaveLength(2);
   });
 
   it("reports a headline caller count that was capped as N / M", () => {

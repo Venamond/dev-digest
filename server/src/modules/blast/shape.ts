@@ -10,7 +10,7 @@ import type {
   IndexState,
   ReverseDependentsResult,
 } from '../repo-intel/types.js';
-import type { PriorPullRow } from './repository.js';
+import type { PriorPullRow } from '../../db/rows.js';
 
 /**
  * Pure response shaping — no I/O, no drizzle, no LLM. Everything this file

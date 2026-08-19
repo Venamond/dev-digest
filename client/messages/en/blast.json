@@ -23,7 +23,7 @@
   "reindex": "Re-index repo",
   "error": "Blast radius is unavailable for this PR.",
   "importers": "importers",
-  "truncated": "showing {shown} of {total} callers",
+  "truncated": "showing callers from {shown} of {total} files",
   "downstreamTruncated": "The dependency walk hit its cap, so the endpoints and cron jobs below are a subset of what this PR can reach.",
   "unlinked": "No indexed commit for this repo — file paths are shown without a link, because a line number from the index would point at the wrong commit.",
   "priorPulls": "Prior PRs touching these files",

@@ -551,6 +551,28 @@ d('Blast Radius (Testcontainers pg)', () => {
     await app.close();
   });
 
+  it('summary: an ok-but-empty map is 409 and spends no LLM call', async () => {
+    // A fully indexed repo whose PR touches a file with no declared symbols
+    // is `state: "ok"` with zero symbols — a genuinely empty impact. Paying a
+    // model to write a paragraph about nothing is worse than saying so.
+    const { appPromise, openai, openrouter } = appWithMocks();
+    const app = await appPromise;
+    const { repo, pr } = await setupRepoAndPr();
+    await indexState(repo.id);
+    await db.insert(t.prFiles).values({ prId: pr.id, path: 'docs/readme.md' });
+
+    const get = await app.inject({ method: 'GET', url: `/pulls/${pr.id}/blast` });
+    expect(get.statusCode).toBe(200);
+    expect(get.json().state).toBe('ok');
+    expect(get.json().symbols).toEqual([]);
+
+    const res = await app.inject({ method: 'POST', url: `/pulls/${pr.id}/blast/summary` });
+    expect(res.statusCode).toBe(409);
+    expect(openrouter.calls.length).toBe(0);
+    expect(openai.calls.length).toBe(0);
+    await app.close();
+  });
+
   it('404 for an unknown pr uuid, 422 for a non-uuid id', async () => {
     const { appPromise } = appWithMocks();
     const app = await appPromise;

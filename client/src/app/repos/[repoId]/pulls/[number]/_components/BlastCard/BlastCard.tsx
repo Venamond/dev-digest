@@ -65,7 +65,10 @@ function SymbolBlock({ symbol, link }: { symbol: BlastSymbolImpact; link: BlastL
         <span style={s.symbolKind}>{symbol.kind}</span>
         <span style={s.symbolFile}>{symbol.file}</span>
       </div>
-      <div style={s.sectionLabel}>{t("callerCount", { count: symbol.callers_total })}</div>
+      {/* The heading counts the call sites actually listed below. `callers_total`
+          is a count of distinct caller FILES (see the contract JSDoc), so using
+          it here would label N rendered rows with a different unit. */}
+      <div style={s.sectionLabel}>{t("callerCount", { count: symbol.callers.length })}</div>
       {symbol.callers.length > 0 && (
         <ul style={s.list}>
           {symbol.callers.map((caller) => (
@@ -83,7 +86,10 @@ function SymbolBlock({ symbol, link }: { symbol: BlastSymbolImpact; link: BlastL
       )}
       {symbol.callers_truncated && (
         <p style={s.note}>
-          {t("truncated", { shown: symbol.callers.length, total: symbol.callers_total })}
+          {t("truncated", {
+            shown: new Set(symbol.callers.map((c) => c.file)).size,
+            total: symbol.callers_total,
+          })}
         </p>
       )}
       {symbol.importers.length > 0 && (

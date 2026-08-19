@@ -122,6 +122,29 @@ describe('RepoIntel.getBlastRadius — per-symbol caller cap', () => {
     expect(blast.callerStatsBySymbol?.beta).toEqual({ total: 2, truncated: false });
   });
 
+  it('does not report truncation when the list merely deduplicated', async () => {
+    // Regression: two references from the SAME file collapse to one caller in
+    // the dedup by (file, enclosing symbol). Comparing a raw reference count
+    // against the kept ROW count made `truncated` fire with nothing dropped —
+    // the card then read "showing 1 of 2 callers" about a single caller.
+    // Both sides now count DISTINCT CALLER FILES, so this is `false`.
+    const svc = buildService({
+      repo: {
+        getSymbolRows: async (_r: string, files: string[]) =>
+          files.includes('src/lib/target.ts') ? declRows('alpha') : [],
+        getResolvedCallers: async () => [
+          { fromPath: 'src/callers/alpha-1.ts', toSymbol: 'alpha', line: 4, rank: 5 },
+          { fromPath: 'src/callers/alpha-1.ts', toSymbol: 'alpha', line: 9, rank: 5 },
+        ],
+        // count(distinct from_path) — one file, however many references.
+        countResolvedCallers: async () => [{ toSymbol: 'alpha', total: 1 }],
+      },
+    });
+
+    const blast = await svc.getBlastRadius('r1', ['src/lib/target.ts']);
+    expect(blast.callerStatsBySymbol?.alpha).toEqual({ total: 1, truncated: false });
+  });
+
   it('never returns the declaring file as one of its own callers', async () => {
     const svc = buildService({
       repo: {

@@ -85,6 +85,23 @@ describe('ungroundedNodes', () => {
     ]);
   });
 
+  it('accepts a call suffix and a :line suffix — the model writes those naturally', () => {
+    // Regression: the node set stores bare names and bare paths, so checking the
+    // raw span rejected `rateLimit()` and `src/mw.ts:12` — correct output from a
+    // model doing exactly what the prompt asked. A validator stricter than its
+    // own instruction turns every summary into a 422.
+    expect(
+      ungroundedNodes('`rateLimit()` in `src/mw.ts:12` is called by `payHandler()`.', nodes),
+    ).toEqual([]);
+    expect(ungroundedNodes('See `src/routes/pay.ts:12-18`.', nodes)).toEqual([]);
+  });
+
+  it('still catches a hallucination that merely looks like a call', () => {
+    expect(ungroundedNodes('It also calls `nukeEverything()`.', nodes)).toEqual([
+      'nukeEverything()',
+    ]);
+  });
+
   it('passes a summary with no backticks at all — deliberately', () => {
     // The check only looks at backtick-quoted spans: the system prompt tells
     // the model to backtick every name, which makes the check cheap and

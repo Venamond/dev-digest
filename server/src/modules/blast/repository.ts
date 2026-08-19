@@ -1,16 +1,7 @@
 import { and, eq, inArray, ne, sql } from 'drizzle-orm';
 import type { Db } from '../../db/client.js';
 import * as t from '../../db/schema.js';
-import type { PullRow, RepoRow } from '../../db/rows.js';
-
-/** One prior PR that touched at least one of the same paths. */
-export interface PriorPullRow {
-  number: number;
-  title: string;
-  author: string;
-  status: string;
-  updatedAt: Date | null;
-}
+import type { PriorPullRow, PullRow, RepoRow } from '../../db/rows.js';
 
 /**
  * Ring 2 — the only file in modules/blast/ allowed to import drizzle-orm /

@@ -5,17 +5,12 @@ import type {
   BlastState,
   BlastSummaryResponse,
 } from '@devdigest/shared';
-import type { Container } from '../../platform/container.js';
 import { ConfigError, ConflictError, NotFoundError, ValidationError } from '../../platform/errors.js';
 import { wrapUntrusted } from '../../platform/prompt.js';
-import { resolveFeatureModel } from '../settings/feature-models.js';
-import {
-  BFS_DEPTH,
-  INDEXER_VERSION,
-  MAX_CALLERS_PER_SYMBOL,
-} from '../repo-intel/constants.js';
+import { BFS_DEPTH, INDEXER_VERSION } from '../repo-intel/constants.js';
 import type { BlastResult, IndexState } from '../repo-intel/types.js';
 import { MAX_PRIOR_PULLS } from './constants.js';
+import type { BlastDeps } from './deps.js';
 import { BlastRepository } from './repository.js';
 import { shapeBlastResponse } from './shape.js';
 import {
@@ -34,8 +29,8 @@ const EMPTY_BLAST: BlastResult = {
 export class BlastService {
   private repo: BlastRepository;
 
-  constructor(private container: Container) {
-    this.repo = new BlastRepository(container.db);
+  constructor(private deps: BlastDeps) {
+    this.repo = new BlastRepository(deps.db);
   }
 
   /**
@@ -57,7 +52,7 @@ export class BlastService {
 
     const link = { repo_full_name: repoRow.fullName, head_sha: pull.headSha };
     const changedFiles = await this.repo.prFiles(prId);
-    const index = await this.container.repoIntel.getIndexState(pull.repoId);
+    const index = await this.deps.repoIntel().getIndexState(pull.repoId);
 
     // The gate has TWO conditions.
     // (a) the index must exist and be usable at all;
@@ -91,10 +86,12 @@ export class BlastService {
       });
     }
 
-    const blast = await this.container.repoIntel.getBlastRadius(pull.repoId, changedFiles, {
-      maxCallersPerSymbol: MAX_CALLERS_PER_SYMBOL,
-      persistentOnly: true,
-    });
+    // `maxCallersPerSymbol` is deliberately NOT passed: the facade already
+    // defaults to MAX_CALLERS_PER_SYMBOL, and re-sending its own tuning
+    // constant would pin today's value if repo-intel ever retunes it.
+    const blast = await this.deps
+      .repoIntel()
+      .getBlastRadius(pull.repoId, changedFiles, { persistentOnly: true });
     // TOCTOU: the gate passed, but the facade could not serve from the index.
     if (blast.degraded) {
       return this.degraded(index, link, blast.reason ?? 'no_data');
@@ -104,7 +101,7 @@ export class BlastService {
     // two levels from the change. Seeding from callers both missed every file
     // that imports a changed file without referencing a detected symbol, and
     // measured the depth budget one hop too far out.
-    const reverse = await this.container.repoIntel.getReverseDependents(
+    const reverse = await this.deps.repoIntel().getReverseDependents(
       pull.repoId,
       changedFiles,
       BFS_DEPTH,
@@ -147,10 +144,17 @@ export class BlastService {
     if (res.state === 'degraded') {
       throw new ConflictError('Repository is not indexed yet', { reason: 'not_indexed' });
     }
+    // An empty map has nothing to explain; paying for a paragraph about
+    // nothing is worse than saying so.
+    if (res.symbols.length === 0) {
+      throw new ConflictError('This pull request has no mapped impact to explain', {
+        reason: 'empty_map',
+      });
+    }
 
     try {
-      const feature = await resolveFeatureModel(this.container, workspaceId, 'blast_summary');
-      const llm = await this.container.llm(feature.provider);
+      const feature = await this.deps.featureModel(workspaceId, 'blast_summary');
+      const llm = await this.deps.llm(feature.provider);
       // Mirrors reviews/intent/classify.ts:101-103 — a developer machine with a
       // real OPENROUTER_API_KEY must never make a live call from the suite.
       if (process.env.VITEST && llm.id === 'openrouter') {

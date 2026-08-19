@@ -94,19 +94,42 @@ export function buildBlastSummaryPrompt(res: BlastResponse): {
 }
 
 /**
+ * Normalise a backticked span to the bare name the map stores.
+ *
+ * The prompt tells the model to backtick every name, and a model writing
+ * naturally produces `rateLimit()` for a function and `src/a.ts:23` for a call
+ * site. The node set holds bare names and bare paths, so checking the raw span
+ * rejected correct output — a validator stricter than the instruction it
+ * enforces. Strip a trailing call suffix and a trailing `:line` / `:line-line`
+ * before comparing.
+ */
+function normaliseSpan(span: string): string {
+  return span
+    .trim()
+    .replace(/\(\s*\)$/, '')
+    .replace(/:\d+(?:-\d+)?$/, '')
+    .trim();
+}
+
+/**
  * Every backtick-quoted span in `summary` must name something in the map.
  * Checking only backticked spans is deliberate: the system prompt instructs
  * the model to backtick every name it uses, which makes the check cheap and
  * complete for what it promises. Free-text scanning would flag ordinary
  * English words containing a dot or a slash.
  *
- * Returns the offending spans; an empty array means the summary is grounded.
+ * Returns the offending spans (as written, so the error names what the model
+ * actually said); an empty array means the summary is grounded.
  */
 export function ungroundedNodes(summary: string, nodes: Set<string>): string[] {
   const bad: string[] = [];
   for (const match of summary.matchAll(BACKTICKED)) {
-    const span = (match[1] ?? '').trim();
-    if (span.length > 0 && !nodes.has(span) && !bad.includes(span)) bad.push(span);
+    const raw = (match[1] ?? '').trim();
+    if (raw.length === 0) continue;
+    const span = normaliseSpan(raw);
+    if (span.length === 0) continue;
+    if (nodes.has(raw) || nodes.has(span)) continue;
+    if (!bad.includes(raw)) bad.push(raw);
   }
   return bad;
 }

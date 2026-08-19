@@ -553,10 +553,22 @@ export class RepoIntelRepository {
       .orderBy(desc(ranked.rank));
   }
 
-  /** Pre-cap resolved-reference count per symbol name (honest truncation).
-   *  The innerJoin on file_rank MIRRORS getResolvedCallers exactly — without
-   *  it the total counts references whose caller file has no rank row and can
-   *  therefore never be returned. */
+  /**
+   * Pre-cap count of DISTINCT caller FILES per symbol name (honest truncation).
+   *
+   * `count(distinct from_path)`, NOT `count(*)`: the caller list the facade
+   * returns is deduplicated in JS by `(file, enclosing symbol)`, so a function
+   * that calls the changed symbol twice produces two `references` rows and ONE
+   * caller. Counting raw rows made `truncated` fire when nothing had been
+   * truncated — the card then said "showing 1 of 2 callers" about a single
+   * caller. Distinct files is the coarsest count SQL can produce that never
+   * exceeds what dedup can yield, so `total > distinct files kept` means
+   * something really was dropped.
+   *
+   * The innerJoin on file_rank MIRRORS getResolvedCallers exactly — without
+   * it the total counts references whose caller file has no rank row and can
+   * therefore never be returned.
+   */
   async countResolvedCallers(
     repoId: string,
     declFiles: string[],
@@ -564,7 +576,10 @@ export class RepoIntelRepository {
   ): Promise<Array<{ toSymbol: string; total: number }>> {
     if (declFiles.length === 0 || names.length === 0) return [];
     return this.db
-      .select({ toSymbol: t.references.toSymbol, total: count() })
+      .select({
+        toSymbol: t.references.toSymbol,
+        total: sql<number>`count(distinct ${t.references.fromPath})`,
+      })
       .from(t.references)
       .innerJoin(
         t.fileRank,
