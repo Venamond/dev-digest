@@ -14,3 +14,10 @@ export const REASON_KEY: Record<string, string> = {
 };
 
 export const REASON_KEY_FALLBACK = "degraded";
+
+/**
+ * Kinds that read better with call parens — `rateLimit()` rather than
+ * `rateLimit FUNCTION`. Anything else (interface, type, class, const) keeps
+ * its bare name and shows its kind, because parens would be a lie about it.
+ */
+export const CALLABLE_KINDS = new Set(["function", "method", "arrow", "constructor"]);

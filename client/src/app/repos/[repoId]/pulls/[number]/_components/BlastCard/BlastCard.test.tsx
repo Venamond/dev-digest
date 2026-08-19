@@ -125,8 +125,8 @@ describe("BlastCard", () => {
   it("renders every changed symbol and the stat row", () => {
     renderCard();
 
-    expect(screen.getByText("formatMoney")).toBeInTheDocument();
-    expect(screen.getByText("applyTax")).toBeInTheDocument();
+    expect(screen.getByText("formatMoney()")).toBeInTheDocument();
+    expect(screen.getByText("applyTax()")).toBeInTheDocument();
     expect(statValue("symbols")).toBe("2");
     expect(statValue("callers")).toBe("2");
     expect(statValue("endpoints")).toBe("1");
@@ -145,6 +145,25 @@ describe("BlastCard", () => {
     expect(statValue("callers")).toBe("2");
     expect(statValue("endpoints")).toBe("0");
     expect(statValue("cron/jobs")).toBe("0");
+  });
+
+  it("renders endpoints and crons as chips, and non-callable kinds without parens", () => {
+    h.data = makeBlast({
+      symbols: makeBlast().symbols.map((sym, i) =>
+        i === 0
+          ? { ...sym, endpoints: ["GET /invoices"], crons: ["nightly-close"] }
+          : { ...sym, kind: "interface" },
+      ),
+    });
+    renderCard();
+
+    // Endpoints and crons are the answer the map exists to give — the
+    // reference gives them chips, not two more grey list rows.
+    expect(screen.getByText("GET /invoices")).toBeInTheDocument();
+    expect(screen.getByText("nightly-close")).toBeInTheDocument();
+    // An interface is not callable, so no parens are added to its name.
+    expect(screen.getByText("applyTax")).toBeInTheDocument();
+    expect(screen.getByText("interface")).toBeInTheDocument();
   });
 
   it("collapses every symbol but the first", () => {
@@ -204,7 +223,7 @@ describe("BlastCard", () => {
     renderCard();
 
     expect(screen.getByText(/index for this repo is partial/)).toBeInTheDocument();
-    expect(screen.getByText("formatMoney")).toBeInTheDocument();
+    expect(screen.getByText("formatMoney()")).toBeInTheDocument();
   });
 
   it("reports per-symbol caller truncation with both numbers", () => {
@@ -328,7 +347,7 @@ describe("BlastCard", () => {
   it("switches between the tree and the graph view", () => {
     renderCard();
 
-    expect(screen.getByText("formatMoney")).toBeInTheDocument();
+    expect(screen.getByText("formatMoney()")).toBeInTheDocument();
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Graph" }));
@@ -337,7 +356,7 @@ describe("BlastCard", () => {
     expect(screen.queryByText("formatMoney")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Tree" }));
-    expect(screen.getByText("formatMoney")).toBeInTheDocument();
+    expect(screen.getByText("formatMoney()")).toBeInTheDocument();
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
   });
 
@@ -417,6 +436,6 @@ describe("OverviewTab", () => {
     );
 
     expect(screen.getByText("Blast radius")).toBeInTheDocument();
-    expect(screen.getByText("formatMoney")).toBeInTheDocument();
+    expect(screen.getByText("formatMoney()")).toBeInTheDocument();
   });
 });

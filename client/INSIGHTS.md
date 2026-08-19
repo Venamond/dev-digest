@@ -32,8 +32,9 @@ ground truth — wrap-ups can mischaracterize a session.
   a worse outcome, and the thing the pairing exists to avoid. `auto-fit` has
   no setting that both keeps two columns and guarantees a wide one.
   **The binding constraint is the PAGE, not the grid.** `PrDetailView` caps the
-  whole PR detail column at `maxWidth: 1400` (raised from 1080 on 2026-08-19
-  for exactly this reason) with 32px side padding, so an Overview card gets
+  whole PR detail column at `maxWidth: 1240` (raised from 1080 on 2026-08-19
+  for exactly this reason, and sized to the counter row rather than rounded up
+  — a wider page is a product decision, not a layout fix) with 32px side padding, so an Overview card gets
   `(cap − 64 − 16) / 2` minus its own 20px padding. At 1080 that was ~460px,
   under the ~520px the Blast counter row needs — no amount of tightening
   inside the card could fix it. Check that number before restyling a card that

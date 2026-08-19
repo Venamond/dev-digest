@@ -287,13 +287,27 @@ export const s = {
     textTransform: "uppercase",
     color: "var(--text-muted)",
   } satisfies CSSProperties,
+  /* The rail is what makes a caller list read as a branch of the symbol above
+     it rather than a second, unrelated list. */
   list: {
     margin: 0,
-    padding: 0,
+    paddingTop: 0,
+    paddingRight: 0,
+    paddingBottom: 0,
+    paddingLeft: 10,
     listStyleType: "none",
     display: "flex",
     flexDirection: "column",
     gap: 4,
+    borderLeftStyle: "solid",
+    borderLeftWidth: 1,
+    borderLeftColor: "var(--border)",
+  } satisfies CSSProperties,
+  listRow: {
+    display: "flex",
+    alignItems: "baseline",
+    gap: 6,
+    minWidth: 0,
   } satisfies CSSProperties,
   listItem: {
     fontFamily: MONO,
@@ -313,7 +327,52 @@ export const s = {
     fontFamily: MONO,
     fontSize: 12,
     color: "var(--text-secondary)",
+    overflowWrap: "anywhere",
   } satisfies CSSProperties,
+  /* Endpoints and crons are the ANSWER the map exists to give — what this
+     change can reach from outside. The reference gives them chips, in two
+     colours, so they read at a glance instead of as two more grey lines. */
+  chipRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 6,
+  } satisfies CSSProperties,
+  chip: (kind: "endpoint" | "cron"): CSSProperties => ({
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    fontFamily: MONO,
+    fontSize: 12,
+    lineHeight: 1.5,
+    borderRadius: 6,
+    paddingTop: 3,
+    paddingRight: 9,
+    paddingBottom: 3,
+    paddingLeft: 8,
+    borderStyle: "solid",
+    borderTopWidth: 1,
+    borderRightWidth: 1,
+    borderBottomWidth: 1,
+    borderLeftWidth: 1,
+    overflowWrap: "anywhere",
+    ...(kind === "endpoint"
+      ? {
+          background: "var(--accent-bg)",
+          color: "var(--accent-text)",
+          borderTopColor: "var(--accent-text)",
+          borderRightColor: "var(--accent-text)",
+          borderBottomColor: "var(--accent-text)",
+          borderLeftColor: "var(--accent-text)",
+        }
+      : {
+          background: "color-mix(in srgb, var(--warn) 14%, transparent)",
+          color: "var(--warn)",
+          borderTopColor: "var(--warn)",
+          borderRightColor: "var(--warn)",
+          borderBottomColor: "var(--warn)",
+          borderLeftColor: "var(--warn)",
+        }),
+  }),
   /* Separates the map (structure) from the history below it — the reference
      draws a rule there, and without it the prior-PR block reads as one more
      row of the tree rather than a different kind of evidence. */

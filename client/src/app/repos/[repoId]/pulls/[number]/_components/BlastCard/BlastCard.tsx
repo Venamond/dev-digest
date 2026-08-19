@@ -10,7 +10,7 @@ import { useResyncRepoIntel } from "@/lib/hooks/repo-intel";
 import { MermaidDiagram } from "@/components/mermaid-diagram/MermaidDiagram";
 import { githubBlobUrl } from "@/lib/github-urls";
 import { buildFlowchart, codeTokens, countGraphNodes, splitHighlight } from "./helpers";
-import { MAX_GRAPH_NODES, REASON_KEY, REASON_KEY_FALLBACK } from "./constants";
+import { CALLABLE_KINDS, MAX_GRAPH_NODES, REASON_KEY, REASON_KEY_FALLBACK } from "./constants";
 import { s } from "./styles";
 
 /**
@@ -206,8 +206,10 @@ function SymbolBlock({
       >
         <Chevron size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
         <Icon.Code size={13} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
-        <span style={s.symbolName}>{symbol.name}</span>
-        <span style={s.symbolKind}>{symbol.kind}</span>
+        {/* `rateLimit()` reads as the callable it is; the reference carries
+            no separate uppercase kind label, and the parens say it better. */}
+        <span style={s.symbolName}>{CALLABLE_KINDS.has(symbol.kind) ? `${symbol.name}()` : symbol.name}</span>
+        {!CALLABLE_KINDS.has(symbol.kind) && <span style={s.symbolKind}>{symbol.kind}</span>}
         {/* The count follows the call sites actually listed below.
             `callers_total` counts distinct caller FILES (see the contract
             JSDoc), so using it here would label N rows with another unit. */}
@@ -220,13 +222,21 @@ function SymbolBlock({
         <ul style={s.list}>
           {symbol.callers.map((caller) => (
             <li key={`${caller.file}:${caller.symbol}:${caller.line}`} style={s.listItem}>
-              <FileRef
-                link={link}
-                file={caller.file}
-                line={caller.line}
-                label={`${caller.file}:${caller.line}`}
-              />{" "}
-              {caller.symbol}
+              <span style={s.listRow}>
+                <Icon.CornerDownRight
+                  size={12}
+                  style={{ color: "var(--text-muted)", flexShrink: 0 }}
+                />
+                <span style={{ minWidth: 0 }}>
+                  <FileRef
+                    link={link}
+                    file={caller.file}
+                    line={caller.line}
+                    label={`${caller.file}:${caller.line}`}
+                  />{" "}
+                  {caller.symbol}
+                </span>
+              </span>
             </li>
           ))}
         </ul>
@@ -252,18 +262,20 @@ function SymbolBlock({
         </>
       )}
       {(symbol.endpoints.length > 0 || symbol.crons.length > 0) && (
-        <ul style={s.list}>
+        <div style={s.chipRow}>
           {symbol.endpoints.map((endpoint) => (
-            <li key={`endpoint:${endpoint}`} style={s.listItem}>
+            <span key={`endpoint:${endpoint}`} style={s.chip("endpoint")}>
+              <Icon.Globe size={12} style={{ flexShrink: 0 }} />
               {endpoint}
-            </li>
+            </span>
           ))}
           {symbol.crons.map((cron) => (
-            <li key={`cron:${cron}`} style={s.listItem}>
+            <span key={`cron:${cron}`} style={s.chip("cron")}>
+              <Icon.Clock size={12} style={{ flexShrink: 0 }} />
               {cron}
-            </li>
+            </span>
           ))}
-        </ul>
+        </div>
       )}
       </div>
       )}
