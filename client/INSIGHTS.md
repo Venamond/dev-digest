@@ -70,6 +70,17 @@ ground truth — wrap-ups can mischaracterize a session.
   will not shrink below its widest child, so the unbroken path widens the
   whole card instead of wrapping in it. Any card rendering file paths
   (findings, diff, blast) needs both.
+  **Wrapping is not enough on its own — a list of real paths has to be
+  TRUNCATED to stay legible.** A design drawn against the demo repo
+  (`src/api/public/index.ts`) collapses on this one, where a path is
+  `client/src/app/repos/[repoId]/pulls/[number]/_components/DiffTab/DiffTab.tsx`:
+  every row shares the same six leading segments and the part that tells the
+  rows apart is off the end. Render the TAIL (`shortPath` in
+  `BlastCard/helpers.ts`, last 3 segments behind `…/`) and keep the whole path
+  in the link `href` and a `title` tooltip, so nothing is lost. Judge any
+  path-rendering design against a real path from this repo before believing
+  it — three rounds of "the design is completely different" here were volume,
+  not styling.
 
 - **i18n namespace follows the component's location, not the feature it serves.**
   Shared components under `client/src/components/**` call
