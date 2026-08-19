@@ -29,6 +29,9 @@ export const EXCLUDED_DIRS = [
 /** [T1] Caller fan-out cap per changed symbol (ORDER BY rank DESC LIMIT N). */
 export const MAX_CALLERS_PER_SYMBOL = 20;
 
+/** [L04] Hard cap on reverse dependents kept per BFS level. */
+export const MAX_REVERSE_DEPENDENTS = 200;
+
 /**
  * [T1] Bumped whenever the AST extractor or symbol schema changes. A mismatch
  * with `repo_index_state.indexer_version` forces a full reindex.

@@ -15,6 +15,12 @@ import {
   Settings,
   Repo,
   PrDetail,
+  BlastResponse,
+  BlastPriorPull,
+  BlastReason,
+  BlastSummaryResponse,
+  FeatureModelId,
+  FEATURE_MODELS,
 } from '@devdigest/shared';
 
 /**
@@ -205,6 +211,84 @@ describe('platform DTOs', () => {
         files: [],
         commits: [],
       }),
+    ).not.toThrow();
+  });
+});
+
+describe('Blast Radius API contracts (L04)', () => {
+  const okResponse = {
+    state: 'ok',
+    index: { status: 'full', last_indexed_sha: 'abc', updated_at: '2026-08-19T00:00:00.000Z' },
+    totals: { symbols: 1, callers: 2, callers_found: 5, endpoints: 1, crons: 0 },
+    symbols: [
+      {
+        file: 'src/lib/money.ts',
+        name: 'formatMoney',
+        kind: 'function',
+        callers: [{ file: 'src/routes/pay.ts', symbol: 'payHandler', line: 12, rank: 0.5 }],
+        callers_total: 5,
+        callers_truncated: true,
+        importers: [{ file: 'src/routes/pay.ts', depth: 1 }],
+        endpoints: ['POST /pay'],
+        crons: [],
+      },
+    ],
+    downstream_truncated: false,
+    prior_pulls: [],
+    link: { repo_full_name: 'acme/api', indexed_sha: 'abc', head_sha: 'def' },
+  };
+
+  it('parses an ok response with `reason` omitted entirely', () => {
+    const parsed = BlastResponse.parse(okResponse);
+    expect(parsed.reason).toBeUndefined();
+  });
+
+  it('parses a degraded response with a reason and empty collections', () => {
+    expect(() =>
+      BlastResponse.parse({
+        ...okResponse,
+        state: 'degraded',
+        reason: 'no_data',
+        symbols: [],
+        prior_pulls: [],
+      }),
+    ).not.toThrow();
+  });
+
+  it('accepts a prior pull with a null updated_at', () => {
+    expect(() =>
+      BlastPriorPull.parse({
+        number: 1,
+        title: 't',
+        author: 'a',
+        status: 'merged',
+        updated_at: null,
+      }),
+    ).not.toThrow();
+  });
+
+  it('knows the index_stale reason', () => {
+    expect(BlastReason.parse('index_stale')).toBe('index_stale');
+  });
+
+  it('registers blast_summary as a selectable feature model', () => {
+    expect(FeatureModelId.parse('blast_summary')).toBe('blast_summary');
+    expect(FEATURE_MODELS.some((f) => f.id === 'blast_summary')).toBe(true);
+  });
+
+  it('rejects a response missing downstream_truncated or totals.callers_found', () => {
+    const { downstream_truncated: _dropped, ...withoutTruncated } = okResponse;
+    expect(() => BlastResponse.parse(withoutTruncated)).toThrow();
+
+    const { callers_found: _alsoDropped, ...totalsWithoutFound } = okResponse.totals;
+    expect(() =>
+      BlastResponse.parse({ ...okResponse, totals: totalsWithoutFound }),
+    ).toThrow();
+  });
+
+  it('parses a BlastSummaryResponse', () => {
+    expect(() =>
+      BlastSummaryResponse.parse({ summary: 's', model: 'm', nodes: 3 }),
     ).not.toThrow();
   });
 });

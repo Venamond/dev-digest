@@ -13,7 +13,7 @@
  * raw-SQL probes below MUST swallow `undefined_table` (Postgres 42P01) so the
  * facade keeps returning degraded — never throws.
  */
-import { and, asc, desc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, isNotNull, lte, sql } from 'drizzle-orm';
 import type { Db } from '../../db/client.js';
 import * as t from '../../db/schema.js';
 import { clampIndexedName } from '../../db/schema/context.js';
@@ -499,19 +499,30 @@ export class RepoIntelRepository {
       .where(and(eq(t.symbols.repoId, repoId), inArray(t.symbols.path, paths)));
   }
 
-  /** Resolved cross-file callers of symbols declared in `declFiles`. */
+  /**
+   * Resolved cross-file callers of symbols declared in `declFiles`, capped at
+   * `perSymbolLimit` rows PER SYMBOL via a window function. A single global
+   * LIMIT would let the top-ranked callers of one symbol crowd out every
+   * caller of another.
+   */
   async getResolvedCallers(
     repoId: string,
     declFiles: string[],
     names: string[],
+    perSymbolLimit: number,
   ): Promise<ResolvedCallerRow[]> {
     if (declFiles.length === 0 || names.length === 0) return [];
-    return this.db
+    const ranked = this.db
       .select({
         fromPath: t.references.fromPath,
         toSymbol: t.references.toSymbol,
         line: t.references.line,
         rank: t.fileRank.rank,
+        rn: sql<number>`row_number() over (
+          partition by ${t.references.toSymbol}
+          order by ${t.fileRank.rank} desc, ${t.references.fromPath} asc,
+                   ${t.references.line} asc
+        )`.as('rn'),
       })
       .from(t.references)
       .innerJoin(
@@ -527,7 +538,77 @@ export class RepoIntelRepository {
           inArray(t.references.declFile, declFiles),
           inArray(t.references.toSymbol, names),
         ),
-      );
+      )
+      .as('ranked');
+
+    return this.db
+      .select({
+        fromPath: ranked.fromPath,
+        toSymbol: ranked.toSymbol,
+        line: ranked.line,
+        rank: ranked.rank,
+      })
+      .from(ranked)
+      .where(lte(ranked.rn, perSymbolLimit))
+      .orderBy(desc(ranked.rank));
+  }
+
+  /** Pre-cap resolved-reference count per symbol name (honest truncation).
+   *  The innerJoin on file_rank MIRRORS getResolvedCallers exactly — without
+   *  it the total counts references whose caller file has no rank row and can
+   *  therefore never be returned. */
+  async countResolvedCallers(
+    repoId: string,
+    declFiles: string[],
+    names: string[],
+  ): Promise<Array<{ toSymbol: string; total: number }>> {
+    if (declFiles.length === 0 || names.length === 0) return [];
+    return this.db
+      .select({ toSymbol: t.references.toSymbol, total: count() })
+      .from(t.references)
+      .innerJoin(
+        t.fileRank,
+        and(
+          eq(t.fileRank.repoId, t.references.repoId),
+          eq(t.fileRank.filePath, t.references.fromPath),
+        ),
+      )
+      .where(
+        and(
+          eq(t.references.repoId, repoId),
+          inArray(t.references.declFile, declFiles),
+          inArray(t.references.toSymbol, names),
+        ),
+      )
+      .groupBy(t.references.toSymbol);
+  }
+
+  /** Files that import any of `toFiles` (one BFS level). Uses
+   *  file_edges_repo_to_idx; NEVER loads the whole graph (cf. getEdges).
+   *  LEFT JOIN file_rank + ORDER BY rank DESC so that when the level is
+   *  capped, the IMPORTANT dependents survive. Ordering by from_file would
+   *  truncate alphabetically — src/a*.ts kept, src/z*.ts silently dropped.
+   *  LEFT, not INNER: a dependent whose file has no rank row must still be
+   *  reachable, it just sorts last. */
+  async getReverseEdges(
+    repoId: string,
+    toFiles: string[],
+    limit: number,
+  ): Promise<Array<{ fromFile: string; toFile: string }>> {
+    if (toFiles.length === 0) return [];
+    return this.db
+      .select({ fromFile: t.fileEdges.fromFile, toFile: t.fileEdges.toFile })
+      .from(t.fileEdges)
+      .leftJoin(
+        t.fileRank,
+        and(
+          eq(t.fileRank.repoId, t.fileEdges.repoId),
+          eq(t.fileRank.filePath, t.fileEdges.fromFile),
+        ),
+      )
+      .where(and(eq(t.fileEdges.repoId, repoId), inArray(t.fileEdges.toFile, toFiles)))
+      .orderBy(sql`${t.fileRank.rank} desc nulls last`, asc(t.fileEdges.fromFile))
+      .limit(limit);
   }
 
   /** Per-file facts (endpoints/crons) for the given files. */

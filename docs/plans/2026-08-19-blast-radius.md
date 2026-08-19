@@ -898,7 +898,16 @@ copy its snippets or fixtures.
        `callers.sort((a, b) => b.rank - a.rank)` at `:366`;
      - sets `callerStatsBySymbol[name] = { total, truncated: total > kept.length }`
        for every name in `nameSet` (a symbol with zero callers gets
-       `{ total: 0, truncated: false }`).
+       `{ total: 0, truncated: false }`);
+     - **excludes the declaring file** — acceptance criterion 5 and S2 test 3
+       require it, and no other bullet gave it a home. Implemented as a JS
+       guard in `tryPersistentBlast` via a `declFilesByName` map, mirroring
+       the ripgrep path's existing `if (r.fromPath === sym.file) continue;`.
+       Deliberately **not** pushed into SQL: `resolveReferences` derives
+       `decl_file` through `file_edges`, so a self-referencing row is
+       unreachable in practice — the guard states the invariant rather than
+       filtering rows that would change any count.
+       (Added during implementation 2026-08-19.)
   3. **Downstream of the cap (this is the bug the step must close).** Today
      `callerFiles` is computed at `:337` from the **pre-cap** `callerRows` and
      feeds `getFileFacts` at `:370`, which produces both `factsByFile` and
@@ -996,7 +1005,11 @@ copy its snippets or fixtures.
   **(e) `server/test/conventions.it.test.ts`.** `mockRepoIntel` (`:48`)
   returns an object literal typed `RepoIntel`; adding a required interface
   member breaks `pnpm typecheck` there. Add one line beside
-  `getCriticalPaths` (`:78`): `getReverseDependents: async () => [],`.
+  `getCriticalPaths` (`:78`):
+  `getReverseDependents: async () => ({ dependents: [], truncated: false }),`.
+  **Corrected during implementation 2026-08-19:** an earlier draft of this
+  bullet said `async () => []`, which predates D24's `ReverseDependentsResult`
+  return type and does not typecheck.
   Its existing `getBlastRadius: async () => ({...})` needs **no** change — an
   optional third parameter does not break a zero-arg implementation.
 

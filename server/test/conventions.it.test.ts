@@ -76,6 +76,7 @@ function mockRepoIntel(samples: string[], sha = 'deadbeef'): RepoIntel {
     getConventionSamples: async () => samples,
     getTopFilesByRank: async () => samples,
     getCriticalPaths: async () => [],
+    getReverseDependents: async () => ({ dependents: [], truncated: false }),
   };
 }
 

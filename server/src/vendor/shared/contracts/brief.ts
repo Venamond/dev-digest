@@ -139,3 +139,130 @@ export const PrBrief = z.object({
   history: PrHistory,
 });
 export type PrBrief = z.infer<typeof PrBrief>;
+
+// ---- Blast Radius API (L04) — distinct from the older BlastRadius above,
+// which is the PrBrief building block and keeps its shape. ----
+export const BlastState = z.enum(['ok', 'partial', 'degraded']);
+export type BlastState = z.infer<typeof BlastState>;
+
+export const BlastReason = z.enum([
+  'index_partial',
+  'no_data',
+  'flag_off',
+  'index_failed',
+  'repo_too_large',
+  // The index row says `full`, but it was written by an older indexer:
+  // `file_rank` / resolved `decl_file` may not exist, so the caller query
+  // would return nothing and the card would claim "no downstream callers".
+  // Report a stale index instead of lying.
+  'index_stale',
+]);
+export type BlastReason = z.infer<typeof BlastReason>;
+
+export const BlastIndexInfo = z.object({
+  status: z.enum(['full', 'partial', 'degraded', 'failed']),
+  last_indexed_sha: z.string(),
+  updated_at: z.string(),
+});
+export type BlastIndexInfo = z.infer<typeof BlastIndexInfo>;
+
+/**
+ * `callers` counts the rows actually rendered (post-cap); `callers_found`
+ * is the sum of the per-symbol pre-cap totals. The stat row renders
+ * "N of M" whenever they differ — a headline number that silently showed
+ * only the capped count would under-report impact with no signal.
+ */
+export const BlastTotals = z.object({
+  symbols: z.number().int(),
+  callers: z.number().int(),
+  callers_found: z.number().int(),
+  endpoints: z.number().int(),
+  crons: z.number().int(),
+});
+export type BlastTotals = z.infer<typeof BlastTotals>;
+
+export const BlastCallerRef = z.object({
+  file: z.string(),
+  symbol: z.string(),
+  line: z.number().int(),
+  rank: z.number(),
+});
+export type BlastCallerRef = z.infer<typeof BlastCallerRef>;
+
+/**
+ * `callers` is deduplicated by (file, enclosing symbol) and capped at
+ * MAX_CALLERS_PER_SYMBOL, so `callers.length <= callers_total`.
+ * `callers_total` is the exact number of RESOLVED references to this
+ * symbol; `callers_truncated` means the list is not everything we found.
+ */
+export const BlastSymbolImpact = z.object({
+  file: z.string(),
+  name: z.string(),
+  kind: z.string(),
+  callers: z.array(BlastCallerRef),
+  callers_total: z.number().int(),
+  callers_truncated: z.boolean(),
+  /**
+   * Files that IMPORT this symbol's declaring file (reverse-import graph,
+   * depth 1) — including those that import it without calling any detected
+   * symbol, which is why this is not a subset of `callers`. Distinct from
+   * `callers`, which comes from `references`.
+   */
+  importers: z.array(z.object({ file: z.string(), depth: z.number().int() })),
+  endpoints: z.array(z.string()),
+  crons: z.array(z.string()),
+});
+export type BlastSymbolImpact = z.infer<typeof BlastSymbolImpact>;
+
+/** `updated_at` is nullable: pull_requests.updated_at is a nullable column
+ *  and there is no merged_at column on that table. */
+export const BlastPriorPull = z.object({
+  number: z.number().int(),
+  title: z.string(),
+  author: z.string(),
+  status: z.string(),
+  updated_at: z.string().nullable(),
+});
+export type BlastPriorPull = z.infer<typeof BlastPriorPull>;
+
+/**
+ * The ref every `file:line` in this response is relative to. It is the
+ * INDEXED commit, NOT the PR head: symbols/references line numbers come from
+ * `repo_index_state.last_indexed_sha`, which the indexer records from the
+ * clone's HEAD — i.e. the repo's default branch, never the PR branch.
+ * Linking to `head_sha` points a main-relative line number at a different
+ * commit. `head_sha` is kept alongside it only so the card can label the PR;
+ * it must never be used to build a blob URL.
+ */
+export const BlastLink = z.object({
+  repo_full_name: z.string(),
+  indexed_sha: z.string(),
+  head_sha: z.string(),
+});
+export type BlastLink = z.infer<typeof BlastLink>;
+
+export const BlastResponse = z.object({
+  state: BlastState,
+  /** Absent when state is 'ok'. `.nullish()` so the key may be omitted. */
+  reason: BlastReason.nullish(),
+  index: BlastIndexInfo,
+  totals: BlastTotals,
+  symbols: z.array(BlastSymbolImpact),
+  /**
+   * True when the reverse-dependency walk hit MAX_REVERSE_DEPENDENTS, so
+   * `endpoints` / `crons` are a subset of what the index holds. Per-symbol
+   * caller truncation is reported separately by `callers_truncated`.
+   */
+  downstream_truncated: z.boolean(),
+  prior_pulls: z.array(BlastPriorPull),
+  link: BlastLink,
+});
+export type BlastResponse = z.infer<typeof BlastResponse>;
+
+/** POST /pulls/:id/blast/summary — never persisted (no table, no migration). */
+export const BlastSummaryResponse = z.object({
+  summary: z.string(),
+  model: z.string(),
+  nodes: z.number().int(),
+});
+export type BlastSummaryResponse = z.infer<typeof BlastSummaryResponse>;

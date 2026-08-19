@@ -46,4 +46,11 @@ export const FEATURE_MODELS: FeatureModelDef[] = [
     defaultProvider: "openrouter",
     defaultModel: "deepseek/deepseek-v4-flash",
   },
+  {
+    id: "blast_summary",
+    label: "Blast Radius · Summary",
+    description: "Explains a PR’s blast-radius map in one paragraph.",
+    defaultProvider: "openrouter",
+    defaultModel: "deepseek/deepseek-v4-flash",
+  },
 ];
