@@ -11,6 +11,24 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## What Doesn't Work
 
+- **A grounding check that whitelists exact strings against model output will
+  reject correct answers, and it fails CLOSED — the feature looks broken, not
+  lenient.** `modules/blast/summary.ts` rejects a summary naming anything
+  outside the map it was given. Twice that check was stricter than the prompt
+  it enforces: the prompt says "backtick every name", so the model writes
+  `rateLimit()` and `src/mw.ts:23` (fixed by normalising call parens and a
+  `:line` suffix), and it quotes `SettingsModels` out of the path
+  `.../SettingsModels/SettingsModels.tsx` that the map contains (fixed by
+  adding every path SEGMENT and its extension-stripped form to the node set).
+  Each time a whole correct paragraph became a 422, and the UI's only symptom
+  was a button that appeared not to work.
+  **Do:** when whitelisting model output, enumerate what a model writing
+  naturally will produce from the data you handed it — inflections, call
+  parens, `path:line`, a directory lifted out of a path — and admit those, or
+  the guard spends its life rejecting truth. Test the endpoint against the
+  real LLM once (`curl` the route); the hermetic tests use a mock whose output
+  you wrote, so they can only confirm the shapes you already thought of.
+
 - The onion-architecture baseline's "monotonic decrease" policy
   (`.dependency-cruiser-known-violations.json` may only shrink) was broken
   once (peaked at 16). Burn-down 2026-08-04: pulls/polling then
