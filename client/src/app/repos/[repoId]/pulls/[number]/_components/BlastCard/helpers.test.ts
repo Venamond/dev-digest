@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { BlastResponse, BlastSymbolImpact } from "@devdigest/shared";
-import { buildFlowchart, splitHighlight, countGraphNodes } from "./helpers";
+import { buildFlowchart, importersBeyondCallers, shortPath, splitHighlight, countGraphNodes } from "./helpers";
 import { MAX_GRAPH_NODES } from "./constants";
 
 /* Copied from MermaidDiagram.tsx:9 — a string that fails this renders nothing
@@ -120,5 +120,32 @@ describe("splitHighlight", () => {
     expect(splitHighlight("plain sentence", [])).toEqual([
       { text: "plain sentence", code: false },
     ]);
+  });
+});
+
+describe("shortPath", () => {
+  it("keeps a short path whole", () => {
+    expect(shortPath("src/api/index.ts")).toBe("src/api/index.ts");
+  });
+
+  it("keeps the tail, which is the part that tells paths apart", () => {
+    expect(
+      shortPath("client/src/app/repos/[repoId]/pulls/[number]/_components/DiffTab/DiffTab.tsx"),
+    ).toBe("…/_components/DiffTab/DiffTab.tsx");
+  });
+});
+
+describe("importersBeyondCallers", () => {
+  it("drops importers that already appear as callers", () => {
+    const callers = [{ file: "src/a.ts" }, { file: "src/b.ts" }];
+    const importers = [{ file: "src/a.ts" }, { file: "src/c.ts" }];
+    // src/a.ts is both; listing it twice made the section a copy of the one
+    // above it. src/c.ts imports without a resolved call site — that is the
+    // row worth its space.
+    expect(importersBeyondCallers(importers, callers)).toEqual(["src/c.ts"]);
+  });
+
+  it("returns everything when there are no callers at all", () => {
+    expect(importersBeyondCallers([{ file: "src/c.ts" }], [])).toEqual(["src/c.ts"]);
   });
 });

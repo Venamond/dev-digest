@@ -141,3 +141,40 @@ export function splitHighlight(text: string, tokens: string[]): TextPart[] {
   }
   return parts;
 }
+
+/**
+ * The tail of a path, for display only.
+ *
+ * The reference design was drawn against a shallow repo where a path is
+ * `src/api/public/index.ts` and fits a line. Real paths here run
+ * `client/src/app/repos/[repoId]/pulls/[number]/_components/DiffTab/DiffTab.tsx`
+ * and wrap onto two, which turns a map of impact into a wall of prefixes —
+ * every entry sharing the same first six segments, none of them the part that
+ * tells them apart.
+ *
+ * The full path is never lost: callers keep it in the link href, and every
+ * rendered path carries it in `title`.
+ */
+export function shortPath(path: string, segments = 3): string {
+  const parts = path.split("/").filter(Boolean);
+  if (parts.length <= segments) return path;
+  return `…/${parts.slice(-segments).join("/")}`;
+}
+
+/**
+ * Importers that are NOT already listed as callers of this symbol.
+ *
+ * `references.decl_file` is resolved through `file_edges`, so nearly every
+ * caller file also imports the declaring file — listing both in full made the
+ * importers section a near-copy of the callers above it. What is worth its
+ * space is the remainder: a file that imports this one and has no call site we
+ * could resolve. That is the re-export, the side-effect import, or the
+ * reference the indexer could not pin down.
+ */
+export function importersBeyondCallers(
+  importers: ReadonlyArray<{ file: string }>,
+  callers: ReadonlyArray<{ file: string }>,
+): string[] {
+  const seen = new Set(callers.map((c) => c.file));
+  return importers.filter((i) => !seen.has(i.file)).map((i) => i.file);
+}

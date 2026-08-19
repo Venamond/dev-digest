@@ -9,7 +9,14 @@ import { useBlast, useBlastSummary, useDeriveBlastSummary } from "@/lib/hooks/re
 import { useResyncRepoIntel } from "@/lib/hooks/repo-intel";
 import { MermaidDiagram } from "@/components/mermaid-diagram/MermaidDiagram";
 import { githubBlobUrl } from "@/lib/github-urls";
-import { buildFlowchart, codeTokens, countGraphNodes, splitHighlight } from "./helpers";
+import {
+  buildFlowchart,
+  codeTokens,
+  countGraphNodes,
+  importersBeyondCallers,
+  shortPath,
+  splitHighlight,
+} from "./helpers";
 import { CALLABLE_KINDS, MAX_GRAPH_NODES, REASON_KEY, REASON_KEY_FALLBACK } from "./constants";
 import { s } from "./styles";
 
@@ -31,13 +38,14 @@ function FileRef({
   line?: number;
   label: string;
 }) {
-  if (!link.indexed_sha) return <span style={s.tag}>{label}</span>;
+  if (!link.indexed_sha) return <span style={s.tag} title={file}>{label}</span>;
   return (
     <a
       href={githubBlobUrl(link.repo_full_name, link.indexed_sha, file, line)}
       target="_blank"
       rel="noreferrer"
       style={s.link}
+      title={file}
     >
       {label}
     </a>
@@ -196,6 +204,11 @@ function SymbolBlock({
   const t = useTranslations("blast");
   const [open, setOpen] = React.useState(defaultOpen);
   const Chevron = open ? Icon.ChevronDown : Icon.ChevronRight;
+  // Only importers with no resolved call site: the rest repeat the callers.
+  const extraImporters = React.useMemo(
+    () => importersBeyondCallers(symbol.importers, symbol.callers),
+    [symbol.importers, symbol.callers],
+  );
   return (
     <div style={s.symbol}>
       <button
@@ -217,7 +230,9 @@ function SymbolBlock({
       </button>
       {open && (
       <div style={s.symbolBody}>
-      <div style={s.symbolFile}>{symbol.file}</div>
+      <div style={s.symbolFile} title={symbol.file}>
+        {shortPath(symbol.file)}
+      </div>
       {symbol.callers.length > 0 && (
         <ul style={s.list}>
           {symbol.callers.map((caller) => (
@@ -232,7 +247,7 @@ function SymbolBlock({
                     link={link}
                     file={caller.file}
                     line={caller.line}
-                    label={`${caller.file}:${caller.line}`}
+                    label={`${shortPath(caller.file)}:${caller.line}`}
                   />{" "}
                   {caller.symbol}
                 </span>
@@ -249,13 +264,13 @@ function SymbolBlock({
           })}
         </p>
       )}
-      {symbol.importers.length > 0 && (
+      {extraImporters.length > 0 && (
         <>
           <div style={s.sectionLabel}>{t("importers")}</div>
           <ul style={s.list}>
-            {symbol.importers.map((importer) => (
-              <li key={importer.file} style={s.listItem}>
-                <FileRef link={link} file={importer.file} label={importer.file} />
+            {extraImporters.map((file) => (
+              <li key={file} style={s.listItem}>
+                <FileRef link={link} file={file} label={shortPath(file)} />
               </li>
             ))}
           </ul>

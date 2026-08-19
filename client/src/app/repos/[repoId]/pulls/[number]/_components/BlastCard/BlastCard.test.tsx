@@ -179,11 +179,13 @@ describe("BlastCard", () => {
   it("deep-links a caller at the INDEXED commit, not the PR head", () => {
     renderCard();
 
-    const link = screen.getByRole("link", { name: "src/api/public/index.ts:23" });
+    const link = screen.getByRole("link", { name: "…/api/public/index.ts:23" });
     expect(link).toHaveAttribute(
       "href",
       "https://github.com/acme/payments-api/blob/a1b2c3d/src/api/public/index.ts#L23",
     );
+    // Shortening is display-only: the href and the tooltip keep the whole path.
+    expect(link).toHaveAttribute("title", "src/api/public/index.ts");
     expect(link).toHaveAttribute("target", "_blank");
   });
 
@@ -194,9 +196,9 @@ describe("BlastCard", () => {
     renderCard();
 
     expect(
-      screen.queryByRole("link", { name: "src/api/public/index.ts:23" }),
+      screen.queryByRole("link", { name: "…/api/public/index.ts:23" }),
     ).not.toBeInTheDocument();
-    expect(screen.getByText("src/api/public/index.ts:23")).toBeInTheDocument();
+    expect(screen.getByText("…/api/public/index.ts:23")).toBeInTheDocument();
     expect(screen.getByText(/file paths are shown without a link/)).toBeInTheDocument();
   });
 
