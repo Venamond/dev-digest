@@ -9,6 +9,24 @@ cold-test every entry, append-only, treat as a draft to spot-check.
 
 ## What Doesn't Work
 
+- **In a graph walk seeded from MANY files, a set of seeds plus one scalar
+  depth is not enough — the depth must be per seed.** `getReverseDependents`
+  starts from every changed file at once. When two seeds sit on the same
+  import chain, a dependent is a different number of hops from each: with
+  `FindingsPanel.tsx` and `lib/hooks/reviews.ts` both changed, the barrel
+  `FindingsPanel/index.ts` is ONE hop from the first and TWO from the second.
+  Carrying `via: string[]` beside a single `depth: 1` let `blast/shape.ts`
+  filter `depth === 1` per symbol and print that barrel as a direct importer
+  of `reviews.ts` — a file it does not import at all. `via` is now
+  `{ seed, depth }[]`; the row-level `depth` (shortest to any seed) is for
+  ordering only.
+  **Do:** whenever a traversal here fans out from a set, ask whether each
+  derived number is per-source or per-row before storing it. And verify the
+  claim against `file_edges` rather than reading the walk: the walk looked
+  right, the index was right, and only
+  `select from_file, to_file from file_edges where from_file like '%…'`
+  showed that the edge being asserted did not exist.
+
 - **A `count(*)` in SQL beside a list this module deduplicates in JS produces
   a FALSE "truncated" flag.** `getBlastRadius`'s callers are deduplicated by
   `(file, enclosing symbol)` in `service.ts` before the per-symbol cap, so a
