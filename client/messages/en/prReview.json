@@ -65,6 +65,8 @@
     "findingsCount": "{count} finding(s)",
     "timeline": "Timeline",
     "timelineHint": "runs & commits · newest first",
+    "severityScopeLabel": "across every run",
+    "severityScopeTitle": "These totals sum every review ever run on this pull request. A re-run of the same agent ADDS to them rather than replacing its earlier findings, so a finding a later run no longer reports is still counted here. The timeline above shows each run separately.",
     "findingNotFound": "That finding is no longer available — its review run may have been deleted."
   },
   "overview": {

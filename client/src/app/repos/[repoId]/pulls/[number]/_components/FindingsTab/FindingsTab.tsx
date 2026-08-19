@@ -153,7 +153,15 @@ export function FindingsTab({
         </div>
       )}
 
-      {allFindings.length > 0 && <SeverityCounters findings={allFindings} />}
+      {allFindings.length > 0 && (
+        <SeverityCounters
+          findings={allFindings}
+          note={{
+            label: t("findingsTab.severityScopeLabel"),
+            title: t("findingsTab.severityScopeTitle"),
+          }}
+        />
+      )}
 
       <SectionLabel
         icon="AlertOctagon"
