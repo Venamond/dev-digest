@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { startPg, dockerAvailable, type PgFixture } from './helpers/pg.js';
 import { waitForPrRuns } from './helpers/runs.js';
 import { buildApp } from '../src/app.js';
+import { ReviewRepository } from '../src/modules/reviews/repository.js';
 import { loadConfig } from '../src/platform/config.js';
 import { seed } from '../src/db/seed.js';
 import { MockLLMProvider, MockEmbedder, MockGitClient } from '../src/adapters/mocks.js';
@@ -155,6 +156,54 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
     expect(updated.version).toBe(2);
 
     await app.close();
+  });
+
+  it('persists the trace BEFORE the run reads as finished', async () => {
+    // A terminal `agent_runs.status` is the signal every consumer polls to
+    // mean "this run is over", and the next thing each of them does is read
+    // the trace. Writing the trace after the status flip leaves a window in
+    // which the run is done and `GET /runs/:id/trace` has nothing — narrow
+    // when idle, wide under load. That window is what made this suite flaky:
+    // `intent.it.test.ts` and `agents-skills.it.test.ts` each failed about
+    // one full-suite run in two while passing in isolation, both reading
+    // `undefined` off a trace that had not landed yet.
+    //
+    // Asserted as call ORDER rather than by racing the window, so this test
+    // fails every time on a regression instead of one run in two.
+    const order: string[] = [];
+    const traceSpy = vi.spyOn(ReviewRepository.prototype, 'saveRunTrace').mockImplementation(async () => {
+      order.push('trace');
+    });
+    const completeSpy = vi
+      .spyOn(ReviewRepository.prototype, 'completeAgentRun')
+      .mockImplementation(async () => {
+        order.push('status');
+      });
+
+    try {
+      const app = await appWith(REVIEW_FIXTURE);
+      const { pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
+      const agent = (
+        await app.inject({
+          method: 'POST',
+          url: '/agents',
+          payload: { name: 'Order', provider: 'openai', model: 'gpt-4.1', system_prompt: 'x' },
+        })
+      ).json();
+
+      await app.inject({ method: 'POST', url: `/pulls/${pr.id}/review`, payload: { agentId: agent.id } });
+      // Both spies are stubs, so the run row never reaches a terminal status —
+      // poll the recorded calls instead of the database.
+      for (let i = 0; i < 200 && order.length < 2; i++) {
+        await new Promise((r) => setTimeout(r, 25));
+      }
+
+      expect(order).toEqual(['trace', 'status']);
+      await app.close();
+    } finally {
+      traceSpy.mockRestore();
+      completeSpy.mockRestore();
+    }
   });
 
   it('runs a review: map-reduce + grounding drops the hallucinated finding, keeps the valid one', async () => {
