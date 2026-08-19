@@ -54,3 +54,13 @@ export const HOTNESS_WINDOW_DAYS = 180;
 export const DEFAULT_REPO_MAP_TOKEN_BUDGET = 1500;
 /** Signatures are trimmed to this many chars in the parse phase (cache stability). */
 export const MAX_SIGNATURE_CHARS = 120;
+
+/**
+ * [L04] Caller files excluded from blast radius: a test calling a changed
+ * symbol is not downstream impact. Left in, they dominate the caller list of
+ * anything well covered and inflate the counter with rows a reviewer cannot
+ * act on. SQL patterns, applied in BOTH getResolvedCallers and
+ * countResolvedCallers — filtering only one of them would make
+ * `callers_total` disagree with the list and report false truncation.
+ */
+export const EXCLUDED_CALLER_PATTERNS = ['%.test.%', '%.spec.%', '%/__tests__/%'] as const;

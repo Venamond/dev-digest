@@ -13,10 +13,11 @@
  * raw-SQL probes below MUST swallow `undefined_table` (Postgres 42P01) so the
  * facade keeps returning degraded — never throws.
  */
-import { and, asc, count, desc, eq, inArray, isNotNull, lte, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, isNotNull, lte, notLike, sql } from 'drizzle-orm';
 import type { Db } from '../../db/client.js';
 import * as t from '../../db/schema.js';
 import { clampIndexedName } from '../../db/schema/context.js';
+import { EXCLUDED_CALLER_PATTERNS } from './constants.js';
 import type { DegradedReason, FileRankRow, IndexState, IndexStatus } from './types.js';
 
 /** Chunk size for batched inserts — same value blast already uses. */
@@ -537,6 +538,8 @@ export class RepoIntelRepository {
           eq(t.references.repoId, repoId),
           inArray(t.references.declFile, declFiles),
           inArray(t.references.toSymbol, names),
+          // A test calling a changed symbol is not downstream impact.
+          ...EXCLUDED_CALLER_PATTERNS.map((p) => notLike(t.references.fromPath, p)),
         ),
       )
       .as('ranked');
@@ -593,6 +596,8 @@ export class RepoIntelRepository {
           eq(t.references.repoId, repoId),
           inArray(t.references.declFile, declFiles),
           inArray(t.references.toSymbol, names),
+          // MUST mirror getResolvedCallers exactly — see EXCLUDED_CALLER_PATTERNS.
+          ...EXCLUDED_CALLER_PATTERNS.map((p) => notLike(t.references.fromPath, p)),
         ),
       )
       .groupBy(t.references.toSymbol);

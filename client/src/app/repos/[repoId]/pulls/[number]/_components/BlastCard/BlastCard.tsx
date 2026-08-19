@@ -14,6 +14,7 @@ import {
   codeTokens,
   countGraphNodes,
   importersBeyondCallers,
+  partitionSymbols,
   shortPath,
   splitHighlight,
 } from "./helpers";
@@ -245,13 +246,16 @@ function SymbolBlock({
                   style={{ color: "var(--text-muted)", flexShrink: 0 }}
                 />
                 <span style={{ minWidth: 0 }}>
+                  {/* file:line and nothing else. The enclosing function name
+                      was my addition, is not in the reference, and degraded to
+                      a repeat of the file name whenever it could not be
+                      resolved. */}
                   <FileRef
                     link={link}
                     file={caller.file}
                     line={caller.line}
                     label={`${shortPath(caller.file)}:${caller.line}`}
-                  />{" "}
-                  {caller.symbol}
+                  />
                 </span>
               </span>
             </li>
@@ -319,6 +323,11 @@ export function BlastCard({ prId }: { prId: string | null }) {
   const chart = React.useMemo(() => (data ? buildFlowchart(data) : ""), [data]);
   const graphNodes = React.useMemo(() => (data ? countGraphNodes(data) : 0), [data]);
   const tokens = React.useMemo(() => (data ? codeTokens(data) : []), [data]);
+  // Rows for symbols that reach something; the rest become one line.
+  const { withImpact, emptyCount } = React.useMemo(
+    () => (data ? partitionSymbols(data.symbols) : { withImpact: [], emptyCount: 0 }),
+    [data],
+  );
 
   const summaryText = summary.data?.summary;
   const hasMap = data != null && (data.state === "ok" || data.state === "partial");
@@ -408,7 +417,7 @@ export function BlastCard({ prId }: { prId: string | null }) {
         {view === "tree" ? (
           hasImpact ? (
             <div style={s.tree}>
-              {data.symbols.map((symbol, i) => (
+              {withImpact.map((symbol, i) => (
                 <SymbolBlock
                   key={`${symbol.file}:${symbol.name}`}
                   symbol={symbol}
@@ -418,6 +427,9 @@ export function BlastCard({ prId }: { prId: string | null }) {
                   defaultOpen={i === 0}
                 />
               ))}
+              {emptyCount > 0 && (
+                <p style={s.note}>{t("noImpactSymbols", { count: emptyCount })}</p>
+              )}
             </div>
           ) : (
             <p style={s.empty}>{t("noDownstream", { count: totals.symbols })}</p>

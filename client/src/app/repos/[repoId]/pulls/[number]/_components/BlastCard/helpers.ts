@@ -178,3 +178,27 @@ export function importersBeyondCallers(
   const seen = new Set(callers.map((c) => c.file));
   return importers.filter((i) => !seen.has(i.file)).map((i) => i.file);
 }
+
+/**
+ * Symbols worth a row, and a count of the rest.
+ *
+ * A changed symbol nothing reaches is a true fact and a useless row: on a real
+ * PR most of the map is `0 callers`, and dozens of such rows bury the handful
+ * that carry impact. The reference shows only symbols that reach something.
+ * The remainder is still reported — as one line, and in `totals.symbols`.
+ */
+export function partitionSymbols(symbols: BlastResponse["symbols"]): {
+  withImpact: BlastResponse["symbols"];
+  emptyCount: number;
+} {
+  const withImpact = symbols
+    .filter(
+      (s) =>
+        s.callers.length > 0 ||
+        s.importers.length > 0 ||
+        s.endpoints.length > 0 ||
+        s.crons.length > 0,
+    )
+    .sort((a, b) => b.callers.length - a.callers.length);
+  return { withImpact, emptyCount: symbols.length - withImpact.length };
+}

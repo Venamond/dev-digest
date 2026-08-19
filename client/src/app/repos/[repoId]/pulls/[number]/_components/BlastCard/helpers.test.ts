@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { BlastResponse, BlastSymbolImpact } from "@devdigest/shared";
-import { buildFlowchart, importersBeyondCallers, shortPath, splitHighlight, countGraphNodes } from "./helpers";
+import { buildFlowchart, importersBeyondCallers, partitionSymbols, shortPath, splitHighlight, countGraphNodes } from "./helpers";
 import { MAX_GRAPH_NODES } from "./constants";
 
 /* Copied from MermaidDiagram.tsx:9 — a string that fails this renders nothing
@@ -147,5 +147,47 @@ describe("importersBeyondCallers", () => {
 
   it("returns everything when there are no callers at all", () => {
     expect(importersBeyondCallers([{ file: "src/c.ts" }], [])).toEqual(["src/c.ts"]);
+  });
+});
+
+describe("partitionSymbols", () => {
+  const sym = (name: string, callers: number, extra = {}) => ({
+    file: `src/${name}.ts`,
+    name,
+    kind: "function",
+    callers: Array.from({ length: callers }, (_, i) => ({
+      file: `src/c${i}.ts`,
+      symbol: "x",
+      line: i + 1,
+      rank: 1,
+    })),
+    callers_total: callers,
+    callers_truncated: false,
+    importers: [],
+    endpoints: [],
+    crons: [],
+    ...extra,
+  });
+
+  it("keeps only symbols that reach something, most callers first", () => {
+    const { withImpact, emptyCount } = partitionSymbols([
+      sym("a", 1),
+      sym("b", 0),
+      sym("c", 3),
+      sym("d", 0),
+    ] as never);
+    expect(withImpact.map((s) => s.name)).toEqual(["c", "a"]);
+    // The rest are not hidden — they are counted and reported as one line.
+    expect(emptyCount).toBe(2);
+  });
+
+  it("counts an endpoint or an importer as impact even with no callers", () => {
+    const { withImpact, emptyCount } = partitionSymbols([
+      sym("a", 0, { endpoints: ["GET /x"] }),
+      sym("b", 0, { importers: [{ file: "src/i.ts", depth: 1 }] }),
+      sym("c", 0),
+    ] as never);
+    expect(withImpact.map((s) => s.name)).toEqual(["a", "b"]);
+    expect(emptyCount).toBe(1);
   });
 });

@@ -145,6 +145,27 @@ describe('RepoIntel.getBlastRadius — per-symbol caller cap', () => {
     expect(blast.callerStatsBySymbol?.alpha).toEqual({ total: 1, truncated: false });
   });
 
+  it('excludes test files from callers and from the pre-cap total', async () => {
+    // A test calling a changed symbol is not downstream impact. The exclusion
+    // lives in SQL in BOTH queries, so this asserts the stub contract the
+    // service relies on: whatever getResolvedCallers returns, the count must
+    // have been filtered the same way or `truncated` lies again.
+    const svc = buildService({
+      repo: {
+        getSymbolRows: async (_r: string, files: string[]) =>
+          files.includes('src/lib/target.ts') ? declRows('alpha') : [],
+        getResolvedCallers: async () => [
+          { fromPath: 'src/callers/alpha-1.ts', toSymbol: 'alpha', line: 4, rank: 5 },
+        ],
+        countResolvedCallers: async () => [{ toSymbol: 'alpha', total: 1 }],
+      },
+    });
+
+    const blast = await svc.getBlastRadius('r1', ['src/lib/target.ts']);
+    expect(blast.callers.map((c) => c.file)).toEqual(['src/callers/alpha-1.ts']);
+    expect(blast.callerStatsBySymbol?.alpha).toEqual({ total: 1, truncated: false });
+  });
+
   it('never returns the declaring file as one of its own callers', async () => {
     const svc = buildService({
       repo: {
