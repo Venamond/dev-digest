@@ -9,6 +9,24 @@ cold-test every entry, append-only, treat as a draft to spot-check.
 
 ## What Doesn't Work
 
+- **A `export default` symbol can never have callers here: references match by
+  NAME, and a default import renames it at every call site.** `export default
+  async function reviewsRoutes(...)` is imported as `import reviews from
+  './reviews/routes.js'`, so the string `reviewsRoutes` does not occur outside
+  its own file and `references` holds zero rows for it. Blast then reports
+  "0 callers" — factually true, and useless.
+  Measured on this repo 2026-08-19: 30 files use `export default` (15 Next
+  pages/layouts, 12 Fastify module plugins), and 484 of 1032 indexed symbols
+  are never named in `references` at all. So a whole shape of code — every
+  page, every route plugin — is structurally invisible to caller detection.
+  **Do:** when someone asks why their symbol shows no callers, check whether it
+  is a default export before looking for a bug. The importer row is the only
+  true relationship such a symbol has, which is one reason blast lists
+  importers separately. Closing the gap means resolving a default import's
+  local alias back to the target file's default export in
+  `adapters/codeindex/extract.ts` plus reference resolution — a real change,
+  and an `INDEXER_VERSION` bump.
+
 - **In a graph walk seeded from MANY files, a set of seeds plus one scalar
   depth is not enough — the depth must be per seed.** `getReverseDependents`
   starts from every changed file at once. When two seeds sit on the same
