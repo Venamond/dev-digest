@@ -240,6 +240,9 @@ describe("BlastCard", () => {
     );
     // Shortening is display-only: the href and the tooltip keep the whole path.
     expect(link).toHaveAttribute("title", "src/api/public/index.ts");
+    // The hover state lives in globals.css — styles.ts objects are inline and
+    // carry no pseudo-classes — so the class is what wires it up.
+    expect(link).toHaveClass("dd-fileref");
     expect(link).toHaveAttribute("target", "_blank");
   });
 

@@ -48,6 +48,7 @@ function FileRef({
       href={githubBlobUrl(link.repo_full_name, link.indexed_sha, file, line)}
       target="_blank"
       rel="noreferrer"
+      className="dd-fileref"
       style={linkStyle}
       title={file}
     >
