@@ -106,7 +106,7 @@ export const s = {
     // Tight on purpose: this row has to fit four counters plus the toggle
     // inside half the Overview width. Every px here buys a px of margin
     // before a counter wraps.
-    columnGap: 12,
+    columnGap: 10,
     rowGap: 6,
     // Take the slack and be the thing that wraps.
     flexGrow: 1,
@@ -213,11 +213,13 @@ export const s = {
     display: "flex",
     flexDirection: "column",
     gap: 16,
+    minWidth: 0,
   } satisfies CSSProperties,
   symbol: {
     display: "flex",
     flexDirection: "column",
     gap: 8,
+    minWidth: 0,
   } satisfies CSSProperties,
   /* A row, not a heading: the whole strip is the disclosure control, with the
      caller count parked on the right so a collapsed list still says how much
@@ -252,6 +254,9 @@ export const s = {
     flexDirection: "column",
     gap: 8,
     paddingLeft: 22,
+    // Without this a flex column refuses to shrink below its widest child, so
+    // a long path widens the whole card instead of wrapping inside it.
+    minWidth: 0,
   } satisfies CSSProperties,
   symbolName: {
     fontFamily: MONO,
@@ -269,6 +274,11 @@ export const s = {
     fontFamily: MONO,
     fontSize: 12,
     color: "var(--text-muted)",
+    // Repo paths here run to 90+ chars with no space in them, so the default
+    // break-word (which only breaks BETWEEN words) lets them run past the
+    // card. `anywhere` is the one value that breaks inside a long token.
+    overflowWrap: "anywhere",
+    minWidth: 0,
   } satisfies CSSProperties,
   sectionLabel: {
     fontSize: 11,
@@ -290,10 +300,13 @@ export const s = {
     fontSize: 12,
     lineHeight: 1.45,
     color: "var(--text-secondary)",
+    overflowWrap: "anywhere",
+    minWidth: 0,
   } satisfies CSSProperties,
   link: {
     color: "var(--accent-text)",
     textDecorationLine: "none",
+    overflowWrap: "anywhere",
   } satisfies CSSProperties,
   tag: {
     display: "inline-block",
@@ -442,6 +455,7 @@ export const s = {
     fontFamily: MONO,
     fontSize: 12,
     fontStyle: "normal",
+    overflowWrap: "anywhere",
     background: "var(--accent-bg)",
     color: "var(--accent-text)",
     borderRadius: 4,

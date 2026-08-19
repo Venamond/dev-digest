@@ -130,7 +130,23 @@ describe("BlastCard", () => {
     expect(statValue("symbols")).toBe("2");
     expect(statValue("callers")).toBe("2");
     expect(statValue("endpoints")).toBe("1");
-    expect(statValue("cron/jobs")).toBe("0");
+    // A zero cron counter is not rendered at all — see BlastCard.tsx.
+    expect(screen.queryByText("cron/jobs")).not.toBeInTheDocument();
+  });
+
+  it("shows the cron counter only when something schedules", () => {
+    h.data = makeBlast({
+      totals: { symbols: 2, callers: 2, callers_found: 2, endpoints: 1, crons: 3 },
+    });
+    renderCard();
+    expect(statValue("cron/jobs")).toBe("3");
+    // Endpoints stay visible at zero: "reaches no HTTP surface" is an answer.
+    cleanup();
+    h.data = makeBlast({
+      totals: { symbols: 2, callers: 2, callers_found: 2, endpoints: 0, crons: 0 },
+    });
+    renderCard();
+    expect(statValue("endpoints")).toBe("0");
   });
 
   it("collapses every symbol but the first", () => {
