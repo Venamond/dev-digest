@@ -316,6 +316,130 @@ describe('get_findings', () => {
   const repos: Repo[] = [{ id: 'repo-1', full_name: 'acme/repo' }];
   const pulls: PrMeta[] = [{ id: 'pr-1', number: 42 }];
 
+  it('says when a re-run superseded an older review of the same agent', async () => {
+    // The real case this was written for: three Performance Reviewer runs on
+    // one PR. D5 keeps the newest, which is right — an older run's finding may
+    // already be fixed, and reporting it sends the caller to repair nothing.
+    // But a bare `total` reads as "everything this PR has", and the studio
+    // timeline shows all three, so the two surfaces disagree with no
+    // explanation anywhere. The hint is that explanation.
+    const reviews: ReviewRecord[] = [
+      {
+        run_id: 'run-3',
+        agent_id: 'agent-p',
+        agent_name: 'Perf',
+        verdict: 'comment',
+        summary: 'Perf says so',
+        findings: [
+          {
+            id: 'f-new',
+            severity: 'WARNING',
+            category: 'perf',
+            title: 'f-new finding',
+            file: 'x.ts',
+            start_line: 1,
+            end_line: 1,
+            rationale: 'because',
+          },
+        ],
+      },
+      {
+        run_id: 'run-2',
+        agent_id: 'agent-p',
+        agent_name: 'Perf',
+        verdict: 'comment',
+        summary: 'Perf says so',
+        findings: [
+          {
+            id: 'f-old',
+            severity: 'CRITICAL',
+            category: 'perf',
+            title: 'f-old finding',
+            file: 'x.ts',
+            start_line: 1,
+            end_line: 1,
+            rationale: 'because',
+          },
+        ],
+      },
+      {
+        run_id: 'run-1',
+        agent_id: 'agent-s',
+        agent_name: 'Sec',
+        verdict: 'comment',
+        summary: 'Sec says so',
+        findings: [
+          {
+            id: 'f-sec',
+            severity: 'CRITICAL',
+            category: 'perf',
+            title: 'f-sec finding',
+            file: 'x.ts',
+            start_line: 1,
+            end_line: 1,
+            rationale: 'because',
+          },
+        ],
+      },
+    ];
+    stubFetch((path) => {
+      if (path === '/pulls/pr-1/reviews') return jsonResponse(reviews);
+      throw new Error(`unexpected path ${path}`);
+    });
+    const api = new DevDigestApi(BASE_URL);
+    const client = await connectClient(api);
+
+    const result = (await client.callTool({
+      name: 'get_findings',
+      arguments: { pr_id: 'pr-1' },
+    })) as CallToolResult;
+
+    const payload = structured<{ total: number; hint?: string }>(result);
+    // Two agents, newest each: the superseded CRITICAL is NOT counted.
+    expect(payload.total).toBe(2);
+    expect(payload.hint).toContain('1 older review from Perf');
+    expect(payload.hint).toContain('superseded');
+  });
+
+  it('stays silent when no review was superseded', async () => {
+    // The hint costs nothing until its condition holds — emitting it always
+    // would put a caveat about history into every reply that has none.
+    const reviews: ReviewRecord[] = [
+      {
+        run_id: 'run-1',
+        agent_id: 'agent-s',
+        agent_name: 'Sec',
+        verdict: 'comment',
+        summary: 'Sec says so',
+        findings: [
+          {
+            id: 'f-sec',
+            severity: 'CRITICAL',
+            category: 'perf',
+            title: 'f-sec finding',
+            file: 'x.ts',
+            start_line: 1,
+            end_line: 1,
+            rationale: 'because',
+          },
+        ],
+      },
+    ];
+    stubFetch((path) => {
+      if (path === '/pulls/pr-1/reviews') return jsonResponse(reviews);
+      throw new Error(`unexpected path ${path}`);
+    });
+    const api = new DevDigestApi(BASE_URL);
+    const client = await connectClient(api);
+
+    const result = (await client.callTool({
+      name: 'get_findings',
+      arguments: { pr_id: 'pr-1' },
+    })) as CallToolResult;
+
+    expect(structured<{ hint?: string }>(result).hint).toBeUndefined();
+  });
+
   it('get_findings returns the newest review per agent, not just the newest row', async () => {
     // reviews is already newest-first: agent B's review is 1ms newer than
     // agent A's. A naive `reviews[0]` would return only B's findings.

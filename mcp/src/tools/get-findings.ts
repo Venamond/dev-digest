@@ -107,14 +107,37 @@ export function registerGetFindings(server: McpServer, api: DevDigestApi): void 
         const summary =
           kept.length === 1 ? first.summary : kept.map((r) => `${r.agent_name ?? r.agent_id}: ${r.summary}`).join('\n');
 
+        // Both caveats below are emitted only when they apply, and are joined
+        // rather than picked between: a truncated payload from a PR that also
+        // has superseded reviews needs to say both things, and silently
+        // dropping one because the field holds a single string is the bug
+        // this shape avoids.
+        const hints: string[] = [];
+
         // `detail: 'full'` caps lower than `'summary'` (20 vs 50) because each
         // finding carries `rationale`. Asking for more detail therefore returns
         // fewer findings — the opposite of what a caller expects — so say so in
         // the payload rather than in the tool description, which is token-capped.
-        const hint =
-          selected.truncated && detailUsed === 'full'
-            ? `Showing ${selected.findings.length} of ${selected.total} findings: detail "full" caps at ${MAX_FINDINGS_FULL}. Call again with detail "summary" for up to ${MAX_FINDINGS_SUMMARY}.`
-            : undefined;
+        if (selected.truncated && detailUsed === 'full') {
+          hints.push(
+            `Showing ${selected.findings.length} of ${selected.total} findings: detail "full" caps at ${MAX_FINDINGS_FULL}. Call again with detail "summary" for up to ${MAX_FINDINGS_SUMMARY}.`,
+          );
+        }
+
+        // D5 keeps one review per agent, so a re-run silently replaces that
+        // agent's earlier opinion. That is the right answer — an older run's
+        // finding may already be fixed, and reporting it would send the caller
+        // to repair nothing — but a bare total reads as "everything this PR
+        // has". Say what was set aside, and where the full history lives.
+        const superseded = scoped.length - kept.length;
+        if (superseded > 0) {
+          const names = [...new Set(scoped.filter((r) => !kept.includes(r)).map((r) => r.agent_name ?? r.agent_id ?? 'unknown'))];
+          hints.push(
+            `${superseded} older review${superseded === 1 ? '' : 's'} from ${names.join(', ')} ${superseded === 1 ? 'is' : 'are'} superseded by a newer run of the same agent and not counted here. The studio timeline lists every run.`,
+          );
+        }
+
+        const hint = hints.length > 0 ? hints.join(' ') : undefined;
 
         return jsonContent({
           verdict,

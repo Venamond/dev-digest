@@ -73,6 +73,17 @@ ground truth — wrap-ups can mischaracterize a session.
   still `pending` rather than `accepted`. Emit the hint only when the
   condition holds, and cover both branches with a test.
 
+  **The strongest case for a hint is a rule the payload silently applies.**
+  D5 keeps one review per agent, so a re-run replaces that agent's earlier
+  opinion — right on substance (an older run's finding may already be fixed,
+  and reporting it sends the caller to repair nothing) but invisible in a
+  bare `total`. A real PR with three Performance Reviewer runs returned
+  `total: 9` while the studio timeline showed 11, with nothing anywhere
+  saying why. Added 2026-08-19: the hint names the count and the agents and
+  points at the timeline. Note the field holds ONE string, so accumulate
+  sentences in an array and join — picking between two applicable caveats
+  drops one.
+
 ## Tool & Library Notes
 
 - **`structuredContent` alone is enough for the clients this repo targets —
