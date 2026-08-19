@@ -146,6 +146,11 @@
    the affordance that says "this opens something". */
 .dd-fileref:hover,
 .dd-fileref:focus-visible {
-  color: var(--accent-text);
-  text-decoration-line: underline;
+  /* `!important` is load-bearing, not decoration. The resting colour comes
+     from a React `style={}` attribute (BlastCard's styles.ts), and an inline
+     style outranks any class selector — without this the rule parses, matches,
+     and changes nothing. Same trap as the `pre > code` override recorded in
+     client/INSIGHTS.md. */
+  color: var(--accent-text) !important;
+  text-decoration-line: underline !important;
 }
