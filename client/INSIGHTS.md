@@ -21,6 +21,18 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Codebase Patterns
 
+- **`BlastCard`'s tree opens nothing on arrival — do not "helpfully" restore
+  `defaultOpen={i === 0}`.** Removed on 2026-08-19 at the user's explicit
+  request: auto-opening the first symbol presumes it is the one the reader
+  came for, and on a map of 10+ changed symbols it usually is not. Same
+  positional-default family as the `=== 0` accordion defect below, but this
+  one is a product decision, not a bug — a future "improvement" that reopens
+  the first row is a regression. Consequence for tests: nine assertions in
+  `BlastCard.test.tsx` silently depended on the first subtree being mounted.
+  Any test asserting on callers/importers/chips must click the disclosure
+  first — the file has an `expandSymbol(name)` helper for exactly this.
+  (2026-08-19)
+
 - **A card on the PR Overview tab gets HALF the width of the mockup it was
   drawn from, and raising the grid's `minmax` floor to fix that is a trap.**
   `OverviewTab/styles.ts` lays `IntentCard` and `BlastCard` out in
