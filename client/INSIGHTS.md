@@ -82,6 +82,19 @@ ground truth — wrap-ups can mischaracterize a session.
   it — three rounds of "the design is completely different" here were volume,
   not styling.
 
+- **`--bg-primary` is the page BACKDROP, not the main surface — it is the
+  darkest token, and using it to raise something makes that thing darker than
+  what it sits on.** The dark scale in `vendor/ui/styles.css:11-14` runs
+  `--bg-primary` #0a0a0a → `--bg-surface` #141414 → `--bg-elevated` #1c1c1c →
+  `--bg-hover` #242424. Cards use `--bg-elevated`, so a row inside a card that
+  wants to look raised needs `--bg-hover`; `--bg-primary` there renders as a
+  black slab cut out of the card. The name is the trap — "primary" reads like
+  "the main surface" and it means "the thing everything else sits on". Picked
+  wrongly twice in one session on `BlastCard`.
+  **Do:** to raise a surface, move UP this list from whatever the parent uses.
+  Check the parent's token first; there is no single "raised" token, only a
+  next one.
+
 - **i18n namespace follows the component's location, not the feature it serves.**
   Shared components under `client/src/components/**` call
   `useTranslations("shell")` (10 of 13 call sites; the rest are `common` /
