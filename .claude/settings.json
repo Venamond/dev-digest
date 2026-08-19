@@ -5,9 +5,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\" 2>/dev/null; recent=$(git log --since=\"30 minutes ago\" --name-only --pretty=format: 2>/dev/null | grep -v \"^$\" | grep -vE \"INSIGHTS\\.md$\"); uncommitted=$(git status --porcelain 2>/dev/null | grep -vE \"INSIGHTS\\.md$\"); if [ -n \"$recent\" ] || [ -n \"$uncommitted\" ]; then jq -n \"{hookSpecificOutput:{hookEventName:\\\"Stop\\\",additionalContext:\\\"Reminder (engineering-insights hook): source files changed recently in this repo. Before finishing, check whether a non-trivial, actionable engineering lesson surfaced this session and, if so, invoke the engineering-insights skill / update the relevant module INSIGHTS.md. If nothing new cleared the bar, doing nothing is the correct outcome.\\\"}}\"; fi",
+            "command": "input=$(cat); [ \"$(printf '%s' \"$input\" | jq -r '.stop_hook_active // false')\" = \"true\" ] && exit 0; cd \"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\" 2>/dev/null; recent=$(git log --since=\"30 minutes ago\" --name-only --pretty=format: 2>/dev/null | grep -v \"^$\" | grep -vE \"INSIGHTS\\.md$\"); uncommitted=$(git status --porcelain 2>/dev/null | grep -vE \"INSIGHTS\\.md$\"); if [ -n \"$recent\" ] || [ -n \"$uncommitted\" ]; then jq -n \"{hookSpecificOutput:{hookEventName:\\\"Stop\\\",additionalContext:\\\"Reminder (engineering-insights hook): source files changed recently in this repo. Before finishing, check whether a non-trivial, actionable engineering lesson surfaced this session and, if so, invoke the engineering-insights skill / update the relevant module INSIGHTS.md. If nothing new cleared the bar, doing nothing is the correct outcome.\\\"}}\"; fi",
             "timeout": 15,
-            "statusMessage": "Checking engineering-insights…"
+            "statusMessage": "Checking engineering-insights\u2026"
           }
         ]
       }
@@ -20,7 +20,13 @@
             "type": "command",
             "command": "input=$(cat)\ncmd=$(echo \"$input\" | jq -r '.tool_input.command // \"\"')\nif ! echo \"$cmd\" | grep -qE '(^|[;&|]|&&)\\s*(gh pr create|git push)\\b'; then\n  exit 0\nfi\ncd \"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\" 2>/dev/null || exit 0\nSTATE=\".claude/pr-self-review.local.md\"\ndeny() {\n  jq -n --arg reason \"$1\" '{hookSpecificOutput:{hookEventName:\"PreToolUse\",permissionDecision:\"deny\",permissionDecisionReason:$reason}}'\n  exit 0\n}\n[ -f \"$STATE\" ] || deny \"pr-self-review has not been run yet. Run /pr-self-review before opening a PR or pushing.\"\nCUR_SHA=$(git rev-parse HEAD 2>/dev/null)\nCUR_HASH=$( (git diff HEAD; git ls-files --others --exclude-standard) | shasum | awk '{print $1}')\nREC_SHA=$(grep '^sha:' \"$STATE\" | head -1 | awk '{print $2}')\nREC_HASH=$(grep '^worktree_hash:' \"$STATE\" | head -1 | awk '{print $2}')\nREC_VERDICT=$(grep '^verdict:' \"$STATE\" | head -1 | awk '{print $2}')\nif [ \"$CUR_SHA\" != \"$REC_SHA\" ] || [ \"$CUR_HASH\" != \"$REC_HASH\" ]; then\n  deny \"pr-self-review verdict is stale (commit or working tree changed since last run). Run /pr-self-review again.\"\nfi\nif [ \"$REC_VERDICT\" != \"CLEAR\" ]; then\n  deny \"pr-self-review verdict is BLOCKED. Fix CRITICAL findings and re-run /pr-self-review.\"\nfi\nexit 0\n",
             "timeout": 10,
-            "statusMessage": "Checking pr-self-review verdict…"
+            "statusMessage": "Checking pr-self-review verdict\u2026"
+          },
+          {
+            "type": "command",
+            "command": "input=$(cat)\ncmd=$(echo \"$input\" | jq -r '.tool_input.command // \"\"')\n# A gate is a command whose EXIT CODE is the whole point of running it.\necho \"$cmd\" | grep -qE '(pnpm|npm|yarn)( run)? (test|typecheck|build|lint|arch:check(:core)?)' || exit 0\n# Piping one into a filter replaces its status with the filter's, which is\n# almost always 0 \u2014 the failure disappears and the run reads as green.\necho \"$cmd\" | grep -qE '\\|[[:space:]]*(grep|head|tail|awk|sed|cut|sort|wc|jq)' || exit 0\necho \"$cmd\" | grep -q 'pipefail' && exit 0\njq -n '{hookSpecificOutput:{hookEventName:\"PreToolUse\",permissionDecision:\"deny\",permissionDecisionReason:\"This pipes a gate command (test/typecheck/build/lint/arch:check) into a filter, which discards its exit code \u2014 a failing suite would print as a clean tail and read as green. Prefix the command with `set -o pipefail;` so the pipeline keeps the gate status, or run the gate unpiped.\"}}'\n",
+            "timeout": 10,
+            "statusMessage": "Checking gate exit code\u2026"
           }
         ]
       }
