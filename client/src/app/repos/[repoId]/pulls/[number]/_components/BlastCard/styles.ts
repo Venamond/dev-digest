@@ -66,7 +66,7 @@ export const s = {
   } satisfies CSSProperties,
   toggleButton: (active: boolean): CSSProperties => ({
     fontFamily: "inherit",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 500,
     lineHeight: 1.2,
     cursor: "pointer",
@@ -75,10 +75,10 @@ export const s = {
     borderRightWidth: 0,
     borderBottomWidth: 0,
     borderLeftWidth: 0,
-    paddingTop: 5,
-    paddingRight: 10,
-    paddingBottom: 5,
-    paddingLeft: 10,
+    paddingTop: 4,
+    paddingRight: 9,
+    paddingBottom: 4,
+    paddingLeft: 9,
     background: active ? "var(--accent-bg)" : "transparent",
     color: active ? "var(--accent-text)" : "var(--text-muted)",
   }),
@@ -100,7 +100,10 @@ export const s = {
     display: "flex",
     alignItems: "center",
     flexWrap: "wrap",
-    columnGap: 14,
+    // Tight on purpose: this row has to fit four counters plus the toggle
+    // inside half the Overview width. Every px here buys a px of margin
+    // before a counter wraps.
+    columnGap: 12,
     rowGap: 6,
     // Take the slack and be the thing that wraps.
     flexGrow: 1,
@@ -111,8 +114,8 @@ export const s = {
   stat: {
     display: "inline-flex",
     alignItems: "center",
-    gap: 6,
-    fontSize: 13,
+    gap: 5,
+    fontSize: 12,
     lineHeight: 1.2,
     whiteSpace: "nowrap",
   } satisfies CSSProperties,
