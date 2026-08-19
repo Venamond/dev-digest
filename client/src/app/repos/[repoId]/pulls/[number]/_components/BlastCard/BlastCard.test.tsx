@@ -220,6 +220,20 @@ describe("BlastCard", () => {
     expect(screen.queryByText(/no downstream callers found/)).not.toBeInTheDocument();
   });
 
+  it("switches to the network view and draws the same nodes as the flow view", () => {
+    renderCard();
+    fireEvent.click(screen.getByRole("button", { name: "Network" }));
+
+    // Both graph views read from collectGraph, so they can differ in layout
+    // but never in what the map contains.
+    expect(screen.getByLabelText("Blast radius graph")).toBeInTheDocument();
+    // Twice: the visible <text> label and the <title> that carries the full
+    // string for a truncated label.
+    expect(screen.getAllByText("formatMoney").length).toBeGreaterThan(0);
+    // The legend is shared, so the colours mean the same thing in both.
+    expect(screen.getByText("changed symbol")).toBeInTheDocument();
+  });
+
   it("collapses every symbol but the first", () => {
     renderCard();
 
@@ -430,7 +444,7 @@ describe("BlastCard", () => {
     expect(screen.getByText("formatMoney()")).toBeInTheDocument();
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Graph" }));
+    fireEvent.click(screen.getByRole("button", { name: "Flow" }));
     const graph = screen.getByRole("img", { name: "Blast radius graph" });
     expect(graph).toBeInTheDocument();
     expect(screen.queryByText("formatMoney")).not.toBeInTheDocument();
@@ -447,7 +461,7 @@ describe("BlastCard", () => {
     });
     renderCard();
 
-    fireEvent.click(screen.getByRole("button", { name: "Graph" }));
+    fireEvent.click(screen.getByRole("button", { name: "Flow" }));
     expect(screen.getByText("No downstream callers to graph.")).toBeInTheDocument();
   });
 

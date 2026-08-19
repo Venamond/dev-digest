@@ -29,7 +29,7 @@ function symbolLabel(name: string, _file: string): string {
  * walk over all of that symbol's callers), so drawing caller → endpoint would
  * assert a call path the payload does not actually claim.
  */
-function collectGraph(res: BlastResponse): {
+export function collectGraph(res: BlastResponse): {
   nodes: string[];
   roles: Map<string, NodeRole>;
   edges: Edge[];

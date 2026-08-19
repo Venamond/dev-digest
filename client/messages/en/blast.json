@@ -8,7 +8,8 @@
   },
   "view": {
     "tree": "Tree",
-    "graph": "Graph"
+    "flow": "Flow",
+    "network": "Network"
   },
   "callerCount": "{count, plural, one {# caller} other {# callers}}",
   "noDownstream": "{count} changed symbol(s), no downstream callers found.",

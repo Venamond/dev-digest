@@ -8,6 +8,8 @@ import type { BlastLink, BlastResponse, BlastSymbolImpact } from "@devdigest/sha
 import { useBlast, useBlastSummary, useDeriveBlastSummary } from "@/lib/hooks/reviews";
 import { useResyncRepoIntel } from "@/lib/hooks/repo-intel";
 import { MermaidDiagram } from "@/components/mermaid-diagram/MermaidDiagram";
+import { ForceGraph } from "./ForceGraph";
+import { computeForceLayout } from "./force-layout";
 import { githubBlobUrl } from "@/lib/github-urls";
 import {
   buildFlowchart,
@@ -54,6 +56,29 @@ function FileRef({
     >
       {label}
     </a>
+  );
+}
+
+/** One key for both graph views — they draw the same roles in the same
+ *  colours, so a second legend would be a second chance to disagree. */
+function GraphLegend() {
+  const t = useTranslations("blast");
+  return (
+    <div style={s.legend}>
+      {(
+        [
+          ["#93bbfc", "graph.legendSymbol"],
+          ["#cccccc", "graph.legendCallers"],
+          ["#93bbfc", "graph.legendEndpoints"],
+          ["#f59e0b", "graph.legendCrons"],
+        ] as const
+      ).map(([color, key]) => (
+        <span key={key} style={s.legendItem}>
+          <span style={s.legendDot(color)} />
+          {t(key)}
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -342,9 +367,14 @@ export function BlastCard({ prId }: { prId: string | null }) {
   const summary = useBlastSummary(prId);
   const derive = useDeriveBlastSummary(prId);
   const resync = useResyncRepoIntel(repoId);
-  const [view, setView] = React.useState<"tree" | "graph">("tree");
+  const [view, setView] = React.useState<"tree" | "flow" | "network">("tree");
 
   const chart = React.useMemo(() => (data ? buildFlowchart(data) : ""), [data]);
+  // Same nodes and edges as the chart, arranged by simulation instead of ranks.
+  const layout = React.useMemo(
+    () => (data ? computeForceLayout(data) : null),
+    [data],
+  );
   const graphNodes = React.useMemo(() => (data ? countGraphNodes(data) : 0), [data]);
   const tokens = React.useMemo(() => (data ? codeTokens(data) : []), [data]);
   // Rows for symbols that reach something; the rest become one line.
@@ -411,22 +441,17 @@ export function BlastCard({ prId }: { prId: string | null }) {
             <Stat icon="Clock" value={String(totals.crons)} label={t("stat.crons")} />
           </div>
           <div style={s.toggle}>
-            <button
-              type="button"
-              aria-pressed={view === "tree"}
-              style={s.toggleButton(view === "tree")}
-              onClick={() => setView("tree")}
-            >
-              {t("view.tree")}
-            </button>
-            <button
-              type="button"
-              aria-pressed={view === "graph"}
-              style={s.toggleButton(view === "graph")}
-              onClick={() => setView("graph")}
-            >
-              {t("view.graph")}
-            </button>
+            {(["tree", "flow", "network"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                aria-pressed={view === mode}
+                style={s.toggleButton(view === mode)}
+                onClick={() => setView(mode)}
+              >
+                {t(`view.${mode}`)}
+              </button>
+            ))}
           </div>
         </div>
         {summaryText ? (
@@ -463,29 +488,23 @@ export function BlastCard({ prId }: { prId: string | null }) {
           ) : (
             <p style={s.empty}>{t("noDownstream", { count: totals.symbols })}</p>
           )
+        ) : view === "network" ? (
+          layout && layout.nodes.length > 0 ? (
+            <>
+              <div aria-label={t("graph.ariaLabel")}>
+                <ForceGraph layout={layout} />
+              </div>
+              <GraphLegend />
+            </>
+          ) : (
+            <p style={s.empty}>{t("graph.empty")}</p>
+          )
         ) : chart ? (
           <>
             <div role="img" aria-label={t("graph.ariaLabel")}>
               <MermaidDiagram chart={chart} />
             </div>
-            <div style={s.legend}>
-              <span style={s.legendItem}>
-                <span style={s.legendDot("#93bbfc")} />
-                {t("graph.legendSymbol")}
-              </span>
-              <span style={s.legendItem}>
-                <span style={s.legendDot("#cccccc")} />
-                {t("graph.legendCallers")}
-              </span>
-              <span style={s.legendItem}>
-                <span style={s.legendDot("#93bbfc")} />
-                {t("graph.legendEndpoints")}
-              </span>
-              <span style={s.legendItem}>
-                <span style={s.legendDot("#f59e0b")} />
-                {t("graph.legendCrons")}
-              </span>
-            </div>
+            <GraphLegend />
             {graphNodes > MAX_GRAPH_NODES && (
               <p style={s.note}>
                 {t("truncated", { shown: MAX_GRAPH_NODES, total: graphNodes })}
