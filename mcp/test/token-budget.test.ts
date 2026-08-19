@@ -39,7 +39,8 @@ const EXPECTED_DESCRIPTIONS: Record<string, string> = {
   get_findings:
     'Returns the verdict and findings from reviews already done for a pull request, without starting a new run.',
   get_conventions: 'Returns the coding conventions DevDigest extracted for a repository.',
-  get_blast_radius: 'Maps which files and symbols a pull request impacts, and who calls them.',
+  get_blast_radius:
+    'Maps which files and symbols a pull request impacts, and who calls them. Requires the repository to be indexed by DevDigest first.',
 };
 
 const encoder = getEncoding('cl100k_base');

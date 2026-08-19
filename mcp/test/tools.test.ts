@@ -7,6 +7,7 @@ import { POLL_INTERVAL_MS } from '../src/tools/run-agent-on-pr.js';
 import type {
   Agent,
   AgentSkillEditorRow,
+  BlastResponse,
   ConventionsList,
   PrMeta,
   Repo,
@@ -575,33 +576,167 @@ describe('get_conventions', () => {
   });
 });
 
+/*
+ * There is no test here asserting that the description avoids the words "not
+ * implemented" / "stub". That guard existed only for the deliberate-stub era
+ * (D15 of docs/plans/2026-08-18-mcp-server.md), which S7 of the blast-radius
+ * plan retired by shipping the real tool; the description is still pinned,
+ * byte for byte along with the other four, by `test/token-budget.test.ts`'s
+ * 'every tool description is byte-identical to the approved text' (D22).
+ */
 describe('get_blast_radius', () => {
-  it('get_blast_radius returns isError and makes no HTTP request', async () => {
-    const fetchMock = stubFetch(() => {
-      throw new Error('fetch must not be called by get_blast_radius');
+  const repos: Repo[] = [{ id: 'repo-1', full_name: 'acme/repo' }];
+  const pulls: PrMeta[] = [{ id: 'pr-1', number: 42 }];
+
+  const okBlast: BlastResponse = {
+    state: 'ok',
+    totals: { symbols: 1, callers: 2, callers_found: 3, endpoints: 1, crons: 0 },
+    symbols: [
+      {
+        file: 'src/lib/money.ts',
+        name: 'formatAmount',
+        kind: 'function',
+        callers: [
+          { file: 'src/routes/invoice.ts', symbol: 'renderInvoice', line: 88 },
+          { file: 'src/routes/receipt.ts', symbol: 'renderReceipt', line: 12 },
+        ],
+        callers_total: 3,
+        callers_truncated: true,
+        endpoints: ['GET /invoices/:id'],
+        crons: [],
+      },
+    ],
+    downstream_truncated: false,
+  };
+
+  function stubBlast(blast: unknown): ReturnType<typeof stubFetch> {
+    return stubFetch((path) => {
+      if (path === '/repos') return jsonResponse(repos);
+      if (path === '/repos/repo-1/pulls') return jsonResponse(pulls);
+      if (path === '/pulls/pr-1/blast') return jsonResponse(blast);
+      throw new Error(`unexpected path ${path}`);
+    });
+  }
+
+  async function callBlast(): Promise<CallToolResult> {
+    const api = new DevDigestApi(BASE_URL);
+    const client = await connectClient(api);
+    return (await client.callTool({
+      name: 'get_blast_radius',
+      arguments: { repo: 'acme/repo', pr: 42 },
+    })) as CallToolResult;
+  }
+
+  it('get_blast_radius returns the structured blast map for an indexed repo', async () => {
+    stubBlast(okBlast);
+
+    const result = await callBlast();
+
+    expect(result.isError).toBeFalsy();
+    const payload = structured<{
+      state: string;
+      totals: Record<string, number>;
+      downstream_truncated: boolean;
+      symbols: Array<{ callers: Array<Record<string, unknown>> }>;
+      hint?: string;
+      truncated?: boolean;
+    }>(result);
+
+    expect(payload.state).toBe('ok');
+    expect(payload.totals).toEqual({ symbols: 1, callers: 2, callers_found: 3, endpoints: 1, crons: 0 });
+    expect(payload.downstream_truncated).toBe(false);
+    expect(payload.symbols[0]?.callers[0]?.file).toBe('src/routes/invoice.ts');
+    // `rank` is an internal ordering score (D21): it must not survive the trim.
+    expect(payload.symbols[0]?.callers[0]).not.toHaveProperty('rank');
+    expect(payload.truncated).toBeUndefined();
+    expect(payload.hint).toBeUndefined();
+  });
+
+  it('get_blast_radius surfaces an unindexed repo as state degraded with a hint, not an error', async () => {
+    stubBlast({
+      state: 'degraded',
+      reason: 'no_data',
+      totals: { symbols: 0, callers: 0, callers_found: 0, endpoints: 0, crons: 0 },
+      symbols: [],
+      downstream_truncated: false,
+    } satisfies BlastResponse);
+
+    const result = await callBlast();
+
+    expect(result.isError).toBeFalsy();
+    const payload = structured<{ state: string; reason: string; hint: string; symbols: unknown[] }>(result);
+    expect(payload.state).toBe('degraded');
+    expect(payload.reason).toBe('no_data');
+    expect(payload.symbols).toEqual([]);
+    expect(payload.hint).toBeTruthy();
+  });
+
+  it('get_blast_radius hints that a stale index means missing callers, not none', async () => {
+    stubBlast({
+      ...okBlast,
+      state: 'partial',
+      reason: 'index_stale',
+      symbols: [],
+      totals: { symbols: 0, callers: 0, callers_found: 0, endpoints: 0, crons: 0 },
+    } satisfies BlastResponse);
+
+    const result = await callBlast();
+
+    expect(result.isError).toBeFalsy();
+    const payload = structured<{ hint: string }>(result);
+    expect(payload.hint).toMatch(/older DevDigest indexer/);
+  });
+
+  it('get_blast_radius caps symbols and callers', async () => {
+    stubBlast({
+      state: 'ok',
+      totals: { symbols: 40, callers: 1200, callers_found: 1200, endpoints: 0, crons: 0 },
+      symbols: Array.from({ length: 40 }, (_unused, s) => ({
+        file: `src/s${s}.ts`,
+        name: `sym${s}`,
+        kind: 'function',
+        callers: Array.from({ length: 30 }, (_c, c) => ({
+          file: `src/caller${c}.ts`,
+          symbol: `caller${c}`,
+          line: c + 1,
+        })),
+        callers_total: 30,
+        callers_truncated: false,
+        endpoints: [],
+        crons: [],
+      })),
+      downstream_truncated: false,
+    } satisfies BlastResponse);
+
+    const result = await callBlast();
+
+    const payload = structured<{
+      symbols: Array<{ callers: unknown[]; callers_truncated: boolean }>;
+      truncated?: boolean;
+    }>(result);
+    expect(payload.symbols.length).toBe(25);
+    for (const symbol of payload.symbols) {
+      expect(symbol.callers.length).toBe(10);
+      expect(symbol.callers_truncated).toBe(true);
+    }
+    expect(payload.truncated).toBe(true);
+  });
+
+  it('get_blast_radius reports an unknown PR as an error naming the known numbers', async () => {
+    stubFetch((path) => {
+      if (path === '/repos') return jsonResponse(repos);
+      if (path === '/repos/repo-1/pulls') return jsonResponse(pulls);
+      throw new Error(`unexpected path ${path}`);
     });
     const api = new DevDigestApi(BASE_URL);
     const client = await connectClient(api);
 
     const result = (await client.callTool({
       name: 'get_blast_radius',
-      arguments: { repo: 'acme/repo', pr: 42 },
+      arguments: { repo: 'acme/repo', pr: 999 },
     })) as CallToolResult;
 
-    expect(fetchMock).not.toHaveBeenCalled();
     expect(result.isError).toBe(true);
-    expect(text(result)).toContain('get_conventions');
-  });
-
-  it('get_blast_radius describes itself as working and does not say "not implemented"', async () => {
-    stubFetch(() => jsonResponse([]));
-    const api = new DevDigestApi(BASE_URL);
-    const client = await connectClient(api);
-
-    const { tools } = await client.listTools();
-    const tool = tools.find((t) => t.name === 'get_blast_radius');
-
-    expect(tool?.description).toBeDefined();
-    expect(tool?.description ?? '').not.toMatch(/not implemented|stub|coming soon/i);
+    expect(text(result)).toContain('acme/repo');
   });
 });

@@ -92,21 +92,20 @@ records twice.
 
 ## Non-default conventions
 
-- **`get_blast_radius`'s description promises a working tool, on purpose.**
-  It does not say "not implemented" or "stub". The model is *meant* to call
-  it, receive the forward-leading `isError` (which names `get_conventions`
-  and the `file` field of a finding as the alternative), and act on it — that
-  is the live classroom demonstration of design principle 4, *errors lead
-  forward*. Adding "not implemented" to the description would suppress the
-  call and turn the tool into ~30 tokens of dead context weight paid at every
-  chat startup for nothing. `mcp/test/tools.test.ts`'s
-  `'get_blast_radius describes itself as working and does not say "not
-  implemented"'` enforces this — if you are here because that description
-  "looks wrong", it isn't; read this section before touching it. The real
-  pickup point for the next lesson is `RepoIntel.getBlastRadius`
-  (`server/src/modules/repo-intel/service.ts:214`, interface at `types.ts:147`)
-  — the facade method exists, but `server/src/modules/repo-intel/routes.ts`
-  exposes no route for it.
+- **`get_blast_radius` reports a repository it cannot map as a *success*
+  payload, not an `isError`.** The tool calls `GET /pulls/:id/blast`
+  (`server/src/modules/blast/routes.ts`), which needs DevDigest's persistent
+  code index for the repo. When that index is absent the route still answers
+  `200` with `state: 'degraded'`, and when it was written by an older indexer
+  it answers `reason: 'index_stale'` — in both cases the map is empty because
+  we cannot see, not because nothing is impacted. The tool passes that through
+  as `structuredContent` with a forward-leading `hint` naming the studio's
+  *Re-analyze*. An `isError` here would be wrong twice: the API answered, and
+  a model that gets an error tends to stop rather than act on the remedy. The
+  caveat lives in the response `hint`, never in the `description` — hint
+  tokens are paid once, description tokens at every chat startup.
+  `mcp/test/tools.test.ts`'s `'get_blast_radius surfaces an unindexed repo as
+  state degraded with a hint, not an error'` is the guard.
 - **The `repo` example — in `INSTRUCTIONS` (`src/server.ts`) and in
   `run_agent_on_pr`'s `.describe()` — is a deliberate placeholder,
   `octocat/hello-world`, and must not be replaced with a real repository.**
@@ -209,8 +208,8 @@ encoder the server uses (`js-tiktoken`). Measured on this branch:
 | `run_agent_on_pr` | 171 |
 | `get_findings` | 191 |
 | `get_conventions` | 69 |
-| `get_blast_radius` | 102 |
-| **Total (`tools` + `instructions`)** | **673** (cap 900) |
+| `get_blast_radius` | 113 |
+| **Total (`tools` + `instructions`)** | **684** (cap 900) |
 
 **The per-tool cap is 200, not the plan's 150, and there is no per-tool
 override.** Two changes stacked. First, Zod 4's JSON-Schema conversion for
@@ -301,8 +300,9 @@ was performed.
   `./scripts/check-shared-sync.sh` only diffs the two existing copies and
   would never see a third one drift.
 - Don't paraphrase, reword, or translate the five tool `description`
-  strings, and don't add "not implemented" to `get_blast_radius`'s — both are
-  approved, budgeted, and asserted byte-for-byte by tests (see above).
+  strings — they are approved, budgeted, and asserted byte-for-byte by
+  `test/token-budget.test.ts` (see above). A caveat a caller needs goes in the
+  response `hint`, not into a description or a `.describe()`.
 - Don't build this package to `dist/` or add a bundler — it runs from
   TypeScript source via `tsx`, same as `reviewer-core/`.
 

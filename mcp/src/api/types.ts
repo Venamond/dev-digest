@@ -105,3 +105,43 @@ export interface ApiErrorBody {
     message: string;
   };
 }
+
+/**
+ * Mirrors `BlastResponse` in `server/src/vendor/shared/contracts/brief.ts`
+ * (the L04 contract, not the older `BlastRadius` PrBrief block above it).
+ *
+ * Only the fields this package returns to the model are declared: `index`,
+ * `prior_pulls`, `link`, `importers` and `callers[].rank` are deliberately
+ * absent (D21) — the first three are studio affordances, `link.repo_full_name`
+ * is the argument the caller already supplied, and `rank` is an internal
+ * ordering score nothing downstream can act on.
+ */
+export interface BlastResponse {
+  state: 'ok' | 'partial' | 'degraded';
+  reason?: string | null;
+  totals: {
+    symbols: number;
+    callers: number;
+    /** Pre-cap sum: `callers` counts only the rows the server rendered. */
+    callers_found: number;
+    endpoints: number;
+    crons: number;
+  };
+  symbols: Array<{
+    file: string;
+    name: string;
+    kind: string;
+    callers: Array<{ file: string; symbol: string; line: number }>;
+    callers_total: number;
+    callers_truncated: boolean;
+    endpoints: string[];
+    crons: string[];
+  }>;
+  /**
+   * True when the server's reverse-dependency walk hit its cap, so
+   * `endpoints` / `crons` are a subset of what the index holds. Passed
+   * through rather than dropped: a model reading a silently-capped map
+   * reports the impact as complete.
+   */
+  downstream_truncated: boolean;
+}

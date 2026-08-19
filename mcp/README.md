@@ -16,7 +16,7 @@ source via `tsx`, the same way `reviewer-core/` does.
 | `run_agent_on_pr` | Runs one review agent on a pull request, waits for it to finish (polling, not SSE), and returns the verdict with its findings. Starts a real LLM run: slow and not free. | — |
 | `get_findings` | Returns the verdict and findings already recorded for a pull request, without starting a new run. | — |
 | `get_conventions` | Returns the coding conventions DevDigest extracted for a repository. | Same data as **L02**'s Conventions Extractor (`GET /repos/:id/conventions`, `server/src/modules/conventions`) — this tool is an MCP surface over work you already did in that lesson, not a new feature. |
-| `get_blast_radius` | Maps which files and symbols a pull request impacts, and who calls them. | **Deliberate stub.** The facade method `RepoIntel.getBlastRadius` exists (`server/src/modules/repo-intel/service.ts:214`) but has no HTTP route yet — wiring it up is **L04**. The tool's description promises a working tool on purpose; calling it returns a forward-leading error instead of silently disappearing from the tool list. See `mcp/AGENTS.md` for why. |
+| `get_blast_radius` | Maps which files and symbols a pull request impacts, and who calls them. Requires the repository to be indexed by DevDigest first. | **L04**'s Blast Radius over MCP (`GET /pulls/:id/blast`, `server/src/modules/blast/routes.ts`) — zero LLM calls, read straight from the persistent code index. Returns `state`, `totals` and, per changed symbol, its callers, endpoints and crons; `prior_pulls` and `link` stay in the studio. A repo that is not indexed (or was indexed by an older indexer) comes back as a **success** payload with `state: 'degraded'` / `reason: 'index_stale'` and a `hint` pointing at *Re-analyze* — an empty map means "we cannot see", never "nothing is impacted". |
 
 Successful results are returned as `structuredContent` — a real JSON object
 on the wire, with `content` left empty — never as prose, because
@@ -130,10 +130,13 @@ running.
 3. *"What conventions has DevDigest extracted for `acme/payments-api`?"* →
    `get_conventions` only.
 4. *"What is the blast radius of PR #482?"* → the model **must actually call
-   `get_blast_radius`**, receive the `isError`, and follow it — calling
-   `get_conventions` or reading a finding's `file` field — rather than
-   stalling. This question is the acceptance test for design principle 4,
-   *errors lead forward*.
+   `get_blast_radius`** and answer from the returned map, naming symbols,
+   caller files and affected endpoints. On a repository DevDigest has not
+   indexed, the tool answers `state: 'degraded'` with a `hint`, and the model
+   must relay that remedy — *Re-analyze the repo in the studio* — rather than
+   report the PR as having no impact. That branch is the acceptance test for
+   design principle 4, *errors lead forward*: the payload leads forward even
+   though it is not an error.
 5. *"Has PR #482 been reviewed yet, and by whom?"* → `get_findings` without
    `agent`; the answer must name **every** agent that reviewed it, not just
    the one whose review row happens to be newest.

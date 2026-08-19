@@ -1,7 +1,9 @@
 /**
  * Every error `mcp/` throws names the next concrete action the calling model
  * should take — never a bare failure. This is design principle 4, "errors
- * lead forward" (see docs/plans/2026-08-18-mcp-server.md, D15 and §2c).
+ * lead forward" (see docs/plans/2026-08-18-mcp-server.md §2c; D15 there is
+ * where the principle was first argued, and was RETIRED in L04 when
+ * `get_blast_radius` stopped being a stub — the principle outlived it).
  *
  * `ToolError` is the base class every tool handler is expected to catch and
  * turn into `errorContent(err.message)` (see `format.ts`, S3/S4).

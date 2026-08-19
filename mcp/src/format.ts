@@ -28,6 +28,8 @@ export const MAX_FINDINGS_SUMMARY = 50;
 export const MAX_FINDINGS_FULL = 20;
 export const MAX_CONVENTIONS = 100;
 export const MAX_AGENTS = 50;
+export const MAX_BLAST_SYMBOLS = 25;
+export const MAX_BLAST_CALLERS_PER_SYMBOL = 10;
 
 export interface TrimmedFinding {
   severity: Severity;

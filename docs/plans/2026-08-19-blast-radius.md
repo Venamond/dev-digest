@@ -87,7 +87,8 @@ close the clone-read hole).
   6. `getReverseDependents` issues at most `BFS_DEPTH` (2) reverse-edge
      queries.
   7. A caller row in `BlastCard` renders an anchor whose `href` is
-     `githubBlobUrl(link.repo_full_name, link.head_sha, file, line)`.
+     `githubBlobUrl(link.repo_full_name, link.indexed_sha, file, line)` — the
+     INDEXED commit, never `head_sha` (D28).
   8. `get_blast_radius` returns a `structuredContent` payload (no `isError`)
      for an indexed repo and `state: "degraded"` + a `hint` for an unindexed
      one, with `mcp/test/token-budget.test.ts` green at the unchanged caps.
@@ -249,7 +250,7 @@ the Settings screen, `e2e/`, `.mcp.json`.
 | Changed symbols, resolved callers, per-caller-file facts | `symbols`, `references` (`decl_file` resolved), `file_rank`, `file_facts` via `RepoIntel.getBlastRadius(..., { persistentOnly: true })` | `BlastService` | facade returns `degraded: true` → response is `state: "degraded"` with `reason` from the facade |
 | Reverse dependents (≤ 2 levels) + their facts | `file_edges` via index `file_edges_repo_to_idx`, then `file_facts` | `RepoIntel.getReverseDependents` | `[]` — no endpoints added, never invented |
 | Prior PRs on the same files | `pr_files ⋈ pull_requests`, same `repo_id`, `id <> :prId` | `BlastRepository.priorPulls` | `[]`. `pull_requests.updated_at` is **nullable** → serialize `null`, sort `NULLS LAST` |
-| Deep-link base | `repos.full_name` + `pull_requests.head_sha` (both `NOT NULL`) | `BlastRepository.getRepo` / `getPull` | repo row absent → `404` |
+| Deep-link base | `repos.full_name` + **`repo_index_state.last_indexed_sha`** (`pull_requests.head_sha` is carried too, but only as a label — D28) | `BlastRepository.getRepo` / `getPull`, `RepoIntel.getIndexState` | repo row absent → `404`; empty `last_indexed_sha` → paths render unlinked |
 
 **Never read on the request path:** the git clone, the AST, the
 dependency-graph builder. Mechanically guaranteed by `persistentOnly: true`
@@ -377,7 +378,7 @@ the `smartDiff` entry at `:12` / `:38`.
   `prBody` is truthy, the description block. `BlastCard` renders
   **unconditionally**, beside `IntentCard`, including when `prBody` is empty.
 - `PrDetailView` (`:144`) passes only `prBody` and `prId` — **no prop
-  threading is needed**: `repo_full_name` and `head_sha` arrive on the
+  threading is needed**: `repo_full_name`, `indexed_sha` and `head_sha` arrive on the
   response's `link` object, and `repoId` (for the resync CTA) comes from
   `useParams<{ repoId: string }>()`.
 - New colocated component
@@ -1153,7 +1154,9 @@ copy its snippets or fixtures.
     reverse: ReverseDependentsResult;
     prior: Array<{ number: number; title: string; author: string; status: string; updatedAt: Date | null }>;
     index: IndexState;
-    link: { repo_full_name: string; head_sha: string };
+    link: { repo_full_name: string; head_sha: string };  // indexed_sha is
+    // filled from `index.lastIndexedSha` inside the shaper (D28), so it is not
+    // an input here.
     state: BlastState;
     reason?: BlastReason;
   }): BlastResponse
@@ -1603,7 +1606,10 @@ copy its snippets or fixtures.
     6. Otherwise the Tree view: one block per symbol —
        `name` · `kind` · `file`, then `t("callerCount", { count: symbol.callers_total })`,
        then each caller as an anchor
-       `href={githubBlobUrl(data.link.repo_full_name, data.link.head_sha, c.file, c.line)}`
+       `href={githubBlobUrl(data.link.repo_full_name, data.link.indexed_sha, c.file, c.line)}`
+       — **`indexed_sha`, never `head_sha`** (D28). When `indexed_sha` is the
+       empty string, render the path as plain text plus the `unlinked` note
+       instead of an anchor.
        with `target="_blank" rel="noreferrer"`, then the symbol's endpoints
        and crons. When `callers_truncated`, render
        `t("truncated", { shown: symbol.callers.length, total: symbol.callers_total })`.
@@ -1632,7 +1638,9 @@ copy its snippets or fixtures.
   2. **Deep link (DoD 7):** a caller row renders an `<a>` whose `href` is
      exactly
      `https://github.com/acme/payments-api/blob/a1b2c3d/src/api/public/index.ts#L23`
-     for `link: { repo_full_name: "acme/payments-api", head_sha: "a1b2c3d" }`
+     for `link: { repo_full_name: "acme/payments-api", indexed_sha: "a1b2c3d", head_sha: "9f8e7d6" }`
+     — the two SHAs differ on purpose, so an implementation reading the wrong
+     field fails the assertion
      and a caller at `src/api/public/index.ts:23`.
   3. `state: "degraded"` renders the `reindex` button and **not** the symbol
      list; clicking it calls the resync mutation.
