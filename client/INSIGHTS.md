@@ -90,6 +90,14 @@ ground truth — wrap-ups can mischaracterize a session.
   express; everything static stays in the colocated `styles.ts`, and a
   responsive layout is better solved by making the content fit than by
   smuggling a breakpoint into CSS.
+  **Any property such a rule overrides needs `!important`.** The element's
+  resting value comes from a React `style={}` attribute, and an inline style
+  outranks every class selector — the rule parses, matches, and does nothing.
+  I hit this twice: `pre > code` in the markdown entry below, and
+  `.dd-fileref:hover`, which shipped without `!important` after I had read that
+  very entry. Put the reason in a comment beside the declaration as well as
+  here: this file is read when work starts, and the mistake is made later,
+  while writing the rule.
 
 - **Every number on a card must be derived from the array the card renders —
   a count computed independently WILL drift from what is on screen.** Three
