@@ -215,6 +215,9 @@ function SymbolBlock({
         type="button"
         style={s.symbolHeader}
         aria-expanded={open}
+        // The reference shows the name and the caller count on this line and
+        // nothing else. The declaring file is reachable on hover.
+        title={symbol.file}
         onClick={() => setOpen(!open)}
       >
         <Chevron size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
@@ -224,13 +227,7 @@ function SymbolBlock({
             no separate uppercase kind label, and the parens say it better. */}
         <span style={s.symbolName}>{CALLABLE_KINDS.has(symbol.kind) ? `${symbol.name}()` : symbol.name}</span>
         {!CALLABLE_KINDS.has(symbol.kind) && <span style={s.symbolKind}>{symbol.kind}</span>}
-        {/* The declaring file rides the header line rather than taking one of
-            its own. The reference has no separate file row, but with dozens of
-            same-named symbols (three DiffTabProps in one map) the path is the
-            only thing telling them apart. */}
-        <span style={s.symbolFile} title={symbol.file}>
-          {shortPath(symbol.file, 2)}
-        </span>
+
         {/* The count follows the call sites actually listed below.
             `callers_total` counts distinct caller FILES (see the contract
             JSDoc), so using it here would label N rows with another unit. */}

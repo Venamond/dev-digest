@@ -270,17 +270,6 @@ export const s = {
     textTransform: "uppercase",
     color: "var(--text-muted)",
   } satisfies CSSProperties,
-  symbolFile: {
-    fontFamily: MONO,
-    fontSize: 12,
-    color: "var(--text-muted)",
-    flexShrink: 1,
-    // Repo paths here run to 90+ chars with no space in them, so the default
-    // break-word (which only breaks BETWEEN words) lets them run past the
-    // card. `anywhere` is the one value that breaks inside a long token.
-    overflowWrap: "anywhere",
-    minWidth: 0,
-  } satisfies CSSProperties,
   sectionLabel: {
     fontSize: 11,
     fontWeight: 700,
