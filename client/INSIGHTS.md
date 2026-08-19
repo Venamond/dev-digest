@@ -38,6 +38,21 @@ ground truth — wrap-ups can mischaracterize a session.
   and `flexShrink: 0` on that element — `flexWrap: "wrap"` on the row itself
   drops the whole right-hand element onto its own line, which reads as "the
   button moved" and sends you looking in the wrong file.
+  **Equal heights need three levels, not one.** Each card component renders
+  `<section>` around its card `<div>`, so the SECTION is the grid item.
+  `align-items: stretch` on the grid stretches the section and nothing else —
+  putting `height: 100%` on the card alone does nothing, because its parent
+  still has no height of its own. All three are required: `stretch` on the
+  grid, `display: flex; flex-direction: column` on the `<section>`, and
+  `height: 100%` on the card. (Column, not row: in a row flex box the card's
+  main-axis size stays content-based and it can end up narrower than its
+  cell.)
+  **A long title that jumps to its own line is a `minWidth` bug, not a
+  wrapping bug.** A flex item will not break below min-content, so a
+  `flexWrap: "wrap"` row containing a long heading pushes the WHOLE heading
+  to the next line rather than wrapping it in place — `#8` rendered as a bare
+  number above its own title. Give the text `flexGrow: 1; flexShrink: 1;
+  minWidth: 0` and `flexShrink: 0` to the fixed chips beside it.
 
 - **i18n namespace follows the component's location, not the feature it serves.**
   Shared components under `client/src/components/**` call
