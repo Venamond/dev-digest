@@ -290,6 +290,14 @@ ground truth — wrap-ups can mischaracterize a session.
   requestAnimationFrame, so a live simulation produces no ticks under test at
   all; make `drag()` notify synchronously, which is also correct in a browser
   because a simulation cooled to alpha 0 has stopped ticking.
+  **And d3's drag examples clear `fx`/`fy` on drop — do not copy that into an
+  explorable graph.** Their demos exist to show physics, so a released node
+  springing back is the point. In a map a reader drags apart to READ, it means
+  every node you place undoes itself and the graph cannot be arranged at all
+  (reported as "I can't pin a node"). Keep `fx`/`fy` set on release, release
+  explicitly (double-click, plus a reset that unpins everything), and mark
+  pinned nodes — otherwise nothing distinguishes a node the reader placed from
+  one the simulation settled there.
   And when the view has a rotation, the screen→layout inverse must undo it:
   a drag that tracks perfectly at 0° and drifts at every other angle is that
   missing step (`viewport.ts`, round-trip test at five angles).
