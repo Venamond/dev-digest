@@ -112,15 +112,32 @@ afterEach(() => {
 });
 
 describe("BlastCard", () => {
+  /** The value rendered beside a stat label — scoped, because bare digits also
+   *  appear in the prior-PR count badge and the per-symbol caller counts. */
+  function statValue(label: string): string {
+    const el = screen.getByText(label).previousElementSibling;
+    return el?.textContent ?? "";
+  }
+
   it("renders every changed symbol and the stat row", () => {
     renderCard();
 
     expect(screen.getByText("formatMoney")).toBeInTheDocument();
     expect(screen.getByText("applyTax")).toBeInTheDocument();
-    // symbols 2, callers 2, endpoints 1, crons 0
-    expect(screen.getAllByText("2")).toHaveLength(2);
-    expect(screen.getByText("1")).toBeInTheDocument();
-    expect(screen.getByText("0")).toBeInTheDocument();
+    expect(statValue("symbols")).toBe("2");
+    expect(statValue("callers")).toBe("2");
+    expect(statValue("endpoints")).toBe("1");
+    expect(statValue("cron/jobs")).toBe("0");
+  });
+
+  it("collapses every symbol but the first", () => {
+    renderCard();
+
+    // The first symbol's body is open on arrival so the card shows real
+    // content; the second is a closed disclosure row.
+    const rows = screen.getAllByRole("button", { expanded: false });
+    expect(rows.some((r) => r.textContent?.includes("applyTax"))).toBe(true);
+    expect(screen.getByRole("button", { expanded: true }).textContent).toContain("formatMoney");
   });
 
   it("deep-links a caller at the INDEXED commit, not the PR head", () => {
@@ -300,13 +317,15 @@ describe("BlastCard", () => {
   it("keeps prior PRs collapsed until the reader opens them", () => {
     renderCard();
 
-    const details = screen.getByText("Prior PRs touching these files").closest("details");
-    expect(details).not.toHaveAttribute("open");
-    const row = screen.getByText(/#41 · Rework tax rounding · octocat · merged/);
-    expect(row).not.toBeVisible();
+    const toggle = screen.getByRole("button", { name: /Prior PRs touching these files/ });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("Rework tax rounding")).not.toBeInTheDocument();
 
-    details?.setAttribute("open", "");
-    expect(row).toBeVisible();
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("Rework tax rounding")).toBeInTheDocument();
+    expect(screen.getByText("#41")).toBeInTheDocument();
+    expect(screen.getByText("octocat")).toBeInTheDocument();
   });
 
   it("renders no prior-PR section when there are none", () => {

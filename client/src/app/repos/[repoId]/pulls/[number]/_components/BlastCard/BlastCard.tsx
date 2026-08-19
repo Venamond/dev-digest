@@ -3,8 +3,8 @@
 import React from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Button, Icon } from "@devdigest/ui";
-import type { BlastLink, BlastSymbolImpact } from "@devdigest/shared";
+import { Avatar, Button, Icon } from "@devdigest/ui";
+import type { BlastLink, BlastResponse, BlastSymbolImpact } from "@devdigest/shared";
 import { useBlast, useBlastSummary, useDeriveBlastSummary } from "@/lib/hooks/reviews";
 import { useResyncRepoIntel } from "@/lib/hooks/repo-intel";
 import { MermaidDiagram } from "@/components/mermaid-diagram/MermaidDiagram";
@@ -44,11 +44,56 @@ function FileRef({
   );
 }
 
-function Stat({ value, label }: { value: string; label: string }) {
+function Stat({
+  icon,
+  value,
+  label,
+}: {
+  icon: "Code" | "CornerDownRight" | "Globe" | "Clock";
+  value: string;
+  label: string;
+}) {
+  const I = Icon[icon];
   return (
-    <div style={s.stat}>
+    <span style={s.stat}>
+      <I size={13} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
       <span style={s.statValue}>{value}</span>
       <span style={s.statLabel}>{label}</span>
+    </span>
+  );
+}
+
+/** Prior PRs that touched the same files — history beside the structural map. */
+function PriorPulls({ pulls }: { pulls: BlastResponse["prior_pulls"] }) {
+  const t = useTranslations("blast");
+  const [open, setOpen] = React.useState(false);
+  const Chevron = open ? Icon.ChevronDown : Icon.ChevronRight;
+  return (
+    <div style={s.priorCard}>
+      <button type="button" style={s.priorToggle} aria-expanded={open} onClick={() => setOpen(!open)}>
+        <Icon.History size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+        <span>{t("priorPulls")}</span>
+        <span style={s.priorCountBadge}>{pulls.length}</span>
+        <Chevron size={14} style={{ color: "var(--text-muted)", marginLeft: "auto" }} />
+      </button>
+      {open && (
+        <div style={s.priorList}>
+          {pulls.map((pull) => (
+            <div key={pull.number} style={s.priorRow}>
+              <div style={s.priorTitleLine}>
+                <span style={s.priorNumber}>{`#${pull.number}`}</span>
+                <span style={s.priorTitle}>{pull.title}</span>
+              </div>
+              <div style={s.priorMeta}>
+                <Avatar name={pull.author} size={16} />
+                <span>{pull.author}</span>
+                {pull.updated_at && <span>{`· ${new Date(pull.updated_at).toLocaleDateString()}`}</span>}
+                <span>{`· ${pull.status}`}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -56,19 +101,38 @@ function Stat({ value, label }: { value: string; label: string }) {
 /** Callers (from `references`) and importers (reverse-import graph) are two
  *  different relationships and are rendered as two groups — an importer that
  *  never calls the symbol is not a call site. */
-function SymbolBlock({ symbol, link }: { symbol: BlastSymbolImpact; link: BlastLink }) {
+function SymbolBlock({
+  symbol,
+  link,
+  defaultOpen,
+}: {
+  symbol: BlastSymbolImpact;
+  link: BlastLink;
+  defaultOpen: boolean;
+}) {
   const t = useTranslations("blast");
+  const [open, setOpen] = React.useState(defaultOpen);
+  const Chevron = open ? Icon.ChevronDown : Icon.ChevronRight;
   return (
     <div style={s.symbol}>
-      <div style={s.symbolHeader}>
+      <button
+        type="button"
+        style={s.symbolHeader}
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+      >
+        <Chevron size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+        <Icon.Code size={13} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
         <span style={s.symbolName}>{symbol.name}</span>
         <span style={s.symbolKind}>{symbol.kind}</span>
-        <span style={s.symbolFile}>{symbol.file}</span>
-      </div>
-      {/* The heading counts the call sites actually listed below. `callers_total`
-          is a count of distinct caller FILES (see the contract JSDoc), so using
-          it here would label N rendered rows with a different unit. */}
-      <div style={s.sectionLabel}>{t("callerCount", { count: symbol.callers.length })}</div>
+        {/* The count follows the call sites actually listed below.
+            `callers_total` counts distinct caller FILES (see the contract
+            JSDoc), so using it here would label N rows with another unit. */}
+        <span style={s.symbolCount}>{t("callerCount", { count: symbol.callers.length })}</span>
+      </button>
+      {open && (
+      <div style={s.symbolBody}>
+      <div style={s.symbolFile}>{symbol.file}</div>
       {symbol.callers.length > 0 && (
         <ul style={s.list}>
           {symbol.callers.map((caller) => (
@@ -117,6 +181,8 @@ function SymbolBlock({ symbol, link }: { symbol: BlastSymbolImpact; link: BlastL
             </li>
           ))}
         </ul>
+      )}
+      </div>
       )}
     </div>
   );
@@ -168,18 +234,39 @@ export function BlastCard({ prId }: { prId: string | null }) {
     body = (
       <>
         {data.state === "partial" && <div style={s.banner}>{t("partial")}</div>}
-        <div style={s.stats}>
-          <Stat value={String(totals.symbols)} label={t("stat.symbols")} />
-          <Stat
-            value={
-              totals.callers === totals.callers_found
-                ? String(totals.callers)
-                : `${totals.callers} / ${totals.callers_found}`
-            }
-            label={t("stat.callers")}
-          />
-          <Stat value={String(totals.endpoints)} label={t("stat.endpoints")} />
-          <Stat value={String(totals.crons)} label={t("stat.crons")} />
+        <div style={s.statBar}>
+          <div style={s.stats}>
+            <Stat icon="Code" value={String(totals.symbols)} label={t("stat.symbols")} />
+            <Stat
+              icon="CornerDownRight"
+              value={
+                totals.callers === totals.callers_found
+                  ? String(totals.callers)
+                  : `${totals.callers} / ${totals.callers_found}`
+              }
+              label={t("stat.callers")}
+            />
+            <Stat icon="Globe" value={String(totals.endpoints)} label={t("stat.endpoints")} />
+            <Stat icon="Clock" value={String(totals.crons)} label={t("stat.crons")} />
+          </div>
+          <div style={s.toggle}>
+            <button
+              type="button"
+              aria-pressed={view === "tree"}
+              style={s.toggleButton(view === "tree")}
+              onClick={() => setView("tree")}
+            >
+              {t("view.tree")}
+            </button>
+            <button
+              type="button"
+              aria-pressed={view === "graph"}
+              style={s.toggleButton(view === "graph")}
+              onClick={() => setView("graph")}
+            >
+              {t("view.graph")}
+            </button>
+          </div>
         </div>
         {summaryText ? (
           <div style={s.summaryBox}>
@@ -201,8 +288,15 @@ export function BlastCard({ prId }: { prId: string | null }) {
         {view === "tree" ? (
           hasImpact ? (
             <div style={s.tree}>
-              {data.symbols.map((symbol) => (
-                <SymbolBlock key={`${symbol.file}:${symbol.name}`} symbol={symbol} link={link} />
+              {data.symbols.map((symbol, i) => (
+                <SymbolBlock
+                  key={`${symbol.file}:${symbol.name}`}
+                  symbol={symbol}
+                  link={link}
+                  // The first symbol opens so the card shows real content on
+                  // arrival; the rest stay collapsed so a wide PR is scannable.
+                  defaultOpen={i === 0}
+                />
               ))}
             </div>
           ) : (
@@ -222,19 +316,7 @@ export function BlastCard({ prId }: { prId: string | null }) {
         ) : (
           <p style={s.empty}>{t("graph.empty")}</p>
         )}
-        {data.prior_pulls.length > 0 && (
-          <details style={s.details}>
-            <summary style={s.summaryToggle}>{t("priorPulls")}</summary>
-            {data.prior_pulls.map((pull) => (
-              <div key={pull.number} style={s.priorRow}>
-                {`#${pull.number} · ${pull.title} · ${pull.author} · ${pull.status}`}
-                {pull.updated_at
-                  ? ` · ${new Date(pull.updated_at).toLocaleDateString()}`
-                  : ""}
-              </div>
-            ))}
-          </details>
-        )}
+        {data.prior_pulls.length > 0 && <PriorPulls pulls={data.prior_pulls} />}
       </>
     );
   }
@@ -247,37 +329,17 @@ export function BlastCard({ prId }: { prId: string | null }) {
             <Icon.Zap size={14} style={{ color: "var(--text-muted)" }} />
             <span style={s.headerTitle}>{t("title")}</span>
           </div>
-          {hasMap && (
+          {hasMap && !summaryText && !derive.isError && (
             <div style={s.actions}>
-              {!summaryText && !derive.isError && (
-                <Button
-                  kind="ghost"
-                  size="sm"
-                  loading={derive.isPending}
-                  disabled={!prId || derive.isPending}
-                  onClick={() => derive.mutate()}
-                >
-                  {t("explain")}
-                </Button>
-              )}
-              <div style={s.toggle}>
-                <button
-                  type="button"
-                  aria-pressed={view === "tree"}
-                  style={s.toggleButton(view === "tree")}
-                  onClick={() => setView("tree")}
-                >
-                  {t("view.tree")}
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={view === "graph"}
-                  style={s.toggleButton(view === "graph")}
-                  onClick={() => setView("graph")}
-                >
-                  {t("view.graph")}
-                </button>
-              </div>
+              <Button
+                kind="ghost"
+                size="sm"
+                loading={derive.isPending}
+                disabled={!prId || derive.isPending}
+                onClick={() => derive.mutate()}
+              >
+                {t("explain")}
+              </Button>
             </div>
           )}
         </div>
