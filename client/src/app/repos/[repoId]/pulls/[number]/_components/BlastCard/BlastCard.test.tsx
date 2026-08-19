@@ -178,6 +178,24 @@ describe("BlastCard", () => {
     expect(closedRow?.style.background).toBe("none");
   });
 
+  it("dims an importer row so it reads as weaker evidence than a caller", () => {
+    h.data = makeBlast({
+      symbols: makeBlast().symbols.map((sym, i) =>
+        i === 0
+          ? { ...sym, importers: [{ file: "src/only-imports.ts", depth: 1 }] }
+          : sym,
+      ),
+    });
+    renderCard();
+
+    const importer = screen.getByRole("link", { name: "src/only-imports.ts" });
+    const caller = screen.getByRole("link", { name: "…/api/public/index.ts:23" });
+    // Same neutral scale, one step down — not a third colour, which would read
+    // as a third category beside the blue endpoints and amber crons.
+    expect(importer.style.color).toBe("var(--text-muted)");
+    expect(caller.style.color).toBe("var(--text-secondary)");
+  });
+
   it("collapses every symbol but the first", () => {
     renderCard();
 

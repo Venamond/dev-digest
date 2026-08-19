@@ -33,19 +33,22 @@ function FileRef({
   file,
   line,
   label,
+  dimmed,
 }: {
   link: BlastLink;
   file: string;
   line?: number;
   label: string;
+  dimmed?: boolean;
 }) {
+  const linkStyle = dimmed ? s.importerLink : s.link;
   if (!link.indexed_sha) return <span style={s.tag} title={file}>{label}</span>;
   return (
     <a
       href={githubBlobUrl(link.repo_full_name, link.indexed_sha, file, line)}
       target="_blank"
       rel="noreferrer"
-      style={s.link}
+      style={linkStyle}
       title={file}
     >
       {label}
@@ -287,7 +290,7 @@ function SymbolBlock({
       {extraImporters.length > 0 && (
         <ul style={s.list}>
           {extraImporters.map((file) => (
-            <li key={file} style={s.listItem}>
+            <li key={file} style={s.importerItem}>
               {/* No heading and no line number: these are files that import
                   the symbol's file with NO call site we could resolve, so
                   there is no line to point at. The link icon is what tells
@@ -296,7 +299,7 @@ function SymbolBlock({
                 <span style={s.listTick} aria-hidden="true" />
                 <Icon.Link size={12} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
                 <span style={{ minWidth: 0 }}>
-                  <FileRef link={link} file={file} label={shortPath(file)} />
+                  <FileRef link={link} file={file} label={shortPath(file)} dimmed />
                 </span>
               </span>
             </li>

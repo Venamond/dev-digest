@@ -320,6 +320,25 @@ export const s = {
     gap: 6,
     minWidth: 0,
   } satisfies CSSProperties,
+  /** An importer row: dimmer than a caller, because it is weaker evidence —
+   *  we know the file depends on this one, but not where. No new hue: blue is
+   *  taken by endpoints and amber by crons, and a third colour would read as a
+   *  third category rather than as a weaker version of this one. */
+  importerItem: {
+    fontFamily: MONO,
+    fontSize: 12,
+    lineHeight: 1.45,
+    paddingTop: 3,
+    paddingBottom: 3,
+    color: "var(--text-muted)",
+    overflowWrap: "anywhere",
+    minWidth: 0,
+  } satisfies CSSProperties,
+  importerLink: {
+    color: "var(--text-muted)",
+    textDecorationLine: "none",
+    overflowWrap: "anywhere",
+  } satisfies CSSProperties,
   listItem: {
     fontFamily: MONO,
     fontSize: 12,
