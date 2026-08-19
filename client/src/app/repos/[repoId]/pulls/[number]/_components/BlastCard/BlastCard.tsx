@@ -336,7 +336,12 @@ export function BlastCard({ prId }: { prId: string | null }) {
         ) : (
           <p style={s.empty}>{t("graph.empty")}</p>
         )}
-        {data.prior_pulls.length > 0 && <PriorPulls pulls={data.prior_pulls} />}
+        {data.prior_pulls.length > 0 && (
+          <>
+            <div style={s.divider} />
+            <PriorPulls pulls={data.prior_pulls} />
+          </>
+        )}
       </>
     );
   }
@@ -346,7 +351,9 @@ export function BlastCard({ prId }: { prId: string | null }) {
       <div style={s.card}>
         <div style={s.header}>
           <div style={s.headerLabel}>
-            <Icon.Zap size={14} style={{ color: "var(--text-muted)" }} />
+            {/* Connected nodes, not a lightning bolt: the card is a dependency
+                map, and the reference design marks it as one. */}
+            <Icon.Workflow size={14} style={{ color: "var(--text-muted)" }} />
             <span style={s.headerTitle}>{t("title")}</span>
           </div>
           {hasMap && !summaryText && !derive.isError && (

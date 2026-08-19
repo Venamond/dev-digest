@@ -298,6 +298,15 @@ export const s = {
     fontSize: 12,
     color: "var(--text-secondary)",
   } satisfies CSSProperties,
+  /* Separates the map (structure) from the history below it — the reference
+     draws a rule there, and without it the prior-PR block reads as one more
+     row of the tree rather than a different kind of evidence. */
+  divider: {
+    borderTopStyle: "solid",
+    borderTopWidth: 1,
+    borderTopColor: "var(--border)",
+    marginTop: 2,
+  } satisfies CSSProperties,
   /* Prior PRs are their own bordered block, not a footnote: they are a second
      kind of evidence (history) beside the map (structure), and the reference
      design gives them a card of equal weight. */
