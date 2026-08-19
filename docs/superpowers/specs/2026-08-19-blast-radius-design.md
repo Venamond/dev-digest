@@ -136,7 +136,11 @@ New module `server/src/modules/blast/` following the `smart-diff` template
     "crons": ["reset-rate-buckets"]
   }],
   "downstream_truncated": false,
-  "prior_pulls": [{ "number": 401, "title": "…", "author": "…", "status": "merged", "updated_at": "…" }],
+  "prior_pulls": [{
+    "number": 401, "title": "…", "author": "…", "status": "merged", "updated_at": "…",
+    "shared_files": ["src/api/public/webhooks.ts"],
+    "unresolved_findings": [{ "severity": "CRITICAL", "title": "SSRF in webhook forwarding" }]
+  }],
   "link": { "repo_full_name": "acme/payments-api", "indexed_sha": "a1b2c3d", "head_sha": "9f8e7d6" }
 }
 ```
@@ -152,6 +156,18 @@ New module `server/src/modules/blast/` following the `smart-diff` template
   row alone would produce.
 - `prior_pulls` carries `status` + nullable `updated_at`. `pull_requests` has
   no `merged_at` column; a real merge timestamp would need a migration.
+- **A prior-PR row states why it is there, and states it as fact** (added
+  2026-08-19). `shared_files` is the intersection with THIS PR's changed
+  paths — not everything that PR touched — and `unresolved_findings` are
+  findings raised there and *dismissed* (accepted ones were dealt with; still
+  open ones belong to that PR's own review). `status` renders only when the
+  PR is **not** merged, which is the case worth flagging: another open PR on
+  the same files.
+  What the row must NOT carry is prose asserting how the two PRs relate — the
+  reference mockup's "SSRF concern was raised then but deferred, relevant to
+  finding f2" is exactly such a link, and it exists in no index. §1's rule
+  ("the model never invents nodes or links") forbids it. The card states the
+  facts; the reviewer draws the conclusion.
 - `404` only when the PR does not exist in the caller's workspace. An unindexed
   repo is `200` + `state: "degraded"`, because absence of an index is a valid,
   actionable state, not a missing resource. This mirrors the intent endpoint's
