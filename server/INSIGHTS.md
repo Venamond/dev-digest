@@ -528,6 +528,35 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Recurring Errors & Fixes
 
+- **An `.it.test` suite that fails a DIFFERENT file each full run, while every
+  file passes in isolation, is a product race — not test flakiness. Do not
+  "fix" it with retries or a longer timeout.** Diagnosed 2026-08-19:
+  `run-executor.ts` awaited `completeAgentRun(status: 'done')` and only then
+  `saveRunTrace`, so between those two lines a run reads as finished while
+  `GET /runs/:id/trace` returns nothing. Tests polling `agent_runs.status`
+  (`test/helpers/runs.ts`'s `waitForPrRuns`) then read a trace that has not
+  landed: `intent.it.test.ts` died on `trace.tool_calls.find` of undefined,
+  `agents-skills.it.test.ts` on `expected undefined to be null`. **The rule:
+  write every derived row FIRST, flip the status consumers poll LAST** — a
+  terminal status is a promise that everything about the run is readable, and
+  that includes the failure paths, where "failed" must not outrun the log
+  saying why.
+
+  **The diagnosis recipe, which is the reusable part:** run the full suite
+  twice and note that the failing file MOVES; run each failing file alone and
+  watch it pass; then run the full suite on the change set's BASE commit. A
+  failure there proves the race predates the branch and points at product
+  code rather than the diff under review. Two runs at the base were enough
+  here (one red, one green).
+
+  **Pin it as call ORDER, never by racing the window** — a test that
+  reproduces a race reproduces its flakiness too. `'persists the trace BEFORE
+  the run reads as finished'` (`test/reviews.it.test.ts`) stubs both
+  `ReviewRepository.prototype` methods with `vi.spyOn`, records the order they
+  are called in, and asserts `['trace', 'status']`. It fails 100% on the old
+  ordering and passes 100% on the new. Note the stubs mean the run never
+  reaches a terminal status, so poll the recorded calls, not the database.
+
 - OpenRouter `404 No endpoints found for deepseek/deepseek-v4-flash` after
   sending `provider: { order: ['DeepSeek'], allow_fallbacks: false }`. That
   slug is **not** hosted on OpenRouter's DeepSeek upstream; pinning drops
