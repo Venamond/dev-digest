@@ -280,6 +280,19 @@ ground truth — wrap-ups can mischaracterize a session.
   nodes+edges→positions function, as testable as any other helper here.
   I argued against it on "no new dependency" grounds without running that one
   command, and recommended hand-rolling a physics loop instead.
+  **Driving a LIVE d3 simulation (draggable nodes) has three traps, all silent:**
+  (1) `simulation.tick()` does NOT dispatch the `tick` event — it is the
+  headless entry point, so a test that steps the sim by hand and listens via
+  `sim.on("tick")` sees nothing; own the listener set and notify yourself.
+  (2) a pinned node's position lives in `fx`/`fy`, and d3 copies it into
+  `x`/`y` only on the FOLLOWING tick — read `fx ?? x` or the dragged node
+  trails the cursor by a frame. (3) jsdom never drives d3-timer's
+  requestAnimationFrame, so a live simulation produces no ticks under test at
+  all; make `drag()` notify synchronously, which is also correct in a browser
+  because a simulation cooled to alpha 0 has stopped ticking.
+  And when the view has a rotation, the screen→layout inverse must undo it:
+  a drag that tracks perfectly at 0° and drifts at every other angle is that
+  missing step (`viewport.ts`, round-trip test at five angles).
 
 - **A "sidebar nav takes ~5s, then is fine, then slow again" report is NOT
   automatically a regression of the persistent-`AppShell` fix (see Codebase
