@@ -82,6 +82,15 @@ ground truth — wrap-ups can mischaracterize a session.
   it — three rounds of "the design is completely different" here were volume,
   not styling.
 
+- **`styles.ts` objects are INLINE styles: no `:hover`, no `:focus`, no media
+  queries. The escape hatch is `app/globals.css` plus a `dd-` class.** Two
+  precedents live there already — `.dd-md` for rendered-markdown blocks
+  (2026-08-08) and `.dd-fileref` for the file-link hover in `BlastCard`
+  (2026-08-19). Reach for it only for what inline styles genuinely cannot
+  express; everything static stays in the colocated `styles.ts`, and a
+  responsive layout is better solved by making the content fit than by
+  smuggling a breakpoint into CSS.
+
 - **Every number on a card must be derived from the array the card renders —
   a count computed independently WILL drift from what is on screen.** Three
   times in one feature (`BlastCard`, 2026-08-19) a counter and the body
