@@ -259,6 +259,19 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Tool & Library Notes
 
+- **Mermaid: style nodes with literal hex, never `var(--token)`, and expect
+  silence when the chart is wrong.** `classDef`/`class` values are written into
+  SVG presentation attributes, where a CSS custom property does not resolve —
+  `stroke:var(--accent-text)` yields an unstyled box with no error anywhere.
+  Mirror the token's value from `vendor/ui/styles.css` and pin it with a test
+  asserting no `var(` reaches the chart string (`BlastCard/helpers.test.ts`).
+  Related failure mode from the same component: `MermaidDiagram` validates with
+  `mermaid.parse` and renders NOTHING on a parse failure, so a malformed chart
+  is a blank area rather than an error — build the string in a pure helper with
+  its own tests (`BlastCard/helpers.ts`) instead of inline in JSX.
+  Mermaid ships as a client dependency already; a graph view here does not need
+  a new library.
+
 - **A "sidebar nav takes ~5s, then is fine, then slow again" report is NOT
   automatically a regression of the persistent-`AppShell` fix (see Codebase
   Patterns, 2026-08-07) — measure the environment before touching code.**
