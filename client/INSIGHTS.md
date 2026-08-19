@@ -21,6 +21,23 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Codebase Patterns
 
+- **A card on the PR Overview tab is NOT as wide as the mockup it was drawn
+  from.** `OverviewTab/styles.ts` lays `IntentCard` and `BlastCard` out in
+  `grid-template-columns: repeat(auto-fit, minmax(600px, 1fr))`, so on a wide
+  viewport each card gets roughly HALF the content width, minus its own 20px
+  side padding. A design reviewed only at full width silently wraps once it
+  lands: `BlastCard`'s counter row (four counters plus the Tree|Graph control,
+  ~520px of content) wrapped on every two-column layout while the track was
+  still `minmax(360px, …)`, and it took two rounds of "the buttons are on the
+  second row" to find that the row was fine and the column was too narrow.
+  **Do:** check a new Overview card at the track minimum, not at the width of
+  the picture. If its content genuinely needs more, raise the `minmax` floor
+  (which makes the grid collapse to one full-width column sooner) rather than
+  shrinking the content to fit — and when a row must keep one element pinned
+  right, put `flexWrap: "wrap"` on the LEFT group and `flexShrink: 0` on that
+  element. `flexWrap: "wrap"` on the row itself drops the whole right-hand
+  element onto its own line.
+
 - **i18n namespace follows the component's location, not the feature it serves.**
   Shared components under `client/src/components/**` call
   `useTranslations("shell")` (10 of 13 call sites; the rest are `common` /
