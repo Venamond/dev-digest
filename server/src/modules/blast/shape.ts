@@ -21,6 +21,10 @@ export interface ShapeBlastInput {
   blast: BlastResult;
   reverse: ReverseDependentsResult;
   prior: PriorPullRow[];
+  /** prId → the paths it shares with this PR. */
+  sharedFiles: Map<string, string[]>;
+  /** prId → findings raised there and dismissed. */
+  unresolved: Map<string, Array<{ severity: string; title: string }>>;
   index: IndexState;
   link: { repo_full_name: string; head_sha: string };
   state: BlastState;
@@ -28,7 +32,7 @@ export interface ShapeBlastInput {
 }
 
 export function shapeBlastResponse(input: ShapeBlastInput): BlastResponse {
-  const { blast, reverse, prior, index, link, state, reason } = input;
+  const { blast, reverse, prior, sharedFiles, unresolved, index, link, state, reason } = input;
 
   // 1. Callers grouped by the changed symbol they reach.
   const callersBySymbol = new Map<string, BlastCallerRef[]>();
@@ -113,6 +117,8 @@ export function shapeBlastResponse(input: ShapeBlastInput): BlastResponse {
       author: p.author,
       status: p.status,
       updated_at: p.updatedAt?.toISOString() ?? null,
+      shared_files: sharedFiles.get(p.id) ?? [],
+      unresolved_findings: unresolved.get(p.id) ?? [],
     })),
     link: {
       repo_full_name: link.repo_full_name,

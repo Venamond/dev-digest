@@ -9,7 +9,7 @@ import { ConfigError, ConflictError, NotFoundError, ValidationError } from '../.
 import { wrapUntrusted } from '../../platform/prompt.js';
 import { BFS_DEPTH, INDEXER_VERSION } from '../repo-intel/constants.js';
 import type { BlastResult, IndexState } from '../repo-intel/types.js';
-import { MAX_PRIOR_PULLS } from './constants.js';
+import { MAX_FINDINGS_PER_PRIOR_PULL, MAX_PRIOR_PULLS } from './constants.js';
 import type { BlastDeps } from './deps.js';
 import { BlastRepository } from './repository.js';
 import { shapeBlastResponse } from './shape.js';
@@ -79,6 +79,8 @@ export class BlastService {
         blast: EMPTY_BLAST,
         reverse: { dependents: [], truncated: false },
         prior: [],
+        sharedFiles: new Map(),
+        unresolved: new Map(),
         index,
         link,
         state,
@@ -107,8 +109,23 @@ export class BlastService {
       BFS_DEPTH,
     );
     const prior = await this.repo.priorPulls(pull.repoId, prId, changedFiles, MAX_PRIOR_PULLS);
+    const priorIds = prior.map((p) => p.id);
+    const [sharedFiles, unresolved] = await Promise.all([
+      this.repo.sharedFiles(priorIds, changedFiles),
+      this.repo.unresolvedFindings(priorIds, MAX_FINDINGS_PER_PRIOR_PULL),
+    ]);
 
-    const res = shapeBlastResponse({ blast, reverse, prior, index, link, state, reason });
+    const res = shapeBlastResponse({
+      blast,
+      reverse,
+      prior,
+      sharedFiles,
+      unresolved,
+      index,
+      link,
+      state,
+      reason,
+    });
 
     log?.info(
       {
@@ -211,6 +228,8 @@ export class BlastService {
       blast: EMPTY_BLAST,
       reverse: { dependents: [], truncated: false },
       prior: [],
+      sharedFiles: new Map(),
+      unresolved: new Map(),
       index,
       link,
       state: 'degraded',

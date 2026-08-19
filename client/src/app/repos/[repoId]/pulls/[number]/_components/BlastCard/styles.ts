@@ -416,6 +416,29 @@ export const s = {
     fontWeight: 600,
     color: "var(--text-primary)",
   } satisfies CSSProperties,
+  priorStatus: {
+    fontSize: 11,
+    fontWeight: 600,
+    letterSpacing: "0.04em",
+    textTransform: "uppercase",
+    color: "var(--warn)",
+  } satisfies CSSProperties,
+  /* The join made visible: which path this PR and that one have in common. */
+  priorFiles: {
+    fontFamily: MONO,
+    fontSize: 12,
+    lineHeight: 1.45,
+    color: "var(--text-secondary)",
+    overflowWrap: "anywhere",
+  } satisfies CSSProperties,
+  priorFinding: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    fontSize: 12,
+    lineHeight: 1.45,
+    color: "var(--warn)",
+  } satisfies CSSProperties,
   priorMeta: {
     display: "flex",
     alignItems: "center",

@@ -30,5 +30,6 @@
   "explain": "Explain",
   "summaryTitle": "Summary",
   "summaryFailed": "The generated summary named something that is not in this map, so it was discarded.",
-  "retry": "Try again"
+  "retry": "Try again",
+  "dismissedFinding": "{severity} raised here and dismissed: {title}"
 }

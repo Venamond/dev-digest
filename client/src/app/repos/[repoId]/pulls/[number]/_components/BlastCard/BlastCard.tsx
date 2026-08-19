@@ -115,6 +115,12 @@ function PriorPulls({ pulls }: { pulls: BlastResponse["prior_pulls"] }) {
                 <div style={s.priorTitleLine}>
                   <span style={s.priorNumber}>{`#${pull.number}`}</span>
                   <span style={s.priorTitle}>{pull.title}</span>
+                  {/* `merged` is true of almost every prior PR and says
+                      nothing. A prior PR that is still OPEN on these files is
+                      the case worth flagging. */}
+                  {pull.status !== "merged" && (
+                    <span style={s.priorStatus}>{pull.status}</span>
+                  )}
                 </div>
                 <div style={s.priorMeta}>
                   <Avatar name={pull.author} size={16} />
@@ -122,8 +128,16 @@ function PriorPulls({ pulls }: { pulls: BlastResponse["prior_pulls"] }) {
                   {pull.updated_at && (
                     <span>{`· ${new Date(pull.updated_at).toLocaleDateString()}`}</span>
                   )}
-                  <span>{`· ${pull.status}`}</span>
                 </div>
+                {pull.shared_files.length > 0 && (
+                  <div style={s.priorFiles}>{pull.shared_files.join(", ")}</div>
+                )}
+                {pull.unresolved_findings.map((f) => (
+                  <div key={f.title} style={s.priorFinding}>
+                    <Icon.AlertTriangle size={12} style={{ flexShrink: 0 }} />
+                    <span>{t("dismissedFinding", { severity: f.severity, title: f.title })}</span>
+                  </div>
+                ))}
               </div>
             </div>
           ))}

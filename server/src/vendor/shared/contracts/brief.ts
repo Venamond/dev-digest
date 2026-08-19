@@ -225,14 +225,30 @@ export const BlastSymbolImpact = z.object({
 });
 export type BlastSymbolImpact = z.infer<typeof BlastSymbolImpact>;
 
-/** `updated_at` is nullable: pull_requests.updated_at is a nullable column
- *  and there is no merged_at column on that table. */
+/**
+ * A prior PR that touched at least one of this PR's changed files.
+ *
+ * `shared_files` and `unresolved_findings` are what make the row answer "why
+ * should I care": which file it has in common, and whether it left a concern
+ * on that file that someone chose not to act on. Both are FACTS from the
+ * database — deliberately not a model's opinion about how the two PRs relate.
+ * The feature's rule is that the model never invents links, and "this old
+ * finding relates to your new one" is exactly such an invented link; the
+ * reviewer draws it.
+ *
+ * `updated_at` is nullable: pull_requests.updated_at is a nullable column and
+ * there is no merged_at column on that table.
+ */
 export const BlastPriorPull = z.object({
   number: z.number().int(),
   title: z.string(),
   author: z.string(),
   status: z.string(),
   updated_at: z.string().nullable(),
+  /** Paths this PR and that one both touch. Never empty — it is the join. */
+  shared_files: z.array(z.string()),
+  /** Findings raised on that PR and dismissed. Capped per PR. */
+  unresolved_findings: z.array(z.object({ severity: z.string(), title: z.string() })),
 });
 export type BlastPriorPull = z.infer<typeof BlastPriorPull>;
 

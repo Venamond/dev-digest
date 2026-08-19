@@ -31,6 +31,8 @@ export type PrIntentRow = typeof t.prIntent.$inferSelect;
  * travel through this file rather than being imported out of a `repository.ts`.
  */
 export interface PriorPullRow {
+  /** Needed to fetch this PR's shared files and unresolved findings. */
+  id: string;
   number: number;
   title: string;
   author: string;

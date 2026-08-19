@@ -82,6 +82,8 @@ function makeBlast(over: Partial<BlastResponse> = {}): BlastResponse {
         author: "octocat",
         status: "merged",
         updated_at: "2026-08-01T00:00:00.000Z",
+        shared_files: ["src/lib/tax-table.ts"],
+        unresolved_findings: [{ severity: "WARNING", title: "Rounding drifts on refunds" }],
       },
     ],
     link: { repo_full_name: "acme/payments-api", indexed_sha: "a1b2c3d", head_sha: "deadbee" },
@@ -347,6 +349,35 @@ describe("BlastCard", () => {
     expect(screen.getByText("Rework tax rounding")).toBeInTheDocument();
     expect(screen.getByText("#41")).toBeInTheDocument();
     expect(screen.getByText("octocat")).toBeInTheDocument();
+  });
+
+  it("says which file is shared and what was dismissed on that PR", () => {
+    // These two lines are what make the row answer "why should I care": the
+    // path in common, and a concern someone chose not to act on there. Both
+    // are facts from the DB — never a model's opinion about how the two PRs
+    // relate, which is the link the feature refuses to invent.
+    renderCard();
+    fireEvent.click(screen.getByRole("button", { name: /Prior PRs touching these files/ }));
+
+    expect(screen.getByText("src/lib/tax-table.ts")).toBeInTheDocument();
+    expect(
+      screen.getByText("WARNING raised here and dismissed: Rounding drifts on refunds"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows a status only when the prior PR is not merged", () => {
+    renderCard();
+    fireEvent.click(screen.getByRole("button", { name: /Prior PRs touching these files/ }));
+    // 'merged' is true of almost every prior PR and says nothing.
+    expect(screen.queryByText("merged")).not.toBeInTheDocument();
+
+    cleanup();
+    h.data = makeBlast({
+      prior_pulls: makeBlast().prior_pulls.map((p) => ({ ...p, status: "open" })),
+    });
+    renderCard();
+    fireEvent.click(screen.getByRole("button", { name: /Prior PRs touching these files/ }));
+    expect(screen.getByText("open")).toBeInTheDocument();
   });
 
   it("renders no prior-PR section when there are none", () => {

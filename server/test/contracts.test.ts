@@ -263,8 +263,25 @@ describe('Blast Radius API contracts (L04)', () => {
         author: 'a',
         status: 'merged',
         updated_at: null,
+        shared_files: ['src/a.ts'],
+        unresolved_findings: [],
       }),
     ).not.toThrow();
+  });
+
+  it('requires shared_files and unresolved_findings on a prior pull', () => {
+    // Both are what make the row answer "why should I care". Optional fields
+    // would let a shaper omit them and leave the block back where it started:
+    // a list of PR titles with no stated connection to this one.
+    expect(() =>
+      BlastPriorPull.parse({
+        number: 1,
+        title: 't',
+        author: 'a',
+        status: 'merged',
+        updated_at: null,
+      }),
+    ).toThrow();
   });
 
   it('knows the index_stale reason', () => {

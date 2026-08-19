@@ -477,6 +477,89 @@ d('Blast Radius (Testcontainers pg)', () => {
     await app.close();
   });
 
+  it('prior PRs carry the shared file and any finding dismissed there', async () => {
+    // The two lines that make a prior-PR row answer "why should I care": the
+    // path in common, and a concern raised there that someone chose not to act
+    // on. Both are facts — the feature never asserts that the old finding
+    // relates to a new one; the reviewer draws that link.
+    const { appPromise } = appWithMocks();
+    const app = await appPromise;
+    const { repo, pr } = await setupRepoAndPr();
+    await indexState(repo.id);
+    await db.insert(t.prFiles).values([
+      { prId: pr.id, path: 'src/lib/money.ts' },
+      { prId: pr.id, path: 'src/lib/untouched.ts' },
+    ]);
+
+    const [old] = await db
+      .insert(t.pullRequests)
+      .values({
+        workspaceId,
+        repoId: repo.id,
+        number: 7,
+        title: 'Earlier rounding fix',
+        author: 'ana',
+        branch: 'feat/old',
+        base: 'main',
+        headSha: 'eee555',
+        status: 'merged',
+        updatedAt: new Date('2026-06-01T00:00:00Z'),
+      })
+      .returning();
+    await db.insert(t.prFiles).values([
+      { prId: old!.id, path: 'src/lib/money.ts' },
+      // Touched by the old PR but NOT by this one — must not be listed.
+      { prId: old!.id, path: 'src/lib/elsewhere.ts' },
+    ]);
+
+    const [review] = await db
+      .insert(t.reviews)
+      .values({ workspaceId, prId: old!.id, kind: 'review', model: 'test' })
+      .returning();
+    await db.insert(t.findings).values([
+      {
+        reviewId: review!.id,
+        file: 'src/lib/money.ts',
+        startLine: 1,
+        endLine: 1,
+        severity: 'WARNING',
+        category: 'correctness',
+        title: 'Rounding drifts on refunds',
+        rationale: 'r',
+        confidence: 0.9,
+        dismissedAt: new Date('2026-06-02T00:00:00Z'),
+      },
+      {
+        reviewId: review!.id,
+        file: 'src/lib/money.ts',
+        startLine: 2,
+        endLine: 2,
+        severity: 'CRITICAL',
+        category: 'security',
+        title: 'Accepted and fixed',
+        rationale: 'r',
+        confidence: 0.9,
+        acceptedAt: new Date('2026-06-02T00:00:00Z'),
+      },
+    ]);
+
+    const res = await app.inject({ method: 'GET', url: `/pulls/${pr.id}/blast` });
+    expect(res.statusCode).toBe(200);
+    const [row] = res.json().prior_pulls as Array<{
+      number: number;
+      shared_files: string[];
+      unresolved_findings: Array<{ severity: string; title: string }>;
+    }>;
+    expect(row!.number).toBe(7);
+    // Only the overlap, not everything that PR touched.
+    expect(row!.shared_files).toEqual(['src/lib/money.ts']);
+    // Only the DISMISSED one — an accepted finding was dealt with.
+    expect(row!.unresolved_findings).toEqual([
+      { severity: 'WARNING', title: 'Rounding drifts on refunds' },
+    ]);
+    await app.close();
+  });
+
   // -- POST /pulls/:id/blast/summary ---------------------------------------
 
   it('summary: exactly one LLM call, while the GET on the same PR makes none', async () => {
