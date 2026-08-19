@@ -98,3 +98,32 @@ export async function resolveAgentId(api: DevDigestApi, agent: string): Promise<
 
   throw new ToolError(`Agent "${agent}" not found. Call list_agents to see the available agents.`);
 }
+
+/**
+ * Either route to a pull request id: the uuid straight from the studio URL, or
+ * `owner/name` plus the PR number.
+ *
+ * The uuid path exists because that is what a person copies out of the browser
+ * — it is the id the studio shows, and asking them to translate it back into a
+ * repo name and a number to use a tool would be busywork. The name+number path
+ * exists because a model in conversation has "PR 8 in dev-digest" and no uuid
+ * anywhere.
+ *
+ * A supplied `prId` is NOT verified here: the endpoints it feeds answer 404 on
+ * their own, and a pre-flight lookup would add a round trip to every call to
+ * save a slightly nicer message on a typo.
+ */
+export async function resolvePullTarget(
+  api: DevDigestApi,
+  input: { pr_id?: string; repo?: string; pr?: number },
+): Promise<{ prId: string; label: string }> {
+  if (input.pr_id) return { prId: input.pr_id, label: input.pr_id };
+  if (input.repo && input.pr !== undefined) {
+    const { repoId, fullName } = await resolveRepoId(api, input.repo);
+    const prId = await resolvePullId(api, repoId, input.pr, fullName);
+    return { prId, label: `${fullName}#${input.pr}` };
+  }
+  throw new ToolError(
+    'Identify the pull request either by pr_id (the uuid in the studio URL) or by repo and pr together, e.g. repo: "octocat/hello-world", pr: 8.',
+  );
+}

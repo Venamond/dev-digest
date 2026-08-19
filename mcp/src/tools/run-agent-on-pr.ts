@@ -9,7 +9,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/server';
 import type { DevDigestApi } from '../api/client.js';
-import { resolveAgentId, resolvePullId, resolveRepoId } from '../api/resolve.js';
+import { resolveAgentId, resolvePullTarget } from '../api/resolve.js';
 import type { ReviewRecord, ReviewRunResponse, RunSummary } from '../api/types.js';
 import { errorContent, jsonContent, selectFindings } from '../format.js';
 import { logError, logInfo } from '../log.js';
@@ -77,17 +77,17 @@ export function registerRunAgentOnPr(server: McpServer, api: DevDigestApi): void
     {
       description: RUN_AGENT_ON_PR_DESCRIPTION,
       inputSchema: z.object({
-        repo: z.string().describe('owner/name, e.g. octocat/hello-world'),
-        pr: z.number().int().positive().describe('pull request number'),
+        pr_id: z.string().optional().describe('uuid from the studio URL'),
+        repo: z.string().optional().describe('owner/name, e.g. octocat/hello-world'),
+        pr: z.number().int().positive().optional().describe('pull request number'),
         agent: z.string().describe('agent name or id from list_agents'),
         timeout_s: z.number().int().min(10).max(900).default(180).optional().describe('seconds to wait for the run'),
       }),
     },
-    async ({ repo, pr, agent, timeout_s }) => {
+    async ({ pr_id, repo, pr, agent, timeout_s }) => {
       const timeoutS = timeout_s ?? 180;
       try {
-        const { repoId } = await resolveRepoId(api, repo);
-        const prId = await resolvePullId(api, repoId, pr, repo);
+        const { prId } = await resolvePullTarget(api, { pr_id, repo, pr });
         const { agentId } = await resolveAgentId(api, agent);
 
         const response = await api.post<ReviewRunResponse>(`/pulls/${encodeURIComponent(prId)}/review`, {

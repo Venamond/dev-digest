@@ -18,6 +18,18 @@ source via `tsx`, the same way `reviewer-core/` does.
 | `get_conventions` | Returns the coding conventions DevDigest extracted for a repository. | Same data as **L02**'s Conventions Extractor (`GET /repos/:id/conventions`, `server/src/modules/conventions`) — this tool is an MCP surface over work you already did in that lesson, not a new feature. |
 | `get_blast_radius` | Maps which files and symbols a pull request impacts, and who calls them. Requires the repository to be indexed by DevDigest first. | **L04**'s Blast Radius over MCP (`GET /pulls/:id/blast`, `server/src/modules/blast/routes.ts`) — zero LLM calls, read straight from the persistent code index. Returns `state`, `totals` and, per changed symbol, its callers, endpoints and crons; `prior_pulls` and `link` stay in the studio. A repo that is not indexed (or was indexed by an older indexer) comes back as a **success** payload with `state: 'degraded'` / `reason: 'index_stale'` and a `hint` pointing at *Re-analyze* — an empty map means "we cannot see", never "nothing is impacted". |
 
+### Naming a pull request
+
+The three PR-scoped tools — `run_agent_on_pr`, `get_findings`,
+`get_blast_radius` — take it either way:
+
+- **`pr_id`** — the uuid in the studio URL. Open the Pull Request in DevDigest
+  and copy it; the tool then makes no lookup at all.
+- **`repo` + `pr`** — `owner/name` and the number, for when you are talking to
+  a model that has "PR 8 in dev-digest" and no uuid anywhere.
+
+Supply one or the other. Supplying neither returns an error that names both.
+
 Successful results are returned as `structuredContent` — a real JSON object
 on the wire, with `content` left empty — never as prose, because
 repo-derived, LLM-generated text (finding titles, suggestions, rationale,

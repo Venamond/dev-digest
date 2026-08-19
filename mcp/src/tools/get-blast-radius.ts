@@ -16,7 +16,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/server';
 import type { DevDigestApi } from '../api/client.js';
-import { resolveRepoId, resolvePullId } from '../api/resolve.js';
+import { resolvePullTarget } from '../api/resolve.js';
 import type { BlastResponse } from '../api/types.js';
 import {
   errorContent,
@@ -53,15 +53,15 @@ export function registerGetBlastRadius(server: McpServer, api: DevDigestApi): vo
     {
       description: GET_BLAST_RADIUS_DESCRIPTION,
       inputSchema: z.object({
-        repo: z.string().describe('owner/name'),
-        pr: z.number().int().positive().describe('pull request number'),
+        pr_id: z.string().optional().describe('uuid from the studio URL'),
+        repo: z.string().optional().describe('owner/name'),
+        pr: z.number().int().positive().optional().describe('pull request number'),
       }),
       annotations: { readOnlyHint: true },
     },
-    async ({ repo, pr }) => {
+    async ({ pr_id, repo, pr }) => {
       try {
-        const { repoId } = await resolveRepoId(api, repo);
-        const prId = await resolvePullId(api, repoId, pr, repo);
+        const { prId } = await resolvePullTarget(api, { pr_id, repo, pr });
         const blast = await api.get<BlastResponse>(`/pulls/${encodeURIComponent(prId)}/blast`);
 
         const hint = blastHint(blast);

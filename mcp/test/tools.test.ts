@@ -627,6 +627,48 @@ describe('get_blast_radius', () => {
     })) as CallToolResult;
   }
 
+  it('accepts pr_id straight from the studio URL, with no lookup at all', async () => {
+    // The mentor-facing flow: open the PR in the studio, copy the uuid. A
+    // person has that string; asking them to translate it back into a repo
+    // name and a number would be busywork. Neither /repos nor /repos/:id/pulls
+    // may be touched — that is the whole point of the uuid path.
+    const fetchMock = stubFetch((path) => {
+      if (path === '/pulls/pr-1/blast') return jsonResponse(okBlast);
+      throw new Error(`unexpected path ${path}`);
+    });
+    const api = new DevDigestApi(BASE_URL);
+    const client = await connectClient(api);
+
+    const result = (await client.callTool({
+      name: 'get_blast_radius',
+      arguments: { pr_id: 'pr-1' },
+    })) as CallToolResult;
+
+    expect(result.isError).toBeFalsy();
+    expect(structured<{ state: string }>(result).state).toBe('ok');
+    const paths = fetchMock.mock.calls.map((c) => String(c[0]));
+    expect(paths.some((u) => u.includes('/repos'))).toBe(false);
+  });
+
+  it('says how to identify the PR when neither route is supplied', async () => {
+    stubFetch(() => {
+      throw new Error('no request should be made');
+    });
+    const api = new DevDigestApi(BASE_URL);
+    const client = await connectClient(api);
+
+    const result = (await client.callTool({
+      name: 'get_blast_radius',
+      arguments: {},
+    })) as CallToolResult;
+
+    expect(result.isError).toBe(true);
+    // Forward-leading, per this package's error principle: it names both ways
+    // in rather than reporting that something was missing.
+    expect(text(result)).toContain('pr_id');
+    expect(text(result)).toContain('repo');
+  });
+
   it('get_blast_radius returns the structured blast map for an indexed repo', async () => {
     stubBlast(okBlast);
 

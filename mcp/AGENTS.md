@@ -205,11 +205,11 @@ encoder the server uses (`js-tiktoken`). Measured on this branch:
 | Tool | Tokens |
 |---|---|
 | `list_agents` | 57 |
-| `run_agent_on_pr` | 171 |
-| `get_findings` | 191 |
+| `run_agent_on_pr` | 186 |
+| `get_findings` | 200 |
 | `get_conventions` | 69 |
-| `get_blast_radius` | 113 |
-| **Total (`tools` + `instructions`)** | **684** (cap 900) |
+| `get_blast_radius` | 128 |
+| **Total (`tools` + `instructions`)** | **713** (cap 900) |
 
 **The per-tool cap is 200, not the plan's 150, and there is no per-tool
 override.** Two changes stacked. First, Zod 4's JSON-Schema conversion for
@@ -286,6 +286,23 @@ was performed.
   (`server/src/db/schema/agents.ts:13`), so `resolveAgentId` must never take
   `[0]` on a name match — collect every match and fail loudly when there is
   more than one, or a paid LLM run can silently target the wrong agent.
+- **A pull request can be named two ways, and `resolvePullTarget`
+  (`src/api/resolve.ts`) is the single place that decides.** `pr_id` is the
+  uuid a person copies out of the studio URL; `repo` + `pr` is what a model
+  has in conversation ("PR 8 in dev-digest") when no uuid exists anywhere.
+  All three PR-scoped tools accept either, all three fields are optional, and
+  supplying none produces a forward-leading error naming both routes. A
+  supplied `pr_id` is passed through unverified — the endpoints it feeds 404
+  on their own, and a pre-flight lookup would cost a round trip on every call
+  to improve a message on a typo.
+  Adding the field cost 29 tokens across the surface and took `get_findings`
+  to exactly the 200-token per-tool cap. Two rounds of trimming got it there
+  — `.describe()` on `pr_id` is `'uuid from the studio URL'`, not a sentence
+  explaining the alternative, because that alternative is already named in the
+  error. **There is no headroom left on `get_findings`:** the next parameter
+  added to it has to be paid for by shortening something else, per the rule
+  above.
+
 - `run_agent_on_pr` deliberately has neither `detail` nor `severity_min` in
   its schema, unlike `get_findings` — it's the one tool that spends money, so
   its response shape stays fixed; re-reading with a filter goes through the
