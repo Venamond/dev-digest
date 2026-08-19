@@ -271,6 +271,26 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Recurring Errors & Fixes
 
+- **"Nothing changed in the browser" after a correct edit = a `next dev` that
+  has been up too long, not a bug in your code.** A `pnpm dev` server left
+  running for many hours (14h in the 2026-08-19 Blast Radius session) keeps
+  serving a stale build: the file watcher stops picking up edits, so the code
+  on disk, the committed tree and the tests are all right while the page is
+  unchanged.
+  **The tell, and it is easy to misread:** `pnpm typecheck` fails once with
+  `.next/types/validator.ts(…): error TS2304: Cannot find name 'LayoutProps'`
+  and passes on a plain re-run. That is not a flake to shrug off — it is the
+  same stale `.next` speaking. I dismissed it as a transient artifact and lost
+  a full round trip to "nothing changed".
+  **Do:** before re-editing anything, check the server's age
+  (`lsof -ti :3000`, then `ps -o pid,lstart,command -p <pid>`). Note `lsof`
+  also lists browser PIDs holding connections — the server is the
+  `next-server` one; its parent shows the real `next dev -p 3000` command.
+  Then restart: kill the `pnpm dev` process tree, `rm -rf client/.next/types`,
+  start again, and reload the browser with a cache bypass. Verify the code
+  first (`git status`, grep the changed selector) so a restart is a diagnosis,
+  not a guess.
+
 - **Never call a parent's setState from inside your own state updater.** The
   natural way to add "tell the parent when this changes" is to wrap
   `setOpen` and fire the callback inside the updater, where you already have
