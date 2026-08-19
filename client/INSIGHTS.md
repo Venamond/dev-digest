@@ -109,7 +109,11 @@ ground truth — wrap-ups can mischaracterize a session.
   `.dd-fileref:hover`, which shipped without `!important` after I had read that
   very entry. Put the reason in a comment beside the declaration as well as
   here: this file is read when work starts, and the mistake is made later,
-  while writing the rule.
+  while writing the rule. **(Now enforced by
+  `src/test/globals-css.test.ts`** — it fails on any interaction-state rule
+  whose declarations lack `!important`, so this half of the entry no longer
+  depends on being remembered. The `dd-` escape-hatch guidance above is not
+  machine-checkable and still applies.)
 
 - **Every number on a card must be derived from the array the card renders —
   a count computed independently WILL drift from what is on screen.** Three
