@@ -9,6 +9,25 @@ cold-test every entry, append-only, treat as a draft to spot-check.
 
 ## What Doesn't Work
 
+- **A `count(*)` in SQL beside a list this module deduplicates in JS produces
+  a FALSE "truncated" flag.** `getBlastRadius`'s callers are deduplicated by
+  `(file, enclosing symbol)` in `service.ts` before the per-symbol cap, so a
+  function that calls the changed symbol twice is two `references` rows and
+  **one** caller. `countResolvedCallers` originally returned `count(*)`, and
+  comparing that against the kept row count reported `truncated: true` with
+  nothing truncated — the UI then said "showing 1 of 2 callers" about a single
+  caller. Shipped and only caught in review.
+  **Do:** when adding any `*_total` beside a list this module returns, count
+  the SAME unit the dedup produces. SQL cannot see `enclosing symbol` (it comes
+  from a `symbols` lookup), so the coarsest safe unit is
+  `count(distinct from_path)` — distinct caller FILES — compared against the
+  distinct files kept. State the unit in the contract JSDoc, because
+  `callers.length` (call sites) can then legitimately exceed `callers_total`
+  (files), and a consumer that renders "N of M" across those two lies again.
+  Guarded for the caller case by `server/test/repo-intel-blast-facade.test.ts`
+  "does not report truncation when the list merely deduplicated"; a new
+  `importers_total` / `endpoints_total` would need its own.
+
 - **Gating on `getIndexState().status === 'full' | 'partial'` does NOT mean
   the rank/resolved-reference data exists.** `RepoIntelRepository.
   tryGetIndexState` (`repository.ts:205-238`) projects the persisted row and
