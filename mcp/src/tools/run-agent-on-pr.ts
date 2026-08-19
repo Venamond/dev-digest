@@ -9,6 +9,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/server';
 import type { DevDigestApi } from '../api/client.js';
+import { requiredArg } from '../args.js';
 import { resolveAgentId } from '../api/resolve.js';
 import type { ReviewRecord, ReviewRunResponse, RunSummary } from '../api/types.js';
 import { errorContent, jsonContent, selectFindings } from '../format.js';
@@ -85,9 +86,11 @@ export function registerRunAgentOnPr(server: McpServer, api: DevDigestApi): void
     async ({ pr_id, agent, timeout_s }) => {
       const timeoutS = timeout_s ?? 180;
       try {
-        const { agentId } = await resolveAgentId(api, agent);
+        const prId = requiredArg('pr_id', pr_id, "Copy the uuid from the studio URL.");
+        const agentName = requiredArg('agent', agent, 'Call list_agents to see the available agents.');
+        const { agentId } = await resolveAgentId(api, agentName);
 
-        const response = await api.post<ReviewRunResponse>(`/pulls/${encodeURIComponent(pr_id)}/review`, {
+        const response = await api.post<ReviewRunResponse>(`/pulls/${encodeURIComponent(prId)}/review`, {
           agentId,
         });
         const firstRun = response.runs[0];

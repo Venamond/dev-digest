@@ -23,6 +23,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/server';
 import type { DevDigestApi } from '../api/client.js';
+import { requiredArg } from '../args.js';
 import type { BlastResponse, BlastSummaryResponse } from '../api/types.js';
 import {
   errorContent,
@@ -68,7 +69,8 @@ export function registerGetBlastRadius(server: McpServer, api: DevDigestApi): vo
     },
     async ({ pr_id, summary: wantSummary }) => {
       try {
-        const blast = await api.get<BlastResponse>(`/pulls/${encodeURIComponent(pr_id)}/blast`);
+        const prId = requiredArg('pr_id', pr_id, "Copy the uuid from the studio URL.");
+        const blast = await api.get<BlastResponse>(`/pulls/${encodeURIComponent(prId)}/blast`);
 
         const hint = blastHint(blast);
 
@@ -119,7 +121,7 @@ export function registerGetBlastRadius(server: McpServer, api: DevDigestApi): vo
         if (wantSummary && !summarySkipped) {
           try {
             paragraph = await api.post<BlastSummaryResponse>(
-              `/pulls/${encodeURIComponent(pr_id)}/blast/summary`,
+              `/pulls/${encodeURIComponent(prId)}/blast/summary`,
               {},
             );
           } catch (err) {

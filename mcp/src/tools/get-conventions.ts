@@ -7,6 +7,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/server';
 import type { DevDigestApi } from '../api/client.js';
+import { requiredArg } from '../args.js';
 import { resolveRepoId } from '../api/resolve.js';
 import type { ConventionsList } from '../api/types.js';
 import { errorContent, jsonContent, MAX_CONVENTIONS } from '../format.js';
@@ -25,7 +26,7 @@ export function registerGetConventions(server: McpServer, api: DevDigestApi): vo
     },
     async ({ repo }) => {
       try {
-        const { repoId } = await resolveRepoId(api, repo);
+        const { repoId } = await resolveRepoId(api, requiredArg('repo', repo, 'Use owner/name.'));
         const list = await api.get<ConventionsList>(`/repos/${encodeURIComponent(repoId)}/conventions`);
 
         const kept = list.candidates.filter((c) => c.status !== 'rejected');

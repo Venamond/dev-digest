@@ -51,6 +51,24 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Codebase Patterns
 
+- **A client sends a cleared text field as `""`, not as an absent key — so
+  every string argument must be normalized before it is used.** `z.string()`
+  and `z.string().optional()` both accept `""` happily, and it then travels
+  into a lookup or a path segment. Two failure shapes, both reported or
+  reachable on 2026-08-19: `get_findings` with a cleared `agent` answered
+  `Agent "" not found. Call list_agents to see the available agents.` (wrong
+  — a blank field means *every* agent, which is that tool's default), and a
+  blank `pr_id` would have requested `/pulls//reviews` and come back a 404
+  about a missing pull request, sending the caller after the wrong problem.
+  MCP Inspector does this whenever you type a value and then clear it; a
+  model filling a template it has no value for produces the same thing.
+  `src/args.ts` holds the two helpers every tool now calls first —
+  `optionalArg` (`""`/whitespace → `undefined`, i.e. not supplied) and
+  `requiredArg` (throws a `ToolError` naming the field, before any request).
+  Normalizing in the handler rather than in the Zod schema is deliberate: a
+  `.transform()` on an input schema changes what the SDK publishes as the
+  tool's JSON Schema, which `test/token-budget.test.ts` pins byte-for-byte.
+
 - **A caveat the caller needs but the tool description cannot afford goes in
   the response `hint`, not in the description or a `.describe()`.** The five
   descriptions are pinned byte-for-byte by `test/token-budget.test.ts` and

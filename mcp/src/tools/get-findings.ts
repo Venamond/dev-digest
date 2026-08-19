@@ -9,6 +9,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/server';
 import type { DevDigestApi } from '../api/client.js';
+import { optionalArg, requiredArg } from '../args.js';
 import { resolveAgentId } from '../api/resolve.js';
 import type { ReviewRecord } from '../api/types.js';
 import {
@@ -66,13 +67,17 @@ export function registerGetFindings(server: McpServer, api: DevDigestApi): void 
     },
     async ({ pr_id, agent, severity_min, detail }) => {
       try {
+        const prId = requiredArg('pr_id', pr_id, "Copy the uuid from the studio URL.");
+        // A cleared field means "every agent", which is this tool's default —
+        // not a lookup for an agent named "".
+        const agentArg = optionalArg(agent);
 
         let agentId: string | undefined;
-        if (agent !== undefined) {
-          agentId = (await resolveAgentId(api, agent)).agentId;
+        if (agentArg !== undefined) {
+          agentId = (await resolveAgentId(api, agentArg)).agentId;
         }
 
-        const reviews = await api.get<ReviewRecord[]>(`/pulls/${encodeURIComponent(pr_id)}/reviews`);
+        const reviews = await api.get<ReviewRecord[]>(`/pulls/${encodeURIComponent(prId)}/reviews`);
         const scoped = agentId === undefined ? reviews : reviews.filter((r) => r.agent_id === agentId);
 
         if (scoped.length === 0) {

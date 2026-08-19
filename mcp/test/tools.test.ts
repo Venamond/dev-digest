@@ -316,6 +316,70 @@ describe('get_findings', () => {
   const repos: Repo[] = [{ id: 'repo-1', full_name: 'acme/repo' }];
   const pulls: PrMeta[] = [{ id: 'pr-1', number: 42 }];
 
+  it('treats a cleared agent field as "every agent", not as an agent named ""', async () => {
+    // Reported from MCP Inspector: type an agent name, clear it, run. The
+    // client sends `agent: ""` rather than dropping the key, and the tool
+    // answered `Agent "" not found. Call list_agents…` — wrong advice for
+    // someone whose blank field meant "all of them".
+    const reviews: ReviewRecord[] = [
+      {
+        run_id: 'run-1',
+        agent_id: 'agent-a',
+        agent_name: 'A',
+        verdict: 'comment',
+        summary: 'a',
+        findings: [
+          {
+            id: 'f-a',
+            severity: 'WARNING',
+            category: 'perf',
+            title: 'A finding',
+            file: 'a.ts',
+            start_line: 1,
+            end_line: 1,
+            rationale: 'because',
+          },
+        ],
+      },
+    ];
+    const fetchMock = stubFetch((path) => {
+      if (path === '/pulls/pr-1/reviews') return jsonResponse(reviews);
+      throw new Error(`unexpected path ${path}`);
+    });
+    const api = new DevDigestApi(BASE_URL);
+    const client = await connectClient(api);
+
+    const result = (await client.callTool({
+      name: 'get_findings',
+      arguments: { pr_id: 'pr-1', agent: '   ' },
+    })) as CallToolResult;
+
+    expect(result.isError).toBeFalsy();
+    expect(structured<{ total: number }>(result).total).toBe(1);
+    // No agent lookup was attempted at all.
+    expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('/agents'))).toBe(false);
+  });
+
+  it('names the empty field when a required argument arrives blank', async () => {
+    // `""` in a path segment would request `/pulls//reviews` and come back a
+    // 404 about a missing pull request, which sends the caller looking for
+    // the wrong problem. Fail before the request, naming the field.
+    const fetchMock = stubFetch(() => {
+      throw new Error('no request should be made');
+    });
+    const api = new DevDigestApi(BASE_URL);
+    const client = await connectClient(api);
+
+    const result = (await client.callTool({
+      name: 'get_findings',
+      arguments: { pr_id: '' },
+    })) as CallToolResult;
+
+    expect(result.isError).toBe(true);
+    expect(text(result)).toContain('pr_id is empty');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('says when a re-run superseded an older review of the same agent', async () => {
     // The real case this was written for: three Performance Reviewer runs on
     // one PR. D5 keeps the newest, which is right — an older run's finding may
