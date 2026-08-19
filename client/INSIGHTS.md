@@ -271,6 +271,15 @@ ground truth — wrap-ups can mischaracterize a session.
   its own tests (`BlastCard/helpers.ts`) instead of inline in JSX.
   Mermaid ships as a client dependency already; a graph view here does not need
   a new library.
+  **And it drags the whole of D3 in with it — check before arguing about a new
+  visualisation dependency.** `mermaid@11 → d3@7 → 31 `d3-*` packages`,
+  including `d3-force` and `d3-quadtree` (`pnpm why d3-force` in `client/`).
+  So a force-directed graph costs a `package.json` line pinning something
+  already in the bundle, not a new download — and `d3-force` run headlessly
+  (`simulation.tick()` N times, read the coordinates) is a pure
+  nodes+edges→positions function, as testable as any other helper here.
+  I argued against it on "no new dependency" grounds without running that one
+  command, and recommended hand-rolling a physics loop instead.
 
 - **A "sidebar nav takes ~5s, then is fine, then slow again" report is NOT
   automatically a regression of the persistent-`AppShell` fix (see Codebase
