@@ -8,6 +8,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, API_BASE } from "../api";
 import { notify } from "../toast";
 import type {
+  BlastResponse,
+  BlastSummaryResponse,
   FindingActionKind,
   PrIntentRecord,
   PrReviewComment,
@@ -166,6 +168,36 @@ export function useSmartDiff(prId: string | null | undefined) {
     queryKey: queryKeys.smartDiff(prId),
     queryFn: () => api.get<SmartDiffResponse>(`/pulls/${prId}/smart-diff`),
     enabled: !!prId,
+  });
+}
+
+/** Blast radius map for a PR (zero LLM calls; every state is a 200). */
+export function useBlast(prId: string | null | undefined) {
+  return useQuery({
+    queryKey: queryKeys.blast(prId),
+    queryFn: () => api.get<BlastResponse>(`/pulls/${prId}/blast`),
+    enabled: !!prId,
+  });
+}
+
+/** Passive reader of the cached summary. There is no queryFn to run:
+ *  the value is only ever written by useDeriveBlastSummary's onSuccess
+ *  (plan §2b D18 — a mutation's own data dies when the tab unmounts). */
+export function useBlastSummary(prId: string | null | undefined) {
+  return useQuery<BlastSummaryResponse>({
+    queryKey: queryKeys.blastSummary(prId),
+    queryFn: () => Promise.reject(new Error("blast summary is POST-only")),
+    enabled: false,
+    staleTime: Infinity,
+  });
+}
+
+/** The one optional LLM paragraph — explicitly triggered, never persisted. */
+export function useDeriveBlastSummary(prId: string | null | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<BlastSummaryResponse>(`/pulls/${prId}/blast/summary`),
+    onSuccess: (data) => qc.setQueryData(queryKeys.blastSummary(prId), data),
   });
 }
 

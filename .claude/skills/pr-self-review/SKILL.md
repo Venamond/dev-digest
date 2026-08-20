@@ -177,6 +177,22 @@ repo state, report "unchanged since the last run — verdict stands" instead
 of repeating the full procedure. Any difference invalidates the record and
 forces a full run from step 1.
 
+**One difference is not a real difference: a commit of the exact code that
+was just reviewed.** Committing moves `HEAD` and empties the working tree, so
+it changes `sha` and `worktree_hash` at once — the record reads as stale
+though not one reviewed line changed. When the review ran on an uncommitted
+change set and the user then commits it, rewrite those two lines and keep the
+verdict; do not re-run the procedure, and do not commit anything the user did
+not ask for in order to "settle" the hashes. Any other difference — an edit,
+a new file, a commit that brought in unreviewed code — is a real one and does
+force the full run.
+
+**Write the record in its own tool call, before the one that pushes.** The
+hook is a `PreToolUse` check: it reads the file before any part of the
+command runs, so `write-the-record && git push` as a single command is
+evaluated against the *old* record and denied. Same reason a `git commit &&
+git push` pair cannot carry a record refresh between its halves.
+
 This file holds only that state — never the full report text. If report
 persistence is ever added, it's a separate file; this one stays small.
 

@@ -43,11 +43,17 @@ function renderCounters(
   opts: {
     active?: Severity | null;
     onSelect?: (severity: Severity | null) => void;
+    note?: { label: string; title: string };
   } = {},
 ) {
   return render(
     <NextIntlClientProvider locale="en" messages={{ prReview: messages }}>
-      <SeverityCounters findings={findings} active={opts.active ?? null} onSelect={opts.onSelect} />
+      <SeverityCounters
+        findings={findings}
+        active={opts.active ?? null}
+        onSelect={opts.onSelect}
+        note={opts.note}
+      />
     </NextIntlClientProvider>,
   );
 }
@@ -66,6 +72,24 @@ describe("SeverityCounters", () => {
     renderCounters(FINDINGS, { onSelect });
     fireEvent.click(screen.getByRole("button", { name: "2 CRITICAL" }));
     expect(onSelect).toHaveBeenCalledWith("CRITICAL");
+  });
+
+  it("captions the tally when the caller supplies a note, and explains it on hover", () => {
+    // The PR-level tally sums every review, including runs a later run of the
+    // same agent superseded — so 4 CRITICAL can include one no reviewer still
+    // reports. The caption is what stops that number reading as "four open
+    // problems"; the title carries the part that does not fit on the row.
+    renderCounters(FINDINGS, {
+      note: { label: "across every run", title: "These totals sum every review ever run." },
+    });
+    const caption = screen.getByText("across every run");
+    expect(caption).toBeInTheDocument();
+    expect(caption).toHaveAttribute("title", "These totals sum every review ever run.");
+  });
+
+  it("shows no caption for a per-run tally, which needs no caveat", () => {
+    renderCounters(FINDINGS, { onSelect: vi.fn() });
+    expect(screen.queryByText("across every run")).not.toBeInTheDocument();
   });
 
   it("does not fire onSelect for a severity with a zero count", () => {

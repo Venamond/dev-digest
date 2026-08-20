@@ -1,6 +1,6 @@
 ---
 name: frontend-architecture
-description: "Where code goes in DevDigest's client/ package — feature folder boundaries, constants vs utils placement, business logic location, state location, and the 'use client' server/client boundary as an architectural decision. Use when creating a new route or component, deciding where a piece of logic or a constant belongs, deciding whether something needs to be a Client Component, or reviewing a client/ diff for placement. States this project's specific architecture (TanStack Query against the Fastify API, no Server Actions, no direct DB access) as a decision, not a suggestion. Trigger terms: folder structure, where does this go, feature folder, use client boundary, barrel file, query key, colocation, client architecture. For hook rules, memoization, keys, and accessibility use react-best-practices instead; for Next.js mechanics (async params, metadata, bundling, hydration) use next-best-practices instead — this skill carries only placement and architecture decisions, not mechanics."
+description: "Where code goes in DevDigest's client/ package — feature folder boundaries, constants vs utils placement, business logic location, state location, and the 'use client' server/client boundary as an architectural decision. Use when creating a new route or component, deciding where a piece of logic or a constant belongs, deciding whether something needs to be a Client Component, or reviewing a client/ diff for placement. States this project's specific architecture (TanStack Query against the Fastify API, no Server Actions, no direct DB access) as a decision, not a suggestion. Also carries the rule for building a component from a supplied mockup: build the mockup's element list and nothing else. Trigger terms: folder structure, where does this go, feature folder, use client boundary, barrel file, query key, colocation, client architecture, mockup, reference design, макет. For hook rules, memoization, keys, and accessibility use react-best-practices instead; for Next.js mechanics (async params, metadata, bundling, hydration) use next-best-practices instead — this skill carries only placement and architecture decisions, not mechanics."
 metadata:
   tags: architecture, frontend, client, nextjs, react, folder-structure
 ---
@@ -65,6 +65,26 @@ and not Next.js mechanics like async `params` or metadata (see
 - See [references.md §9.2–§9.3](references.md#92-the-boundary-is-a-module-graph-boundary-not-a-render-tree-boundary)
   for the full citations, and [deviations.md](deviations.md) for the four
   routes that don't yet follow this.
+
+## Building From a Mockup (CRITICAL)
+
+- Before writing `styles.ts`, list the mockup's elements — every label,
+  chip, counter, divider, colour role and its position. Build that list and
+  nothing else. This is the whole rule; the points below are its
+  consequences.
+- **What the mockup omits is a decision, not a gap to fill.** A background
+  band, an uppercase section heading, a file path in a header, a "N more"
+  line — if it is not in the mockup, it is not in the component. Adding it
+  is not initiative, it is an unrequested change to a spec.
+- Where the mockup is genuinely ambiguous (is this block a tab or a card?
+  is this graph a picture or a live simulation?), ASK before building.
+  One question costs a message; guessing costs the whole component twice.
+- Colour comes from the mockup's role, not from a token that looks close.
+  `--bg-primary` is the darkest token in this theme — reaching for it to
+  raise a row inside an `--bg-elevated` card makes the row recede instead.
+- Reviewing a `client/` diff against a mockup: every element in the diff
+  that is absent from the mockup is a finding, and so is every mockup
+  element absent from the diff.
 
 ## Feature Folder Structure (CRITICAL)
 

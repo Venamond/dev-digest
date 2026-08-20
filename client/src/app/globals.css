@@ -135,3 +135,22 @@
     transform: translateY(0);
   }
 }
+
+/* File/line deep links inside cards (BlastCard's callers and importers).
+   A hover state cannot live in `styles.ts` — those are inline style objects
+   and inline styles carry no pseudo-classes. Same reason `.dd-md` above is
+   here rather than in the Markdown primitive.
+
+   The link keeps its resting colour so the blue in that column stays with the
+   `<>` marks and the endpoint chips; hover is what promotes it, which is also
+   the affordance that says "this opens something". */
+.dd-fileref:hover,
+.dd-fileref:focus-visible {
+  /* `!important` is load-bearing, not decoration. The resting colour comes
+     from a React `style={}` attribute (BlastCard's styles.ts), and an inline
+     style outranks any class selector — without this the rule parses, matches,
+     and changes nothing. Same trap as the `pre > code` override recorded in
+     client/INSIGHTS.md. */
+  color: var(--accent-text) !important;
+  text-decoration-line: underline !important;
+}

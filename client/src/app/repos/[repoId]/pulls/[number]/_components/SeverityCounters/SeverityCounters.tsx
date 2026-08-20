@@ -1,6 +1,11 @@
 /* SeverityCounters — "3 CRITICAL · 5 WARNING · 2 SUGGESTION" bar.
    Without onSelect: a read-only PR-level tally. With onSelect: a per-run
-   filter that toggles that FindingsPanel down to one severity. */
+   filter that toggles that FindingsPanel down to one severity.
+
+   `note` exists because the same numbers mean different things in those two
+   places: a run's own tally needs no caveat, while the PR-level one sums
+   EVERY review including ones a later run of the same agent superseded. The
+   copy stays with the caller that knows which case it is. */
 "use client";
 
 import React from "react";
@@ -14,10 +19,13 @@ export function SeverityCounters({
   findings,
   active = null,
   onSelect,
+  note,
 }: {
   findings: FindingRecord[];
   active?: Severity | null;
   onSelect?: (severity: Severity | null) => void;
+  /** Muted caption after the counters; `title` carries the full explanation. */
+  note?: { label: string; title: string };
 }) {
   const t = useTranslations("prReview");
   const interactive = !!onSelect;
@@ -73,6 +81,14 @@ export function SeverityCounters({
           </React.Fragment>
         );
       })}
+      {note && (
+        <span
+          title={note.title}
+          style={{ marginLeft: 4, fontSize: 12, color: "var(--text-muted)", cursor: "help" }}
+        >
+          {note.label}
+        </span>
+      )}
     </div>
   );
 }

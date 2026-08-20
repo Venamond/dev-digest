@@ -1,4 +1,5 @@
 {
+  "title": "Blast radius",
   "stat": {
     "symbols": "symbols",
     "callers": "callers",
@@ -6,13 +7,41 @@
     "crons": "cron/jobs"
   },
   "view": {
-    "tree": "tree",
-    "graph": "graph"
+    "tree": "Tree",
+    "flow": "Graph",
+    "network": "Network"
   },
-  "callerCount": "{count} callers",
+  "callerCount": "{count, plural, one {# caller} other {# callers}}",
   "noDownstream": "{count} changed symbol(s), no downstream callers found.",
   "graph": {
     "empty": "No downstream callers to graph.",
-    "ariaLabel": "Blast radius graph"
-  }
+    "ariaLabel": "Blast radius graph",
+    "legendSymbol": "changed symbol",
+    "legendCallers": "callers",
+    "legendEndpoints": "endpoints affected",
+    "legendCrons": "cron / jobs",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "reset": "Fit and release pinned",
+    "rotateLeft": "Rotate left",
+    "rotateRight": "Rotate right"
+  },
+  "partial": "The index for this repo is partial — the map below shows what has been indexed so far.",
+  "degraded": "This repo is not indexed well enough to compute a blast radius.",
+  "notIndexed": "This repo has not been indexed yet, so there is no dependency data to walk.",
+  "stale": "This repo was indexed by an older indexer and lacks the caller ranking data — re-index it before trusting an empty map.",
+  "reindex": "Re-index repo",
+  "error": "Blast radius is unavailable for this PR.",
+  "truncated": "showing callers from {shown} of {total} files",
+  "downstreamTruncated": "The dependency walk hit its cap, so the endpoints and cron jobs below are a subset of what this PR can reach.",
+  "unlinked": "No indexed commit for this repo — file paths are shown without a link, because a line number from the index would point at the wrong commit.",
+  "priorPulls": "Prior PRs touching these files",
+  "explain": "Explain",
+  "summaryTitle": "Summary",
+  "summaryFailed": "The generated summary named something that is not in this map, so it was discarded.",
+  "retry": "Try again",
+  "dismissedFinding": "{severity} raised here and dismissed: {title}",
+  "importerHint": "Imports this file; no call site was resolved",
+  "noImpactSymbols": "{count} more changed symbols with no downstream callers",
+  "importerCount": "{count, plural, one {# importer} other {# importers}}"
 }

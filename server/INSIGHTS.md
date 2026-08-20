@@ -11,6 +11,24 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## What Doesn't Work
 
+- **A grounding check that whitelists exact strings against model output will
+  reject correct answers, and it fails CLOSED — the feature looks broken, not
+  lenient.** `modules/blast/summary.ts` rejects a summary naming anything
+  outside the map it was given. Twice that check was stricter than the prompt
+  it enforces: the prompt says "backtick every name", so the model writes
+  `rateLimit()` and `src/mw.ts:23` (fixed by normalising call parens and a
+  `:line` suffix), and it quotes `SettingsModels` out of the path
+  `.../SettingsModels/SettingsModels.tsx` that the map contains (fixed by
+  adding every path SEGMENT and its extension-stripped form to the node set).
+  Each time a whole correct paragraph became a 422, and the UI's only symptom
+  was a button that appeared not to work.
+  **Do:** when whitelisting model output, enumerate what a model writing
+  naturally will produce from the data you handed it — inflections, call
+  parens, `path:line`, a directory lifted out of a path — and admit those, or
+  the guard spends its life rejecting truth. Test the endpoint against the
+  real LLM once (`curl` the route); the hermetic tests use a mock whose output
+  you wrote, so they can only confirm the shapes you already thought of.
+
 - The onion-architecture baseline's "monotonic decrease" policy
   (`.dependency-cruiser-known-violations.json` may only shrink) was broken
   once (peaked at 16). Burn-down 2026-08-04: pulls/polling then
@@ -23,6 +41,37 @@ ground truth — wrap-ups can mischaracterize a session.
   arch:check` in CI uses `--ignore-known`.
 
 ## Codebase Patterns
+
+- **`agents.name` has no unique constraint, and the create path does not
+  check for one — so resolving an agent *by name* can silently pick the
+  wrong row.** `db/schema/agents.ts:13` is a bare `text('name').notNull()`
+  with no unique index anywhere in the file, and `POST /agents`
+  (`modules/agents/routes.ts:101`) goes straight through
+  `AgentService.create` (`service.ts:90`) to `AgentRepository.insert`
+  (`repository.ts:87`) — a plain INSERT with no name lookup. Two agents
+  named `Security Reviewer` in one workspace is a legal, reachable state
+  via the normal Agents UI.
+
+  This is the sibling of the recorded `skills.name` entry below, but with a
+  worse blast radius: a duplicate *skill* produces indistinguishable labels
+  in a picker, while a duplicate *agent* hit by a first-match-wins lookup
+  starts a **paid LLM review run against the wrong reviewer** and reports
+  success. Any code that accepts an agent name instead of a uuid must
+  therefore collect **all** matches and fail loudly when there is more than
+  one — `Two agents are named "X". Pass the id instead: <id1>, <id2>` —
+  rather than taking `[0]`. Resolving by `agents.id` avoids the class
+  entirely.
+
+  Check before debugging a "wrong agent ran" report:
+  `SELECT name, count(*) FROM agents GROUP BY workspace_id, name
+  HAVING count(*) > 1;`
+
+  Not yet a machine check: the natural enforcement is a per-workspace
+  unique index on `(workspace_id, name)`, which needs a migration and a
+  decision about existing duplicate rows. The first consumer to hit this is
+  the planned MCP server's `resolveAgentId`
+  (`docs/plans/2026-08-18-mcp-server.md`, S2), where it is handled
+  defensively in that package instead. (2026-08-18)
 
 - **`reviews.kind` is an enum of `'summary' | 'review'`
   (`db/schema/reviews.ts:21`), but no *production* path ever writes
@@ -478,6 +527,35 @@ ground truth — wrap-ups can mischaracterize a session.
   all. (2026-08-08, Agents Lab card-stats fix)
 
 ## Recurring Errors & Fixes
+
+- **An `.it.test` suite that fails a DIFFERENT file each full run, while every
+  file passes in isolation, is a product race — not test flakiness. Do not
+  "fix" it with retries or a longer timeout.** Diagnosed 2026-08-19:
+  `run-executor.ts` awaited `completeAgentRun(status: 'done')` and only then
+  `saveRunTrace`, so between those two lines a run reads as finished while
+  `GET /runs/:id/trace` returns nothing. Tests polling `agent_runs.status`
+  (`test/helpers/runs.ts`'s `waitForPrRuns`) then read a trace that has not
+  landed: `intent.it.test.ts` died on `trace.tool_calls.find` of undefined,
+  `agents-skills.it.test.ts` on `expected undefined to be null`. **The rule:
+  write every derived row FIRST, flip the status consumers poll LAST** — a
+  terminal status is a promise that everything about the run is readable, and
+  that includes the failure paths, where "failed" must not outrun the log
+  saying why.
+
+  **The diagnosis recipe, which is the reusable part:** run the full suite
+  twice and note that the failing file MOVES; run each failing file alone and
+  watch it pass; then run the full suite on the change set's BASE commit. A
+  failure there proves the race predates the branch and points at product
+  code rather than the diff under review. Two runs at the base were enough
+  here (one red, one green).
+
+  **Pin it as call ORDER, never by racing the window** — a test that
+  reproduces a race reproduces its flakiness too. `'persists the trace BEFORE
+  the run reads as finished'` (`test/reviews.it.test.ts`) stubs both
+  `ReviewRepository.prototype` methods with `vi.spyOn`, records the order they
+  are called in, and asserts `['trace', 'status']`. It fails 100% on the old
+  ordering and passes 100% on the new. Note the stubs mean the run never
+  reaches a terminal status, so poll the recorded calls, not the database.
 
 - OpenRouter `404 No endpoints found for deepseek/deepseek-v4-flash` after
   sending `provider: { order: ['DeepSeek'], allow_fallbacks: false }`. That

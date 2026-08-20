@@ -34,6 +34,8 @@ export const queryKeys = {
   prComments: (prId: string | null | undefined) => ["pr-comments", prId] as const,
   prIntent: (prId: string | null | undefined) => ["pr-intent", prId] as const,
   smartDiff: (prId: string | null | undefined) => ["smart-diff", prId] as const,
+  blast: (prId: string | null | undefined) => ["blast", prId] as const,
+  blastSummary: (prId: string | null | undefined) => ["blast-summary", prId] as const,
 
   runTrace: (runId: string | null | undefined) => ["run-trace", runId] as const,
   repoIntelState: (repoId: string | null | undefined) => ["repo-intel-state", repoId] as const,

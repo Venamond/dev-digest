@@ -86,6 +86,12 @@ export class ReviewRunExecutor {
     // mark the rows failed and persist the buffered log so it survives a reload.
     const failAll = async (msg: string) => {
       for (const { runId, agent } of jobs) {
+        // Trace before status, as in the two paths below: a terminal status is
+        // what consumers poll to know the run is over, and it must not arrive
+        // before the log that explains the failure.
+        await this.repo
+          .saveRunTrace(runId, this.traceFromBuffer(runId, pull, agent, '0/0 passed'))
+          .catch(() => undefined);
         await this.repo
           .completeAgentRun(runId, {
             status: 'failed',
@@ -96,9 +102,6 @@ export class ReviewRunExecutor {
             grounding: '0/0 passed',
             error: msg,
           })
-          .catch(() => undefined);
-        await this.repo
-          .saveRunTrace(runId, this.traceFromBuffer(runId, pull, agent, '0/0 passed'))
           .catch(() => undefined);
         this.container.runBus.complete(runId);
       }
@@ -358,20 +361,15 @@ export class ReviewRunExecutor {
       // the timeline colors on, NOT the model's self-reported verdict.
       const blockers = countBlockers(kept, agent.ciFailOn);
 
-      // ---- Observability: agent_runs + ONE run_traces document --------------
-      await this.repo.completeAgentRun(runId, {
-        status: 'done',
-        durationMs,
-        tokensIn,
-        tokensOut,
-        findingsCount: findingRows.length,
-        grounding,
-        score,
-        blockers,
-        costUsd,
-        error: null,
-      });
-
+      // ---- Observability: ONE run_traces document, THEN agent_runs ---------
+      // Order is load-bearing. A terminal `agent_runs.status` is the signal
+      // every consumer polls to mean "this run is finished" — and then reads
+      // the trace. Flipping the status first opens a window where the run
+      // reads as done and `GET /runs/:id/trace` has nothing to return. It is
+      // narrow on an idle machine and wide under load, which is exactly the
+      // shape of a flaky integration suite: `intent.it.test.ts` and
+      // `agents-skills.it.test.ts` each failed ~1 full-suite run in 2 while
+      // passing in isolation, reading `undefined` where the trace should be.
       const trace: RunTrace = {
         config: {
           agent: agent.name,
@@ -417,6 +415,18 @@ export class ReviewRunExecutor {
       };
       runLog.info('Run complete; trace persisted');
       await this.repo.saveRunTrace(runId, trace);
+      await this.repo.completeAgentRun(runId, {
+        status: 'done',
+        durationMs,
+        tokensIn,
+        tokensOut,
+        findingsCount: findingRows.length,
+        grounding,
+        score,
+        blockers,
+        costUsd,
+        error: null,
+      });
       this.container.runBus.complete(runId);
 
       return { review, findings: findingRows, grounding, raw: outcome.review };
@@ -427,6 +437,12 @@ export class ReviewRunExecutor {
       const status = cancelled ? 'cancelled' : 'failed';
       const msg = cancelled ? 'Cancelled by user' : (err as Error).message;
       runLog.error(cancelled ? 'Run cancelled by user' : `Run failed: ${msg}`);
+      // Same order as the success path: the trace lands before the status
+      // says the run is over, so "failed" never means "failed, and the log
+      // explaining why is not there yet".
+      await this.repo
+        .saveRunTrace(runId, this.traceFromBuffer(runId, pull, agent, '0/0 passed', Date.now() - start))
+        .catch(() => undefined);
       await this.repo
         .completeAgentRun(runId, {
           status,
@@ -437,9 +453,6 @@ export class ReviewRunExecutor {
           grounding: '0/0 passed',
           error: msg,
         })
-        .catch(() => undefined);
-      await this.repo
-        .saveRunTrace(runId, this.traceFromBuffer(runId, pull, agent, '0/0 passed', Date.now() - start))
         .catch(() => undefined);
       this.container.runBus.complete(runId);
       throw err;

@@ -11,7 +11,11 @@ interface PrDetailHeaderProps {
   pr: PrDetail;
   prId: string | null;
   tab: string;
-  findingsCount: number;
+  /** Number of review RUNS — the noun in the tab's own label. Counting
+   *  findings here made the badge disagree with the label beside it
+   *  ("Agent runs 7" for 5 runs and 7 findings); the sibling tab counts
+   *  files, matching its label. */
+  runsCount: number;
   /** github.com PR URL; null when the repo's full_name isn't known yet. */
   githubUrl?: string | null;
   onSetTab: (tab: string) => void;
@@ -23,7 +27,7 @@ export function PrDetailHeader({
   pr,
   prId,
   tab,
-  findingsCount,
+  runsCount,
   githubUrl,
   onSetTab,
   onRunStart,
@@ -119,7 +123,7 @@ export function PrDetailHeader({
             key: "findings",
             label: t("detail.tabs.findings"),
             icon: "AlertOctagon",
-            count: findingsCount || undefined,
+            count: runsCount || undefined,
           },
           {
             key: "diff",

@@ -21,6 +21,151 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Codebase Patterns
 
+- **`BlastCard`'s tree opens nothing on arrival — do not "helpfully" restore
+  `defaultOpen={i === 0}`.** Removed on 2026-08-19 at the user's explicit
+  request: auto-opening the first symbol presumes it is the one the reader
+  came for, and on a map of 10+ changed symbols it usually is not. Same
+  positional-default family as the `=== 0` accordion defect below, but this
+  one is a product decision, not a bug — a future "improvement" that reopens
+  the first row is a regression. Consequence for tests: nine assertions in
+  `BlastCard.test.tsx` silently depended on the first subtree being mounted.
+  Any test asserting on callers/importers/chips must click the disclosure
+  first — the file has an `expandSymbol(name)` helper for exactly this.
+  (2026-08-19)
+
+- **A card on the PR Overview tab gets HALF the width of the mockup it was
+  drawn from, and raising the grid's `minmax` floor to fix that is a trap.**
+  `OverviewTab/styles.ts` lays `IntentCard` and `BlastCard` out in
+  `repeat(2, minmax(0, 1fr))`. It reached that value the long way round:
+  `auto-fit, minmax(360px, 1fr)` let `BlastCard`'s counter row (four counters
+  plus the Tree|Graph control, ~520px of content) wrap on every two-column
+  layout; raising the floor to 600px stopped the wrap and instead collapsed
+  the grid to ONE column on ordinary laptop widths, stacking the two cards —
+  a worse outcome, and the thing the pairing exists to avoid. `auto-fit` has
+  no setting that both keeps two columns and guarantees a wide one.
+  **The binding constraint is the PAGE, not the grid.** `PrDetailView` caps the
+  whole PR detail column at `maxWidth: 1240` (raised from 1080 on 2026-08-19
+  for exactly this reason, and sized to the counter row rather than rounded up
+  — a wider page is a product decision, not a layout fix) with 32px side padding, so an Overview card gets
+  `(cap − 64 − 16) / 2` minus its own 20px padding. At 1080 that was ~460px,
+  under the ~520px the Blast counter row needs — no amount of tightening
+  inside the card could fix it. Check that number before restyling a card that
+  does not fit.
+  **Do:** size Overview card content for ~half the content width, not for the
+  picture. Keep the track unconditional (`styles.ts` objects cannot carry
+  media queries) and let the content degrade instead of the layout. When a row
+  must keep one element pinned right, put `flexWrap: "wrap"` on the LEFT group
+  and `flexShrink: 0` on that element — `flexWrap: "wrap"` on the row itself
+  drops the whole right-hand element onto its own line, which reads as "the
+  button moved" and sends you looking in the wrong file.
+  **Equal heights need three levels, not one.** Each card component renders
+  `<section>` around its card `<div>`, so the SECTION is the grid item.
+  `align-items: stretch` on the grid stretches the section and nothing else —
+  putting `height: 100%` on the card alone does nothing, because its parent
+  still has no height of its own. All three are required: `stretch` on the
+  grid, `display: flex; flex-direction: column` on the `<section>`, and
+  `height: 100%` on the card. (Column, not row: in a row flex box the card's
+  main-axis size stays content-based and it can end up narrower than its
+  cell.)
+  **A long title that jumps to its own line is a `minWidth` bug, not a
+  wrapping bug.** A flex item will not break below min-content, so a
+  `flexWrap: "wrap"` row containing a long heading pushes the WHOLE heading
+  to the next line rather than wrapping it in place — `#8` rendered as a bare
+  number above its own title. Give the text `flexGrow: 1; flexShrink: 1;
+  minWidth: 0` and `flexShrink: 0` to the fixed chips beside it.
+  **A repo path overflowing a card needs BOTH `overflow-wrap: anywhere` and
+  `minWidth: 0` on every flex column above it.** Paths in this product run to
+  90+ characters with no spaces (`client/src/app/repos/[repoId]/pulls/…`), and
+  `break-word` only breaks BETWEEN words — with no space to use it does
+  nothing, so the text runs past the card edge. `anywhere` is the value that
+  breaks inside a token. Fixing only that is still not enough: a flex column
+  will not shrink below its widest child, so the unbroken path widens the
+  whole card instead of wrapping in it. Any card rendering file paths
+  (findings, diff, blast) needs both.
+  **Wrapping is not enough on its own — a list of real paths has to be
+  TRUNCATED to stay legible.** A design drawn against the demo repo
+  (`src/api/public/index.ts`) collapses on this one, where a path is
+  `client/src/app/repos/[repoId]/pulls/[number]/_components/DiffTab/DiffTab.tsx`:
+  every row shares the same six leading segments and the part that tells the
+  rows apart is off the end. Render the TAIL (`shortPath` in
+  `BlastCard/helpers.ts`, last 3 segments behind `…/`) and keep the whole path
+  in the link `href` and a `title` tooltip, so nothing is lost. Judge any
+  path-rendering design against a real path from this repo before believing
+  it — three rounds of "the design is completely different" here were volume,
+  not styling.
+
+- **`styles.ts` objects are INLINE styles: no `:hover`, no `:focus`, no media
+  queries. The escape hatch is `app/globals.css` plus a `dd-` class.** Two
+  precedents live there already — `.dd-md` for rendered-markdown blocks
+  (2026-08-08) and `.dd-fileref` for the file-link hover in `BlastCard`
+  (2026-08-19). Reach for it only for what inline styles genuinely cannot
+  express; everything static stays in the colocated `styles.ts`, and a
+  responsive layout is better solved by making the content fit than by
+  smuggling a breakpoint into CSS.
+  **Any property such a rule overrides needs `!important`.** The element's
+  resting value comes from a React `style={}` attribute, and an inline style
+  outranks every class selector — the rule parses, matches, and does nothing.
+  I hit this twice: `pre > code` in the markdown entry below, and
+  `.dd-fileref:hover`, which shipped without `!important` after I had read that
+  very entry. Put the reason in a comment beside the declaration as well as
+  here: this file is read when work starts, and the mistake is made later,
+  while writing the rule. **(Now enforced by
+  `src/test/globals-css.test.ts`** — it fails on any interaction-state rule
+  whose declarations lack `!important`, so this half of the entry no longer
+  depends on being remembered. The `dd-` escape-hatch guidance above is not
+  machine-checkable and still applies.)
+
+- **A total can be correctly derived and still lie, when the SET it sums
+  includes rows a later row superseded. Name the scope on screen.** The PR
+  severity bar (`SeverityCounters` under `FindingsTab`) sums
+  `reviews.flatMap(r => r.findings)` — every review ever run. Re-running one
+  agent does not replace its earlier review, so a real PR read `4 CRITICAL`
+  while only three were still reported by anyone: Performance Reviewer had
+  re-run and dropped its critical, and the bar kept counting it. Meanwhile
+  `get_findings` in `mcp/` answers the same question with the newest review
+  per agent (D5) and returned 9 against the page's 11 — two surfaces, two
+  scopes, neither labelled. Fixed 2026-08-19 by captioning the bar ("across
+  every run", full text in `title`) and by a `hint` on the MCP side. **The
+  rule: whenever an aggregate spans rows that supersede one another, the
+  surface states which set it counted** — the arithmetic being right is not
+  the same as the number being true. The caption is a prop supplied by the
+  caller, not baked into `SeverityCounters`, because the same component also
+  renders a single run's tally, which needs no caveat.
+
+- **Every number on a card must be derived from the array the card renders —
+  a count computed independently WILL drift from what is on screen.** Three
+  times in one feature (`BlastCard`, 2026-08-19) a counter and the body
+  disagreed on the same screen, each time because they were computed from
+  different places:
+  1. the per-symbol heading counted `callers_total` (distinct caller FILES,
+     from SQL) while the list rendered call sites — different units, so
+     "1 caller" sat above two rows;
+  2. the heading counted callers while the body listed callers AND importers,
+     so an interface read "0 callers" with a row underneath it;
+  3. the tree was gated on `totals.callers > 0` while `partitionSymbols`
+     already treated endpoints, crons and importers as impact — so a symbol
+     reaching two endpoints was replaced by "no downstream callers found",
+     directly under a counter saying "2 endpoints".
+  None of these is caught by typecheck or by a test that renders one fixture:
+  every one needs a fixture where the two sources *disagree*.
+  **Do:** compute the rendered collection once, then derive counts, headings
+  and empty-state gates from THAT — never re-ask the payload. When a payload
+  total must also be shown (`totals.callers_found`), label the unit, and add a
+  test whose fixture makes the two numbers differ.
+
+- **`--bg-primary` is the page BACKDROP, not the main surface — it is the
+  darkest token, and using it to raise something makes that thing darker than
+  what it sits on.** The dark scale in `vendor/ui/styles.css:11-14` runs
+  `--bg-primary` #0a0a0a → `--bg-surface` #141414 → `--bg-elevated` #1c1c1c →
+  `--bg-hover` #242424. Cards use `--bg-elevated`, so a row inside a card that
+  wants to look raised needs `--bg-hover`; `--bg-primary` there renders as a
+  black slab cut out of the card. The name is the trap — "primary" reads like
+  "the main surface" and it means "the thing everything else sits on". Picked
+  wrongly twice in one session on `BlastCard`.
+  **Do:** to raise a surface, move UP this list from whatever the parent uses.
+  Check the parent's token first; there is no single "raised" token, only a
+  next one.
+
 - **i18n namespace follows the component's location, not the feature it serves.**
   Shared components under `client/src/components/**` call
   `useTranslations("shell")` (10 of 13 call sites; the rest are `common` /
@@ -147,6 +292,49 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Tool & Library Notes
 
+- **Mermaid: style nodes with literal hex, never `var(--token)`, and expect
+  silence when the chart is wrong.** `classDef`/`class` values are written into
+  SVG presentation attributes, where a CSS custom property does not resolve —
+  `stroke:var(--accent-text)` yields an unstyled box with no error anywhere.
+  Mirror the token's value from `vendor/ui/styles.css` and pin it with a test
+  asserting no `var(` reaches the chart string (`BlastCard/helpers.test.ts`).
+  Related failure mode from the same component: `MermaidDiagram` validates with
+  `mermaid.parse` and renders NOTHING on a parse failure, so a malformed chart
+  is a blank area rather than an error — build the string in a pure helper with
+  its own tests (`BlastCard/helpers.ts`) instead of inline in JSX.
+  Mermaid ships as a client dependency already; a graph view here does not need
+  a new library.
+  **And it drags the whole of D3 in with it — check before arguing about a new
+  visualisation dependency.** `mermaid@11 → d3@7 → 31 `d3-*` packages`,
+  including `d3-force` and `d3-quadtree` (`pnpm why d3-force` in `client/`).
+  So a force-directed graph costs a `package.json` line pinning something
+  already in the bundle, not a new download — and `d3-force` run headlessly
+  (`simulation.tick()` N times, read the coordinates) is a pure
+  nodes+edges→positions function, as testable as any other helper here.
+  I argued against it on "no new dependency" grounds without running that one
+  command, and recommended hand-rolling a physics loop instead.
+  **Driving a LIVE d3 simulation (draggable nodes) has three traps, all silent:**
+  (1) `simulation.tick()` does NOT dispatch the `tick` event — it is the
+  headless entry point, so a test that steps the sim by hand and listens via
+  `sim.on("tick")` sees nothing; own the listener set and notify yourself.
+  (2) a pinned node's position lives in `fx`/`fy`, and d3 copies it into
+  `x`/`y` only on the FOLLOWING tick — read `fx ?? x` or the dragged node
+  trails the cursor by a frame. (3) jsdom never drives d3-timer's
+  requestAnimationFrame, so a live simulation produces no ticks under test at
+  all; make `drag()` notify synchronously, which is also correct in a browser
+  because a simulation cooled to alpha 0 has stopped ticking.
+  **And d3's drag examples clear `fx`/`fy` on drop — do not copy that into an
+  explorable graph.** Their demos exist to show physics, so a released node
+  springing back is the point. In a map a reader drags apart to READ, it means
+  every node you place undoes itself and the graph cannot be arranged at all
+  (reported as "I can't pin a node"). Keep `fx`/`fy` set on release, release
+  explicitly (double-click, plus a reset that unpins everything), and mark
+  pinned nodes — otherwise nothing distinguishes a node the reader placed from
+  one the simulation settled there.
+  And when the view has a rotation, the screen→layout inverse must undo it:
+  a drag that tracks perfectly at 0° and drifts at every other angle is that
+  missing step (`viewport.ts`, round-trip test at five angles).
+
 - **A "sidebar nav takes ~5s, then is fine, then slow again" report is NOT
   automatically a regression of the persistent-`AppShell` fix (see Codebase
   Patterns, 2026-08-07) — measure the environment before touching code.**
@@ -252,6 +440,26 @@ ground truth — wrap-ups can mischaracterize a session.
   under the same date.)
 
 ## Recurring Errors & Fixes
+
+- **"Nothing changed in the browser" after a correct edit = a `next dev` that
+  has been up too long, not a bug in your code.** A `pnpm dev` server left
+  running for many hours (14h in the 2026-08-19 Blast Radius session) keeps
+  serving a stale build: the file watcher stops picking up edits, so the code
+  on disk, the committed tree and the tests are all right while the page is
+  unchanged.
+  **The tell, and it is easy to misread:** `pnpm typecheck` fails once with
+  `.next/types/validator.ts(…): error TS2304: Cannot find name 'LayoutProps'`
+  and passes on a plain re-run. That is not a flake to shrug off — it is the
+  same stale `.next` speaking. I dismissed it as a transient artifact and lost
+  a full round trip to "nothing changed".
+  **Do:** before re-editing anything, check the server's age
+  (`lsof -ti :3000`, then `ps -o pid,lstart,command -p <pid>`). Note `lsof`
+  also lists browser PIDs holding connections — the server is the
+  `next-server` one; its parent shows the real `next dev -p 3000` command.
+  Then restart: kill the `pnpm dev` process tree, `rm -rf client/.next/types`,
+  start again, and reload the browser with a cache bypass. Verify the code
+  first (`git status`, grep the changed selector) so a restart is a diagnosis,
+  not a guess.
 
 - **Never call a parent's setState from inside your own state updater.** The
   natural way to add "tell the parent when this changes" is to wrap
@@ -458,10 +666,25 @@ ground truth — wrap-ups can mischaracterize a session.
   feature's copy under a key that already exists elsewhere in the same file
   (e.g. two unrelated features both naming their block `"smartDiff"`) is a
   silent no-op for the older or newer block depending on JSON key order, not
-  a merge. Before adding a top-level key to a message file, grep that exact
-  file for the key name first — `grep -n '"<key>":' client/messages/en/<file>.json`.
+  a merge.
+
+  **Check it by parsing, not by grepping.** A bare
+  `grep -n '"<key>":' client/messages/en/<file>.json` also matches *nested*
+  keys of the same name and reports a duplicate that does not exist — e.g.
+  `"timeline"` appears both as a top-level block and as
+  `findingsTab.timeline`, so the grep says 2 and nothing is wrong. Use the
+  parser, which is exact:
+
+  ```sh
+  python3 -c "import json,collections,sys
+  d=[]
+  json.load(open('client/messages/en/prReview.json'),object_pairs_hook=lambda p:(d.extend(k for k,c in collections.Counter(x for x,_ in p).items() if c>1),dict(p))[1])
+  print('duplicates:', d or 'none')"
+  ```
+
   (2026-08-14, Smart Diff implementation — caught by `architecture-reviewer`,
-  not by any automated gate)
+  not by any automated gate; grep caveat added 2026-08-15 after it produced a
+  false positive)
 
 - React DOM console warning "Updating a style property during rerender
   (borderColor) when a conflicting property is set (borderLeftColor)":

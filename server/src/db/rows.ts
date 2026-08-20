@@ -23,3 +23,23 @@ export type RepoRow = typeof t.repos.$inferSelect;
 export type PrFileRow = typeof t.prFiles.$inferSelect;
 export type PrCommitRow = typeof t.prCommits.$inferSelect;
 export type PrIntentRow = typeof t.prIntent.$inferSelect;
+
+/**
+ * A projection, not a table row: the prior-PR list `modules/blast` shows is a
+ * `pr_files ⋈ pull_requests` select, and its shape crosses from the repository
+ * (ring 2) into the pure shaper (ring 1). Row shapes that cross that boundary
+ * travel through this file rather than being imported out of a `repository.ts`.
+ */
+export interface PriorPullRow {
+  /** Needed to fetch this PR's shared files and unresolved findings. */
+  id: string;
+  number: number;
+  title: string;
+  author: string;
+  status: string;
+  updatedAt: Date | null;
+  /** That PR's derived intent, if the Intent layer ever ran on it. */
+  intent: string | null;
+  /** Its description — the fallback when no intent was derived. */
+  body: string | null;
+}

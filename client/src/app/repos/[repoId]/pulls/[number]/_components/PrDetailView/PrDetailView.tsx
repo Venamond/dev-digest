@@ -89,7 +89,6 @@ function PrDetailViewInner() {
     [reviews],
   );
   const lethalTrifecta = allFindings.filter((f) => f.kind === "lethal_trifecta");
-  const findingsCount = allFindings.length;
 
   const repoName = activeRepo?.full_name ?? repoId;
   const repoFullName = activeRepo?.full_name ?? null;
@@ -105,7 +104,7 @@ function PrDetailViewInner() {
 
   if (isLoading) {
     return (
-      <div style={{ padding: "28px 32px", display: "flex", flexDirection: "column", gap: 16, maxWidth: 1080, margin: "0 auto" }}>
+      <div style={{ padding: "28px 32px", display: "flex", flexDirection: "column", gap: 16, maxWidth: 1240, margin: "0 auto" }}>
         <Skeleton height={28} width={420} />
         <Skeleton height={16} width={300} />
         <Skeleton height={200} />
@@ -134,14 +133,30 @@ function PrDetailViewInner() {
         pr={pr}
         prId={prId}
         tab={tab}
-        findingsCount={findingsCount}
+        runsCount={runs.length}
         githubUrl={repoFullName ? githubPrUrl(repoFullName, pr.number) : null}
         onSetTab={setTab}
         onRunStart={() => setTab("findings")}
         onRunsStarted={() => invalidateActiveRuns()}
       />
 
-      <div ref={rootRef} style={{ padding: "24px 32px 44px", display: "flex", flexDirection: "column", gap: 24, maxWidth: 1080, margin: "0 auto" }}>
+      <div
+        ref={rootRef}
+        style={{
+          padding: "24px 32px 44px",
+          display: "flex",
+          flexDirection: "column",
+          gap: 24,
+          // Sized to the widest thing the page must hold on one line, and no
+          // wider: the Blast Radius counter row with three-digit values needs
+          // ~540px, so a card needs ~580px with its padding, so the page needs
+          // 2×580 + 16 (grid gap) + 64 (page padding) = 1240. At the previous
+          // 1080 a counter wrapped no matter how tight the row got. A cap, not
+          // a floor — narrower viewports still use whatever they have.
+          maxWidth: 1240,
+          margin: "0 auto",
+        }}
+      >
         {tab === "overview" && <OverviewTab prBody={pr.body} prId={prId} />}
 
         {tab === "findings" && (

@@ -213,6 +213,19 @@ explicit human permission.
 
 ## Output format — Test Report
 
+**Write the report to `docs/reports/<YYYY-MM-DD>-test-writer-<area>.md` FIRST,
+then return only a short summary in chat: the report path, the files added,
+the verification result, and anything the caller must act on.**
+
+A long final message can be truncated in transit, and recovering it means
+re-running this agent — measured 185 352 and 142 280 tokens on two occasions,
+each spent re-obtaining a report whose tests were already written, already
+red-proofed and already on disk. A file makes that recovery a single `Read`.
+
+Creating `docs/reports/` is allowed; it is the one path outside your test
+files you may write to. The `## Red proof` and `## Not covered` sections are
+required in the file — a summary that omits them is not a substitute for it.
+
 ````
 # Test Report
 

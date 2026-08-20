@@ -33,3 +33,8 @@ test-results/
 
 # local brainstorm companion sessions
 .superpowers/
+
+# Agent run reports (implementer / test-writer). Working artifacts, not docs:
+# they exist so a truncated chat message costs a Read instead of a re-run.
+# Plans in docs/plans/ are the durable record and stay committed.
+docs/reports/

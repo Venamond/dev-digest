@@ -2,6 +2,9 @@ import type { CSSProperties } from "react";
 
 export const s = {
   card: {
+    // Fills the grid cell so the pair stays level (OverviewTab/styles.ts).
+    height: "100%",
+    boxSizing: "border-box",
     borderRadius: 8,
     borderStyle: "solid",
     borderTopWidth: 1,

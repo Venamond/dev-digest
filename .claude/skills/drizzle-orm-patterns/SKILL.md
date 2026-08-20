@@ -119,6 +119,18 @@ See [references/transactions.md](references/transactions.md) for advanced transa
 
 ## Constraints and Warnings
 
+- **An aggregate compared against a list the caller deduplicates in JS must
+  count the SAME unit.** A `count(*)` of rows beside a list deduplicated by
+  file path counts two call sites in one file as two, and the resulting
+  "showing 1 of 2" is a lie the UI states as fact. Use
+  `count(distinct <the dedup key>)`, and name the unit in the contract's
+  JSDoc. (Real case: `countResolvedCallers` in `server/src/modules/repo-intel`.)
+- Before writing any aggregate or window function, run it once against the
+  live DB and look at the rows. Designing an aggregate from the schema alone
+  is how the unit mismatch above survives review — the query is valid SQL and
+  the wrong answer is plausible.
+
+
 - **Foreign Key Constraints**: Always define references using arrow functions `() => table.column` to avoid circular dependency issues
 - **Transaction Rollback**: Calling `tx.rollback()` throws an exception - use try/catch if needed
 - **Returning Clauses**: Not all databases support `.returning()` - check your dialect compatibility
