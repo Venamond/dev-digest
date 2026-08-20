@@ -84,11 +84,23 @@ server pre-registered, using paths relative to the repo root:
       "type": "stdio",
       "command": "mcp/node_modules/.bin/tsx",
       "args": ["mcp/src/index.ts"],
-      "env": { "DEVDIGEST_API_URL": "http://localhost:3001" }
+      "env": { "DEVDIGEST_API_URL": "http://localhost:3001" },
+      "timeout": 1200000
     }
   }
 }
 ```
+
+`timeout` is the **client's** per-call budget in milliseconds — this package
+never reads it. It is set so that `run_agent_on_pr`'s own `timeout_s`
+(900 s at most) always fires first: our timeout returns an `isError` carrying
+the `run_id`, which the model can still read back with `get_findings`, while
+a client-side abort returns nothing and strands a run that was already paid
+for. 20 minutes covers the 900 s wait plus the surrounding requests (each up
+to `REQUEST_TIMEOUT_MS = 60_000`) and stays under the 30-minute idle limit a
+stdio server gets. Claude Code's own default is effectively unbounded, so
+this is insurance against other clients and other versions, not a fix for an
+observed abort.
 
 After `cd mcp && npm ci`, restart Claude Code (or your MCP client) in this
 repository and approve the server if prompted; `/mcp` should show `devdigest`
