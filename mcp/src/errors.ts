@@ -20,6 +20,19 @@ export class ToolError extends Error {
   }
 }
 
+/**
+ * The environment this server was launched with is malformed — see
+ * `config.ts`. Thrown by `api/client.ts` before any request, on every tool
+ * call, for as long as the process lives: unlike `ApiUnreachableError` this
+ * one is not fixed by retrying, only by editing `.mcp.json` and restarting.
+ */
+export class ConfigError extends ToolError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ConfigError';
+  }
+}
+
 /** The DevDigest API could not be reached at all — `fetch` rejected. */
 export class ApiUnreachableError extends ToolError {
   constructor(message: string) {

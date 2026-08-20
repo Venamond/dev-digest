@@ -35,7 +35,13 @@ npm start          # tsx src/index.ts — the stdio entrypoint, normally launche
   `DevDigestApi`, calls `createMcpServer`, then `server.connect(new
   StdioServerTransport())`.
 - `src/log.ts` — `logInfo` / `logError`, the only permitted `stderr` writers.
-- `src/config.ts` — `loadConfig`, reads `DEVDIGEST_API_URL` only.
+- `src/config.ts` — `loadConfig`, reads `DEVDIGEST_API_URL` only, and
+  Zod-validates it as an http(s) URL (`''`/whitespace → not supplied → the
+  default). It **never throws**: a malformed value comes back as
+  `configError`, which `index.ts` hands to `DevDigestApi` and every tool call
+  then answers with (`ConfigError`, thrown before any `fetch`). A stdio
+  server that exits at boot is an opaque "failed to connect" in the client;
+  this keeps the five tools listed and the remedy readable.
 
 ## DTO typing — Branch B was taken
 

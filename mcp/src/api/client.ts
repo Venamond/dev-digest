@@ -1,5 +1,5 @@
 import type { ApiErrorBody } from './types.js';
-import { ApiUnreachableError, ApiStatusError } from '../errors.js';
+import { ApiUnreachableError, ApiStatusError, ConfigError } from '../errors.js';
 
 /**
  * Per-request timeout. Each HTTP request gets its own budget — this is
@@ -20,8 +20,19 @@ type HttpMethod = 'GET' | 'POST';
  * type-only cast to the DTO shapes in `./types.js`.
  */
 export class DevDigestApi {
-  /** Stores the URL string only — performs no I/O. */
-  constructor(private readonly apiUrl: string) {}
+  /**
+   * Stores the URL string only — performs no I/O.
+   *
+   * `configError` (from `loadConfig`) is how a malformed environment reaches
+   * the caller: rather than crashing at boot, the server starts, lists its
+   * tools, and answers every call with that message. Passing it here rather
+   * than checking it in each of the five handlers keeps the check on the one
+   * path they all share.
+   */
+  constructor(
+    private readonly apiUrl: string,
+    private readonly configError?: string,
+  ) {}
 
   async get<T>(path: string): Promise<T> {
     return this.request<T>('GET', path);
@@ -32,6 +43,8 @@ export class DevDigestApi {
   }
 
   private async request<T>(method: HttpMethod, path: string, body?: unknown): Promise<T> {
+    if (this.configError) throw new ConfigError(this.configError);
+
     let response: Response;
     try {
       response = await fetch(`${this.apiUrl}${path}`, {

@@ -48,4 +48,36 @@ describe('stdio smoke test', () => {
     },
     20_000,
   );
+
+  // The boot contract from `config.ts`: a malformed `DEVDIGEST_API_URL` must
+  // NOT abort the process. If it did, the client would show only "server
+  // failed to connect" and the reason would never reach the caller — so this
+  // asserts both halves, that the tools still list and that the first call
+  // says what to fix.
+  it(
+    'a malformed DEVDIGEST_API_URL still boots, lists 5 tools, and fails the call with the remedy',
+    async () => {
+      const transport = new StdioClientTransport({
+        command: TSX_BIN,
+        args: [ENTRYPOINT],
+        env: { ...getDefaultEnvironment(), DEVDIGEST_API_URL: 'ws://localhost:3001' },
+      });
+      client = new Client({ name: 'stdio-smoke-test', version: '0.0.0' });
+
+      await client.connect(transport);
+      const { tools } = await client.listTools();
+      expect(tools.length).toBe(5);
+
+      const result = (await client.callTool({ name: 'list_agents', arguments: {} })) as {
+        isError?: boolean;
+        content: { type: string; text: string }[];
+      };
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]?.text).toContain('DEVDIGEST_API_URL');
+      expect(result.content[0]?.text).toContain('ws://localhost:3001');
+      expect(result.content[0]?.text).toContain('.mcp.json');
+    },
+    20_000,
+  );
 });
