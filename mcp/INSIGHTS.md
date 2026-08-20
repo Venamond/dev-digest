@@ -11,6 +11,24 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## What Doesn't Work
 
+- **Nothing in this package — not one test, not one acceptance question —
+  exercises `run_agent_on_pr` against a real API or a real MCP client, so
+  "it works" about that tool is never a claim the suite can back.** Two
+  deliberate choices stack into one blind spot. `npm test` is hermetic:
+  `fetch` is stubbed and the poll loop runs on `vi.advanceTimersByTimeAsync`,
+  so every timeout question is answered *inside* our process. And
+  `README.md`'s "Evaluation questions" are, in their own opening words,
+  "Read-only, idempotent" — `run_agent_on_pr` is excluded because it costs
+  real money, which leaves the one tool with an unbounded wall-clock
+  duration as the one tool with no end-to-end exercise at all. The S7
+  registration check does not close this: it confirms the server *starts*
+  and lists five tools, not that a call lasting minutes survives a client.
+  That is why the missing `.mcp.json` `timeout` (see Tool & Library Notes)
+  went unnoticed until an external review named it — it lives on the
+  client↔server boundary, which nothing here observes. Before claiming
+  anything about that tool's real-world behaviour, run it by hand against a
+  live `./scripts/dev.sh` and a restarted client, and say so explicitly.
+
 - ~~`pollRunUntilTerminal` undercounts real elapsed time under a slow
   network.~~ **Fixed 2026-08-18.** `pollRunUntilTerminal`
   (`src/tools/run-agent-on-pr.ts`) now checks a `Date.now() + timeoutMs`
@@ -50,6 +68,30 @@ ground truth — wrap-ups can mischaracterize a session.
   (Verified live 2026-08-18.)
 
 ## Codebase Patterns
+
+- **A stdio MCP server must validate its environment and still not crash at
+  boot — carry the error to the first tool call instead.** The two failures
+  look alike and are not: a malformed `DEVDIGEST_API_URL` is a *config*
+  error no retry fixes, while an unreachable API is a *runtime state*
+  `./scripts/dev.sh` fixes seconds later. Fail-fast (`EnvSchema.parse` +
+  exit, as `server/src/platform/config.ts` does) is right for a server whose
+  stderr someone reads; for a stdio child process it is not, because the
+  client reports a process that exited during boot as an opaque "server
+  failed to connect" and buries the reason. The shape adopted 2026-08-20:
+  `loadConfig` returns `{ apiUrl, configError? }` and never throws,
+  `index.ts` logs `configError` to stderr and passes it to `DevDigestApi`,
+  whose `request()` throws `ConfigError` before any `fetch` — so all five
+  tools still list and every call answers with the variable, the offending
+  value and the remedy. Guarded end-to-end by `'a malformed
+  DEVDIGEST_API_URL still boots, lists 5 tools, and fails the call with the
+  remedy'` in `test/stdio-smoke.test.ts`; that test only proves anything
+  because it was watched failing against a deliberately throwing
+  `loadConfig`. Note the env-var half of the `""`-is-not-a-value rule below:
+  `env.X ?? default` passes an empty `.mcp.json` `env` entry through as a
+  value, which made `apiUrl` `''` and produced `Cannot reach the DevDigest
+  API at ` — a message naming no URL at all. `z.preprocess(v => v?.trim() ===
+  '' ? undefined : v, …)` is how `server/src/platform/config.ts` already
+  handles it for `LOG_LEVEL`.
 
 - **A client sends a cleared text field as `""`, not as an absent key — so
   every string argument must be normalized before it is used.** `z.string()`
@@ -103,6 +145,28 @@ ground truth — wrap-ups can mischaracterize a session.
   drops one.
 
 ## Tool & Library Notes
+
+- **`.mcp.json` takes a per-server `timeout` (milliseconds), and Claude
+  Code's own defaults are not what you would guess — measure before assuming
+  a long tool call is at risk.** Read out of the Claude Code binary
+  (`/Users/<you>/.local/share/claude/versions/<v>`, v2.1.235, 2026-08-20):
+  the field is documented there as *"Per-server tool-call timeout in
+  milliseconds. Overrides the `MCP_TOOL_TIMEOUT` environment variable for
+  this server. Hard wall-clock limit per call; progress notifications do not
+  extend it. Values below 1000ms are ignored"*, and the constants around it
+  are a default tool timeout of `1e8` ms (~27 hours) and a **stdio idle
+  timeout of `1_800_000` ms (30 min)**, overridable via
+  `CLAUDE_CODE_MCP_TOOL_IDLE_TIMEOUT`. So `run_agent_on_pr`'s 900 s ceiling
+  was never actually at risk on this client — the review that flagged it was
+  right about the missing field and wrong about the consequence. The reason
+  to set it anyway (`"timeout": 1200000`, added 2026-08-20) is *ordering*:
+  our own `timeout_s` must fire first, because it returns an `isError`
+  carrying the `run_id` that `get_findings` can still read back, while a
+  client-side abort returns nothing and strands a paid run. To re-measure on
+  a new version: `strings -a <binary> | grep -n "Per-server tool-call
+  timeout"`, then pull the numeric constants with a regex over the raw bytes
+  — `env` in `.mcp.json` cannot carry `MCP_TOOL_TIMEOUT`, since that block is
+  the *server's* environment, not the client's.
 
 - **`structuredContent` alone is enough for the clients this repo targets —
   the spec's "also send a text copy" is optional and costs a full duplicate
