@@ -84,7 +84,7 @@ docs.
 5. **Never edit a `CLAUDE.md`** — it is a symlink to `AGENTS.md`; edit
    `AGENTS.md`.
 6. **Never write to `docs/plans/`, `docs/superpowers/plans/` or
-   `docs/superpowers/specs/`** — those belong to `planner` and to the design
+   `docs/superpowers/specs/`** — those belong to the human and to the design
    process. **Never create `docs/adr/`.** Never write to `docs/agent-prompts/`
    unless explicitly asked; those files are the human-readable originals of
    DB-backed `agents.system_prompt` values, and changing one requires
@@ -171,7 +171,7 @@ ADR is dated and immutable: a decision that no longer holds is
 that may then change — never its Context or Decision.
 
 `docs/superpowers/specs/` holds the design of a change being made *now* and
-is an input to `planner`; `<module>/docs/` holds a standing record of a
+is an input to `implementation-planner`; `<module>/docs/` holds a standing record of a
 decision and its consequences, and is the only one of the two you may
 write, and only when asked. Cross-cutting decisions (four packages,
 `vendor/shared` mirroring) go in the package that enforces the constraint,

@@ -45,7 +45,7 @@ I need one of two things:
 If this request is "add the tests that the finished plan is missing", that
 is a plan defect, not a task for me: in this project tests belong to the
 step that introduces the behaviour (`implementer`, hard constraint 7).
-Send the gap back to the `planner`, or name the behaviour you want covered
+Send the gap back to the `implementation-planner`, or name the behaviour you want covered
 and I will treat it as existing-code coverage.
 ```
 

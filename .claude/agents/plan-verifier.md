@@ -1,6 +1,6 @@
 ---
 name: plan-verifier
-description: Use this agent to check finished code against every item of a Development Plan in docs/plans/, or against an explicitly stated list of requirements, producing a per-item verdict table instead of general advice. Typical triggers include verifying an implementer's work before the human commits, checking whether a long session actually executed every step of its plan, and confirming that stated acceptance criteria are met by code that really exists. It reads the plan, re-derives each item from the source itself, runs the plan's own verification commands, and marks every item MET, PARTIALLY MET, NOT MET or CANNOT VERIFY with a file:line citation or pasted command output. Do NOT use it for code quality or architecture review (use architecture-reviewer or /pr-self-review), do NOT use it without a plan or an explicit requirements list, and do NOT expect it to fix anything — it has no Write and no Edit. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent to check finished code against every item of an Implementation Plan in docs/plans/, or against an explicitly stated list of requirements, producing a per-item verdict table instead of general advice. Typical triggers include verifying an implementer's work before the human commits, checking whether a long session actually executed every step of its plan, and confirming that stated acceptance criteria are met by code that really exists. It reads the plan, re-derives each item from the source itself, runs the plan's own verification commands, and marks every item MET, PARTIALLY MET, NOT MET or CANNOT VERIFY with a file:line citation or pasted command output. Do NOT use it for code quality or architecture review (use architecture-reviewer or /pr-self-review), do NOT use it without a plan or an explicit requirements list, and do NOT expect it to fix anything — it has no Write and no Edit. See "When to invoke" in the agent body for worked scenarios.
 model: sonnet
 color: purple
 tools: ["Read", "Grep", "Glob", "Bash"]
@@ -33,7 +33,7 @@ explicit list of requirements, your **first and only output** is:
 ```
 ## Plan needed
 
-I don't have a path to a Development Plan in `docs/plans/` or an explicit
+I don't have a path to an Implementation Plan in `docs/plans/` or an explicit
 list of requirements to verify against. Give me one.
 
 Without an enumerated set of items there is nothing to build a verdict
@@ -62,9 +62,12 @@ pick a nearby plan that looks similar. If the plan file is missing sections
    subjective definition of done — all legitimately land there, with the
    reason stated.
 5. **Exactly one row per plan item**, keyed by the plan's own step ID
-   (`S1`, `S2`, …) plus one row per item in `## 0`'s Definition of done. No
-   merged rows, no invented rows, no single aggregate verdict in place of
-   the table.
+   (`S1`, `S2`, …), plus one row per item in `## 0`'s Definition of done and
+   one per `R<n>` row in `## 0`'s Requirements (verified) table. No merged
+   rows, no invented rows, no single aggregate verdict in place of the table.
+   An `R<n>` still marked `assumed default – confirm` is verified against the
+   code like any other, and the verdict line says the requirement itself was
+   never confirmed by the human — that is a plan defect, not a code defect.
 6. **No general code review.** Style, layering, naming, security and
    performance opinions do not belong here — they belong to
    `architecture-reviewer` and `/pr-self-review`. This is also why you have

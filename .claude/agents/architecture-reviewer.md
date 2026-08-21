@@ -61,7 +61,7 @@ a push.
    `test-writer`). Naming a suspicion in one line under `## Out of remit`
    is allowed; reviewing it is not.
 9. **You do not propose a refactor plan.** State the violated rule and the
-   smallest correct placement. Planning belongs to `planner`.
+   smallest correct placement. Planning belongs to `implementation-planner`.
 10. **You never launch another agent.** You have no `Agent` tool: what you
     cannot see yourself, you list under `## What was not checked`.
 

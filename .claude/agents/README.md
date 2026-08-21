@@ -11,20 +11,39 @@ test-writer ────────────┤
    (тести + Test Report)└──▶ людина                (покриття наявного коду,
                                                     без плану й без implementer)
 
-researcher ──(звіт з доказами)──▶ planner ──(docs/plans/*.md)──▶ implementer
-                                     ▲                                │
-                                     │                    (код + Implementation Report)
-                                     │                                │
-                   дефект плану ─────┤            ┌───────────────────┼───────────────────┐
-                                     │            ▼                   ▼                   ▼
-                                     └──── plan-verifier      architecture-reviewer   doc-writer
-                                        (таблиця по кроках)   (findings з доказами)  (docs/*.md,
-                                                                                      <module>/*.md)
-                                                     │                   │
-                                                     └─────────┬─────────┘
-                                                               ▼
-                                              людина: коміт → /pr-self-review → PR
+/spec-creator ──(specs/**/*.md)──┐
+                                 ▼
+researcher ──▶ implementation-planner ──(docs/plans/*.md)──▶ implementer
+                          ▲                                       │
+                          │                           (код + Implementation Report)
+                          │                                       │
+        дефект плану ─────┤                   ┌───────────────────┼───────────────────┐
+                          │                   ▼                   ▼                   ▼
+                          └──────────── plan-verifier   architecture-reviewer    doc-writer
+                                  (таблиця по кроках)   (findings з доказами)    (docs/*.md,
+                                                                                 <module>/*.md)
+                                              │                   │
+                                              └─────────┬─────────┘
+                                                        ▼
+                                      людина: коміт → /pr-self-review → PR
 ```
+
+`/spec-creator` — вхід у ланцюжок, коли ще немає вимог. Команда веде інтерв'ю
+в головній сесії (аналіз дизайн-джерел, чотири лінзи, питання й пропозиції,
+за потреби — паралельні `researcher`), бо субагент питати не вміє; потім
+запускає агента `spec-creator`, який пише файл у `specs/`. Далі спека є входом
+для `implementation-planner`: якщо в ній лишились `[NEEDS CLARIFICATION]`, він
+плану не пише, доки людина явно не назве відкладене уточнення.
+
+`implementation-planner` працює у **дві фази**. Перший виклик не пише жодного
+файлу: він підтверджує, проти яких вимог планує, ставить 1–4 уточнення, дає
+рекомендації і питає **режим виконання** — multi-agent (кілька `implementer`
+паралельно по треках) чи single-agent (один лінійний прохід). Звичайний вхід —
+спека з `specs/`: її `AC-<n>` він не перенумеровує, а продуктове питання
+повертає в `/spec-creator` як blocking gap. Власну нумерацію `R1, R2…` він
+заводить лише для задачі без спеки. План у `docs/plans/` пишеться наступним
+викликом. Фаза 1 пропускається у двох випадках: задача явно містить усі три
+(вимоги, режим, пряме «пиши план»), або це ревізія вже наявного плану.
 
 `test-writer` має два входи — червоний тест **перед** реалізацією (далі його
 підхоплює `implementer`) і самостійне покриття вже наявної поведінки, яке ні
@@ -33,15 +52,16 @@ researcher ──(звіт з доказами)──▶ planner ──(docs/pla
 Передача між ланками йде **файлом**, а не переказом: субагент не бачить контексту
 батьківської сесії, тож усе, що не записано в план, для наступної ланки не існує.
 `test-writer`, `architecture-reviewer` і `plan-verifier` віддають звіт у чат, бо
-його споживає людина в тій самій сесії; файлом передають лише `planner` і
-`doc-writer`.
+його споживає людина в тій самій сесії; файлом передають лише
+`spec-creator`, `implementation-planner` і `doc-writer`.
 
 ## Склад набору
 
 | Агент | Модель | Відповідальність | Що НЕ робить |
 |---|---|---|---|
 | [`researcher`](researcher.md) | `sonnet`, `maxTurns: 40` | Дослідження репозиторію та зовнішніх джерел; звіт із доказами | Не змінює жодного файлу, не планує, не реалізує |
-| [`planner`](planner.md) | `opus`, `effort: high` | Перетворює задачу на Development Plan | Не редагує продакшн-код, не запускає implementer, не робить рев'ю |
+| [`spec-creator`](spec-creator.md) | `opus`, `effort: high`, `maxTurns: 40` | Пише одну feature-спеку в `specs/` за готовим брифінгом: EARS-критерії з id, джерелом і підказкою верифікації, edge cases, provenance, Mermaid-схеми | Не веде інтерв'ю (не вміє питати), не пише план, код чи тести, не пише архітектурну спеку, не виходить за `specs/**` |
+| [`implementation-planner`](implementation-planner.md) | `opus`, `effort: high` | Фаза 1: підтверджує вимоги (зі спеки), уточнення, рекомендації, вибір режиму виконання. Фаза 2: Implementation Plan | Не пише специфікацій і не вигадує вимог, не редагує продакшн-код, не запускає implementer, не робить рев'ю |
 | [`implementer`](implementer.md) | `inherit`, `maxTurns: 60` | Виконує план у backend і frontend, ганяє гейти | Не планує, не досліджує в інтернеті, не робить рев'ю, не комітить |
 | [`test-writer`](test-writer.md) | `inherit`, `maxTurns: 50` | Пише і ганяє тести для `client`, `server` і `reviewer-core`; доводить, що тест уміє падати | Не пише і не лагодить продакшн-код, не робить рев'ю, не комітить |
 | [`architecture-reviewer`](architecture-reviewer.md) | `opus`, `effort: high`, `maxTurns: 30` | Read-only рев'ю меж: спершу детерміновані чекери, потім судження; findings з `file:line` | Нічого не редагує, не робить security-рев'ю, не пише вердикт `/pr-self-review` |
@@ -53,7 +73,8 @@ researcher ──(звіт з доказами)──▶ planner ──(docs/pla
 | Агент | `tools` | Заборонено (`disallowedTools`) | Преднавантажені скіли |
 |---|---|---|---|
 | `researcher` | Read, Grep, Glob, Bash, WebSearch, WebFetch | — (Write/Edit просто відсутні) | — |
-| `planner` | Read, Grep, Glob, Bash, Write, TodoWrite, Skill, Agent | Edit, NotebookEdit, WebFetch, WebSearch | `onion-architecture`, `frontend-architecture` |
+| `spec-creator` | Read, Grep, Glob, Write, Edit, TodoWrite, Skill | Bash, WebSearch, WebFetch, Agent, NotebookEdit | `mermaid-diagram` |
+| `implementation-planner` | Read, Grep, Glob, Bash, Write, TodoWrite, Skill, Agent | Edit, NotebookEdit, WebFetch, WebSearch | `onion-architecture`, `frontend-architecture` |
 | `implementer` | Read, Write, Edit, Grep, Glob, Bash, Skill, TodoWrite, `mcp__plugin_context7_context7__*` | WebSearch, WebFetch, Agent, NotebookEdit | — (вантажить за маршрутизацією з плану) |
 | `test-writer` | Read, Write, Edit, Grep, Glob, Bash, Skill, TodoWrite, `mcp__plugin_context7_context7__*` | WebSearch, WebFetch, Agent, NotebookEdit | — (вантажить за областю) |
 | `architecture-reviewer` | Read, Grep, Glob, Bash, Skill | Write, Edit, NotebookEdit, WebSearch, WebFetch, Agent | `onion-architecture`, `frontend-architecture` (+ `zod` / `typescript-expert` за зміною) |
@@ -62,16 +83,21 @@ researcher ──(звіт з доказами)──▶ planner ──(docs/pla
 
 Особливості, які легко пропустити:
 
-- `Agent` є лише в `planner` — і лише для виклику `researcher`. Запускати
-  `implementer`, `test-writer`, `architecture-reviewer`, `plan-verifier` чи
-  `doc-writer` він не може. Усі вони листки ланцюжка: те, чого не побачили
+- `Agent` є лише в `implementation-planner` — і лише для виклику `researcher`
+  (у multi-agent режимі — кількох паралельно). Запускати `implementer`,
+  `test-writer`, `architecture-reviewer`, `plan-verifier` чи `doc-writer` він
+  не може. Усі вони листки ланцюжка: те, чого не побачили
   самі, іде в «не перевірено», а не делегується.
+- `spec-creator` — єдиний агент **без `Bash`**. Його єдине обмеження — не
+  писати поза `specs/`, а read-only `Bash` тримається лише промптом (див.
+  нижче), тож запис через перенаправлення зробив би це обмеження діряним.
+  Лічильник `SPEC-<MODULE>-NN` він рахує через `Glob` + `Read`.
 - У `implementer` немає вебу взагалі: за документацією бібліотек він іде в
   context7 MCP.
 - `Skill` не обмежується вибірково — тільки цілком. Тому «які скіли вантажити»
   задано критерієм у промпті, а не технічно.
-- `Bash` у `researcher` і `planner` оголошений read-only на рівні промпту;
-  технічно запис через перенаправлення не заблокований.
+- `Bash` у `researcher` і `implementation-planner` оголошений read-only на
+  рівні промпту; технічно запис через перенаправлення не заблокований.
 - read-only форма з документації — це саме `Read, Grep, Glob, Bash`; у
   `architecture-reviewer` і `plan-verifier` `Bash` потрібен рівно для запуску
   детермінованих чекерів і команд перевірки з плану;
@@ -89,21 +115,25 @@ researcher ──(звіт з доказами)──▶ planner ──(docs/pla
 | Агент | Вхід | Вихід |
 |---|---|---|
 | `researcher` | Конкретне питання (внутрішнє або зовнішнє) | Звіт у чат: Findings з `path:line` або URL, Inferences окремо, обов'язкова секція «чого не вдалося встановити», Coverage |
-| `planner` | Задача + за потреби звіт researcher'а | **Файл** `docs/plans/<YYYY-MM-DD>-<slug>.md` (англійською) + резюме в чат |
+| `spec-creator` | Брифінг від скіла `/spec-creator`: шлях і Spec ID, шляхи до дизайн-джерел, питання з відповідями, вердикти по пропозиціях, знахідки лінз і researcher'а | **Файл** `specs/[<module>/]<YYYY-MM-DD>-<slug>.md` (англійською) + звіт у чат: шлях, ID, список `AC-N`, залишені `[NEEDS CLARIFICATION]`, пропозиції на вердикт |
+| `implementation-planner` | Спека з `specs/` (звичайний випадок) або текст задачі; за потреби звіт researcher'а | Фаза 1: **у чат, без файлу** — які вимоги планує (при спеці: її `AC-<n>`, без перенумерації), ≤4 імплементаційні питання, ≤5 рекомендацій, питання про режим виконання, блок `## Established` для фази 2. Фаза 2: **файл** `docs/plans/<YYYY-MM-DD>-<slug>.md` (англійською) + резюме в чат |
 | `implementer` | Шлях до файлу плану (за потреби — назва треку) | Змінений код і тести + Implementation Report у чат |
 | `test-writer` | Область/модуль або крок плану, що вимагає покриття | Тестові файли в репо + Test Report у чат (цитати виводу + доказ «червоного») |
 | `architecture-reviewer` | Діапазон змін, шлях або питання про межі | Звіт у чат: вивід детермінованих чекерів → findings (severity + `file:line` + цитата рядка + назва правила) → «що не перевірено» |
 | `plan-verifier` | Шлях до плану в `docs/plans/` або явний список вимог | Звіт у чат: таблиця «пункт → вердикт → доказ», зайва робота поза планом, «що не вдалося перевірити» |
 | `doc-writer` | Реалізована фіча + матеріал (план, спека, звіт `researcher`) | **Файл(и)** документації в `docs/` або в доках модуля (ADR — у `<module>/docs/adr-NNNN-….md`) + резюме в чат |
 
-Розділи плану: контекст і скоуп → зачеплені модулі (**включно з тим, що не
+Розділи плану: вимоги і скоуп (`Execution mode` + таблиця «критерій → крок»,
+де критерій — це `AC-<n>` спеки, не переписаний у план) → зачеплені модулі (**включно з тим, що не
 чіпаємо**) → обмеження → **рішення й відкинуті альтернативи** → **архітектура
 змін** (шари, unchanged, джерела даних, послідовність викликів з внутрішньою
 функцією, схема, API, prompt builder, UI, live log vs trace) → маршрутизація
 скілів → кроки (реальні сигнатури, тест на пастку, DoD, `Depends on`,
-`Track`) → план перевірки → ризики → handoff → відкриті питання.
+`Track`) → план перевірки → ризики → handoff → відкриті питання й
+нереалізовані рекомендації.
 
-Перед `Write` planner звіряє чернетку з репо: сигнатури, уже наявні хелпери,
+Перед `Write` implementation-planner звіряє чернетку з репо: сигнатури, уже
+наявні хелпери,
 regex cruiser, нащадки filter/map, null/empty, суперечливі правила, два
 канали логів.
 
@@ -124,13 +154,21 @@ handoff (зокрема `Insight candidates`) → що не зроблено.
 по виходу, не зачеплені спільний контракт, схема БД чи `vendor/shared`. Дефолт —
 один трек. Кілька `implementer` одночасно допускаються тільки по незалежних
 треках; при виявленому перетині виконавець зупиняється, а треки перенарізає
-`planner`.
+`implementation-planner`.
+
+**Режим виконання з фази 1 і це правило — різні речі, і правило старше.**
+Режим каже, під що агент оптимізує план: multi-agent — максимум незалежних
+треків, owned paths не перетинаються, контракти першими; single-agent — лінійна
+послідовність під один контекст. Але чи можна взагалі нарізати два треки,
+вирішує правило вище. Якщо людина попросила multi-agent, а все впирається в
+один контракт чи одну схему — агент пише одно-трековий план і каже про це в
+`## 0`, а не малює паралельність, якої немає.
 
 ## На чому ґрунтуються правила
 
 Джерела розкладені **строго по агенту**: те, що формувало саме цей промпт.
-Спільних кошиків «planner та implementer» / «усі чотири» немає. Посилання
-може повторитися, якщо воно реально лягло в кілька промптів.
+Спільних кошиків «implementation-planner та implementer» / «усі чотири» немає.
+Посилання може повторитися, якщо воно реально лягло в кілька промптів.
 
 `[F]` = джерело витягнуто й прочитано напряму, `[S]` = лише пошукова видача;
 жодне `[S]`-джерело не використане як підстава для числа.
@@ -150,13 +188,13 @@ lockfile/manifest — pinned-версія перед зовнішнім факт
 Inferences; обов'язкова секція «чого не вдалося встановити»; заборона
 `/deep-research`.
 
-### `planner`
+### `implementation-planner`
 
 **Зовнішні.** Фронтматер (`tools`, `disallowedTools`, `skills`, `model`,
 `effort`), преднавантаження скілів, ізоляція контексту, «use proactively»:
 [sub-agents](https://code.claude.com/docs/en/sub-agents) [F],
 [agent-sdk/subagents](https://code.claude.com/docs/en/agent-sdk/subagents) [F].
-Специфікація у файл, виконання у свіжому контексті:
+План у файл, виконання у свіжому контексті:
 [best-practices](https://code.claude.com/docs/en/best-practices).
 Делегувальний промпт до `researcher` (ціль, формат виводу, межі):
 [multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system).
@@ -173,6 +211,13 @@ Plan-and-execute (менше викликів, примус продумати �
 **У репозиторії.** Скіли `onion-architecture` і `frontend-architecture`
 (преднавантажені); `**/INSIGHTS.md`; root `AGENTS.md`. Правила проєкту не
 переписані — лише названі в маршрутизації.
+
+**Без зовнішнього джерела.** Розділення «спека — вхід, план — вихід» і фаза 1
+(рев'ю вимог + питання + рекомендації + вибір режиму розвідки, без запису
+файлу) — рішення цього репозиторію. Мотив: план коштує дорого, а найдорожча
+помилка в ньому — не хибний крок, а хибно прочитана вимога, яку ніхто не
+перечитав. Тому таблиця «вимога → джерело» і заборона вигадувати вимоги
+(hard constraint 9), а не лише «постав питання, якщо незрозуміло».
 
 **Без зовнішнього джерела.** `opus`, `effort: high`; `Agent` лише для
 `researcher` (не для `implementer` і не для рев'юерів); порядок кроків
@@ -271,8 +316,9 @@ ArchUnitTS/madge):
 скіли `onion-architecture` і `frontend-architecture` (преднавантажені), за
 зміною — `zod` / `typescript-expert`; `scripts/check-shared-sync.sh`.
 
-**Без зовнішнього джерела.** `opus`, `effort: high` за прецедентом `planner`,
-не за `/code-review`; немає `Agent`; не пише `.claude/pr-self-review.local.md`;
+**Без зовнішнього джерела.** `opus`, `effort: high` за прецедентом
+`implementation-planner`, не за `/code-review`; немає `Agent`; не пише
+`.claude/pr-self-review.local.md`;
 security / performance / product / test-quality — `## Out of remit`.
 
 ### `plan-verifier`
@@ -292,8 +338,8 @@ Definition of Done для агентів:
 [scrum.org](https://www.scrum.org/resources/blog/definition-done-ai-agents) [S],
 [paelladoc](https://paelladoc.com/blog/acceptance-criteria-for-ai-agents/) [S].
 
-**У репозиторії.** Шаблон плану в `planner.md` (`## 0`–`## 8`); шаблон звіту
-в `implementer.md` (claim, не evidence); скрипти з `package.json` пакетів,
+**У репозиторії.** Шаблон плану в `implementation-planner.md` (`## 0`–`## 8`);
+шаблон звіту в `implementer.md` (claim, не evidence); скрипти з `package.json` пакетів,
 названих у `## 5` плану.
 
 **Без зовнішнього джерела.** `sonnet`, `maxTurns: 40`; немає інструмента
@@ -368,8 +414,8 @@ TeamBench.
   й лежала на диску. Це ~27% усіх витрат на субагентів. Зі звітом у файлі
   обрив коштує один `Read`.
 
-- **Ревізію вже завершеного `planner`- чи `implementer`-прогону запускай
-  новим `Agent`-викликом проти файлу на диску, а не `SendMessage` до
+- **Ревізію вже завершеного `implementation-planner`- чи `implementer`-прогону
+  запускай новим `Agent`-викликом проти файлу на диску, а не `SendMessage` до
   завершеного агента.** `SendMessage` резюмує агента з усім попереднім
   транскриптом — кожен токен нової інструкції додається поверх повного
   першого проходу. План чи звіт на диску вже містить усе, що агенту треба

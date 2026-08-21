@@ -74,6 +74,7 @@ here.
 |---|---|
 | [README.md](README.md) | first time in this repo — architecture diagram, full setup |
 | [TESTING.md](TESTING.md) | writing or debugging any test |
+| [specs/README.md](specs/README.md) | writing or reading a feature spec — the `specs/` layout, Spec IDs, the EARS shape, the status lifecycle |
 | [docs/agent-prompts/](docs/agent-prompts/README.md) | editing a built-in agent's system prompt |
 | `<module>/README.md` | working inside that module — deep architecture diagram |
 | `<module>/AGENTS.md` | working inside that module — conventions + gotchas |
