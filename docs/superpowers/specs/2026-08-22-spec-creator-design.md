@@ -3,6 +3,20 @@
 - **Date:** 2026-08-22
 - **Status:** draft — the human approves before `implementation-planner` writes
   the implementation plan.
+- **Revision 9:** the reference project drops `Inputs and provenance` in favour
+  of `Cross-module interactions` and `Contracts`; this repository keeps all
+  four sections, because provenance and untrusted-input handling are the only
+  place a spec records that a diff reaching a model is data and not
+  instructions. The two new sections were added with their jobs separated
+  explicitly, so they do not silently duplicate provenance.
+- **Revision 8:** compared against the reference project's `specs/README.md`.
+  Two conventions differed. The **Spec ID** was aligned to the reference's
+  `SPEC-YYYY-MM-DD-<kebab-feature-name>`, which also closes the counter-
+  collision question of §11. The **layout** was deliberately not aligned: the
+  reference keeps single-module specs beside their module (`server/specs/`),
+  this repository keeps them under `specs/<module>/` — a conscious deviation,
+  decided by the human. `mcp` is kept as a module with specs although the
+  reference's table omits it.
 - **Revision 7:** a best-practice pass over the written agent added the four
   things a pile of rules was missing: an ordered operating procedure with an
   explicit definition of done, a refusal to overwrite an existing spec, a
@@ -137,10 +151,13 @@ specs/
 
 - **File name [decided]:** `YYYY-MM-DD-<kebab-slug>.md`, the slug being the
   feature name, so two specs are told apart at a glance.
-- **Spec ID [decided]:** module prefix plus a two-digit counter, counted per
-  folder: `SPEC-SERVER-01`, `SPEC-CLIENT-01`, `SPEC-CORE-01`, `SPEC-MCP-01`,
-  `SPEC-E2E-01`, and `SPEC-CROSS-01` for cross-module specs at the root of
-  `specs/`.
+- **Spec ID [decided, revised]:** `SPEC-` plus the file's own name without the
+  extension — `specs/server/2026-08-22-rerun-one-review-agent.md` carries
+  `SPEC-2026-08-22-rerun-one-review-agent`. The first decision here was a
+  per-folder counter (`SPEC-SERVER-01`); it was replaced after comparison with
+  the reference project, which uses the file-name form. The counter bought a
+  shorter citation and cost a merge-time collision between branches and a
+  folder read on every run; the file-name form costs neither.
 - **Routing [decided]:** one module → `specs/<module>/`; two or more → the root
   of `specs/`. `specs/README.md` states exactly this rule, so the convention
   survives without the agent.
@@ -233,7 +250,7 @@ and the implementation cannot drift apart in vocabulary.
 
 ```
 # Spec: <feature name>
-> Spec ID: SPEC-<MODULE>-NN
+> Spec ID: SPEC-YYYY-MM-DD-<kebab-feature-name>
 > Status: draft | approved | implemented
 > Supersedes: <spec id and path, if this spec replaces an earlier decision>
 > Superseded-by: <spec id and path, filled in on the older spec when replaced>
@@ -243,6 +260,8 @@ and the implementation cannot drift apart in vocabulary.
 ## User stories
 ## Acceptance criteria (EARS)
 ## Edge cases
+## Cross-module interactions
+## Contracts
 ## Non-functional requirements
 ## Inputs and provenance
 ## Untrusted inputs
@@ -603,10 +622,9 @@ written by hand as part of this work (§3, items 5–7).
 
 None blocking. Two worth revisiting after the first few specs are written:
 
-- **Counter collisions across branches.** Per-folder `NN` reduces but does not
-  remove the chance that two branches both mint `SPEC-SERVER-04`. The file name
-  carries a date and a slug, so the files never collide — only the ID does, and
-  it is resolved by hand at merge. Revisit only if it actually bites.
+- ~~**Counter collisions across branches.**~~ **Resolved** by adopting the
+  reference project's file-name-based ID: with no counter, there is nothing for
+  two branches to mint twice.
 - **Two-round question cap.** If real sessions routinely exhaust both rounds
   and still leave many `[NEEDS CLARIFICATION]` markers, the cap is wrong and
   should become a soft limit.
@@ -694,7 +712,7 @@ the conventions.
 
 ````markdown
 # Spec: Re-run one review agent on a pull request
-> Spec ID: SPEC-CROSS-01
+> Spec ID: SPEC-2026-08-22-rerun-one-review-agent
 > Status: draft
 > Supersedes: —
 > Superseded-by: —

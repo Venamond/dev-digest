@@ -35,13 +35,16 @@ not have.
 
 ## Spec ID
 
-Module prefix plus a two-digit counter, counted **per folder**:
-`SPEC-SERVER-01`, `SPEC-CLIENT-01`, `SPEC-CORE-01`, `SPEC-MCP-01`,
-`SPEC-E2E-01`, and `SPEC-CROSS-01` for the cross-module specs at the root.
+`SPEC-` plus the file's own name without the extension:
 
-The ID lives inside the file, not in its name, so finding the next free number
-means reading the specs already in that one folder. Plans, commits and tests
-refer to a criterion as `SPEC-SERVER-03 / AC-2`.
+```
+specs/server/2026-08-22-rerun-one-review-agent.md
+        →  SPEC-2026-08-22-rerun-one-review-agent
+```
+
+There is no counter, so nothing has to be reserved and two branches can never
+mint the same ID. Plans, commits and tests cite a criterion as
+`SPEC-2026-08-22-rerun-one-review-agent / AC-2`.
 
 There is deliberately **no index file** here. An index of specs goes stale the
 first week and then lies; `grep` over this tree does not.
@@ -50,7 +53,7 @@ first week and then lies; `grep` over this tree does not.
 
 ```
 # Spec: <feature name>
-> Spec ID: SPEC-<MODULE>-NN
+> Spec ID: SPEC-YYYY-MM-DD-<kebab-feature-name>
 > Status: draft | approved | implemented
 > Supersedes: <spec id and path, if this replaces an earlier decision>
 > Superseded-by: <spec id and path, filled in on the older spec when replaced>
@@ -61,6 +64,8 @@ first week and then lies; `grep` over this tree does not.
 ## User stories
 ## Acceptance criteria (EARS)
 ## Edge cases
+## Cross-module interactions
+## Contracts
 ## Non-functional requirements
 ## Inputs and provenance
 ## Untrusted inputs

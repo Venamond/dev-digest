@@ -79,7 +79,7 @@ for independent questions.
 |---|---|
 | Gaps | states the mockup does not show: loading, empty, error, partial data, long text, zero items, permissions |
 | Corner cases | data boundaries, concurrent actions, retries, disconnects, stale cache, an external service failing |
-| Cross-module communication | who calls whom, under which contract, what happens on timeout, how it degrades, whether `vendor/shared` changes — and therefore both mirrored copies |
+| Cross-module communication | who calls whom, under which contract, what happens on timeout, how it degrades, whether `vendor/shared` changes — and therefore both mirrored copies. Findings here fill two sections of the spec: the call graph and its failure edges go to **Cross-module interactions**, the shape of what crosses each boundary to **Contracts** |
 | UX | redundant steps, irreversible actions without confirmation, invisible progress, accessibility |
 
 Two checklists to run the lenses against:
@@ -135,10 +135,9 @@ Keep the two apart, because they need different answers:
 
 - one module in scope → `specs/<module>/YYYY-MM-DD-<slug>.md`; two or more →
   `specs/YYYY-MM-DD-<slug>.md`;
-- Spec ID = module prefix + the next free two-digit number in **that folder**:
-  `SPEC-SERVER-NN`, `SPEC-CLIENT-NN`, `SPEC-CORE-NN`, `SPEC-MCP-NN`,
-  `SPEC-E2E-NN`, `SPEC-CROSS-NN`. The ID lives inside the files, so read the
-  specs already in that folder to find the highest;
+- Spec ID = `SPEC-` plus that file name without `.md` —
+  `SPEC-2026-08-22-rerun-one-review-agent`. Nothing to count and nothing to
+  reserve, so parallel branches cannot collide;
 - a one-line scope statement.
 
 Before showing it, confirm **no file already sits at that path** — the agent

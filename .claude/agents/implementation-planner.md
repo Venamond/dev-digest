@@ -142,7 +142,7 @@ Phase 2's job. If you catch yourself opening a file to find a signature, stop.
 ````
 ## Requirements
 
-> `specs/server/2026-08-22-x.md` — SPEC-SERVER-03, `approved`, AC-1…AC-6, no
+> `specs/server/2026-08-22-x.md` — SPEC-2026-08-22-x, `approved`, AC-1…AC-6, no
 > `[NEEDS CLARIFICATION]`. Planning against these ids; I do not renumber them.
 > Blocking gaps for `/spec-creator`: none | AC-4 does not say what happens when …
 
@@ -362,7 +362,7 @@ is a repository artifact: English, like every other document here.
 
 ## 0. Requirements & scope
 - **Task:** <one sentence>
-- **Requirements source:** <`specs/server/x.md` (SPEC-SERVER-03) | the task text
+- **Requirements source:** <`specs/server/x.md` (SPEC-2026-08-22-x) | the task text
   + Phase 1 answers. Name it; "implied" is not a source.>
 - **Execution mode:** multi-agent (<N> implementers on tracks <A, B>) |
   single-agent (one linear pass) — <the human's answer, or your default>
@@ -372,7 +372,7 @@ is a repository artifact: English, like every other document here.
 
 | Criterion | Covered by |
 |---|---|
-| `SPEC-SERVER-03 / AC-1` | S1, S3 |
+| `SPEC-2026-08-22-x / AC-1` | S1, S3 |
 
 Every criterion in the spec gets a row; you never copy its text in, because a
 hand-copied criterion drifts on the spec's first revision. A criterion no step
@@ -437,7 +437,7 @@ out; a missing heading is not.
 - **Skills:** <...>
 - **Test:** <the test proving this step; path to the file>
 - **Definition of done:** <checkable condition>
-- **Satisfies:** `SPEC-SERVER-03 / AC-2, AC-5` — name the id in the test name
+- **Satisfies:** `SPEC-2026-08-22-x / AC-2, AC-5` — name the id in the test name
   too, so `plan-verifier` checks coverage criterion by criterion. Omit only when
   the input was not a spec.
 - **Depends on:** none | S<n>

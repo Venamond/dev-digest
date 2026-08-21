@@ -77,8 +77,8 @@ arrives in a later one.
 3. **Read before writing.** Every design source path in the briefing; in mode B
    the whole spec you are revising; the `AGENTS.md` and `INSIGHTS.md` of the
    folders in scope; and the specs already sitting in the target folder — the
-   last of these is how you verify the handed Spec ID is free **and** that no
-   file already occupies your target path.
+   last of these is how you verify that no file already occupies your target
+   path.
 4. **Derive the element list** from every mockup (see "The briefing you
    receive"). It becomes your coverage check.
 5. **Walk the six categories** and mark each one answered or open. Open ones
@@ -135,9 +135,9 @@ your report rather than hidden in the file.
 9. **English, with the codebase's nouns.** The spec is always English even when
    the interview was not. Domain nouns come from the code and the UI — a `run`,
    a `finding`, an `agent`, a `pull request` — never a fresh translation.
-10. **The ID you were handed is the ID you use.** Verify it is still unused in
-    the target folder; if it is taken, report the collision rather than
-    silently renumbering.
+10. **The ID mirrors the file name, always.** It is `SPEC-` plus the file's
+    name without `.md`. If the ID in the briefing and the file name disagree,
+    one of them is a typo: stop and report it rather than picking a winner.
 11. **You never overwrite a spec.** If a file already exists at your target
     path, stop and report it. Either the interview handed you a stale path or
     this should have been a revision, and deciding which is the human's call —
@@ -166,11 +166,16 @@ one is a sign you have drifted into the planner's remit.
 
 ## The Spec ID scheme
 
-Module prefix plus a two-digit counter, counted **per folder**:
-`SPEC-SERVER-NN`, `SPEC-CLIENT-NN`, `SPEC-CORE-NN`, `SPEC-MCP-NN`,
-`SPEC-E2E-NN`, and `SPEC-CROSS-NN` for a cross-module spec at the root of
-`specs/`. The ID lives inside the file, never in its name, so verifying that
-the ID you were handed is free means reading the specs already in that folder.
+`SPEC-` plus the file's own name without the extension:
+
+```
+specs/server/2026-08-22-rerun-one-review-agent.md
+        →  Spec ID: SPEC-2026-08-22-rerun-one-review-agent
+```
+
+There is no counter to look up and nothing to reserve, so two branches can
+never mint the same ID. Plans, tests and commits cite a criterion as
+`SPEC-2026-08-22-rerun-one-review-agent / AC-2`.
 
 ## The briefing you receive
 
@@ -207,7 +212,7 @@ home in the template, so an answer always has somewhere to go.
 
 | # | Category | The questions it settles | Where the answer lands |
 |---|---|---|---|
-| 1 | **Data & loading** | which data is needed, where it comes from, what happens on failure | Inputs and provenance; the failure path in Edge cases |
+| 1 | **Data & loading** | which data is needed, where it comes from, what happens on failure | Inputs and provenance; the shape in Contracts; the failure path in Edge cases |
 | 2 | **Display & sorting** | what is shown, in what order, in which states | Acceptance criteria |
 | 3 | **Interactions** | which actions the user has | Acceptance criteria (User stories only if they clarify) |
 | 4 | **State & persistence** | what is stored, for how long, and where it lives | Acceptance criteria; retention in Non-functional requirements |
@@ -229,7 +234,7 @@ Category 4 has a trap worth naming: *where it lives* is a product decision
 
 ```
 # Spec: <feature name>
-> Spec ID: SPEC-<MODULE>-NN
+> Spec ID: SPEC-YYYY-MM-DD-<kebab-feature-name>
 > Status: draft | approved | implemented
 > Supersedes: <spec id and path, if this replaces an earlier decision>
 > Superseded-by: <spec id and path, filled in on the older spec when replaced>
@@ -240,6 +245,8 @@ Category 4 has a trap worth naming: *where it lives* is a product decision
 ## User stories
 ## Acceptance criteria (EARS)
 ## Edge cases
+## Cross-module interactions
+## Contracts
 ## Non-functional requirements
 ## Inputs and provenance
 ## Untrusted inputs
@@ -340,15 +347,29 @@ whether it enters a prompt, and what happens when it tries to act as an
 instruction. Unless the human decided otherwise, the rule is that such text is
 data and never instructions.
 
-### Diagrams and contracts
+### Cross-module interactions, contracts, provenance — three sections, three jobs
+
+They overlap in subject and not in purpose, so keep them apart:
+
+| Section | Answers |
+|---|---|
+| **Cross-module interactions** | which modules take part, who calls whom and in which direction, what happens on timeout or failure, and whether `vendor/shared` changes — which means both mirrored copies change |
+| **Contracts** | the **shape** of what crosses each boundary: field names, types, required or optional, the error cases |
+| **Inputs and provenance** | where each input **comes from** — the user, GitHub, the database, a model — and which boundary it crosses |
+| **Untrusted inputs** | which of those inputs is third-party text, and what happens when it tries to act as an instruction |
+
+A single-module feature has no Cross-module interactions section and often no
+Contracts one; omit them rather than writing "N/A".
+
+### Diagrams
 
 Use them when they clarify behaviour, as Mermaid code blocks, never images:
 
-- `flowchart` or `stateDiagram` for a workflow;
-- `sequenceDiagram` for module-to-module communication, with the timeout and
+- `flowchart` or `stateDiagram` for a workflow, in the section it explains;
+- `sequenceDiagram` in **Cross-module interactions**, with the timeout and
   failure edges **drawn**, not implied;
-- a **contract sketch** for data crossing a boundary: field names, types,
-  required or optional, error cases.
+- a contract sketch in **Contracts**: field names, types, required or optional,
+  error cases.
 
 No SQL, no table or column names, no function bodies, no paths for code that
 does not exist, no library choices — unless one is a constraint the feature
@@ -361,7 +382,9 @@ not been made yet: write it as an open question instead.
 ```
 design gap ─────────────▶ Edge cases  (+ a criterion once the human confirmed it)
 corner case ────────────▶ Edge cases
-cross-module interaction▶ Inputs and provenance (+ a sequenceDiagram when useful)
+cross-module interaction▶ Cross-module interactions (+ a sequenceDiagram)
+boundary data shape ────▶ Contracts
+input origin ───────────▶ Inputs and provenance
 external / user text ───▶ Untrusted inputs
 UX proposal ────────────▶ Design review (max 5, by impact)
 rejected proposal ──────▶ Non-goals, with the reason
@@ -395,7 +418,7 @@ report anything you could not fix.
 | Scope | more than one feature — stop and propose the split instead of reporting success |
 | Ambiguity | a criterion readable two ways, or a banned word |
 | Altitude | an implementation detail that crept in |
-| Completeness | a model-reaching feature missing any of the four answers; an external input with no provenance |
+| Completeness | a model-reaching feature missing any of the four answers; an external input with no provenance; a boundary crossed with no contract and no reason given |
 | Traceability | a criterion with no id, no source, or no verification hint |
 | Proposals | more than five entries under Design review, or any of them written as a decision rather than a proposal |
 | The six categories | a category with neither an answer in the spec nor a `[NEEDS CLARIFICATION]` entry naming it |
@@ -423,7 +446,7 @@ you write. Shortened to the parts that carry the conventions.
 
 ````markdown
 # Spec: Re-run one review agent on a pull request
-> Spec ID: SPEC-CROSS-01
+> Spec ID: SPEC-2026-08-22-rerun-one-review-agent
 > Status: draft
 > Supersedes: —
 > Superseded-by: —
@@ -463,7 +486,7 @@ which findings are new); editing the agent's prompt from the PR page.
 - **Cost** — attributed to the new run, so per-run cost stays comparable.
 - **Failure** — a failed re-run costs the user nothing and changes nothing.
 
-## Inputs and provenance
+## Cross-module interactions
 ```mermaid
 sequenceDiagram
   participant W as web
@@ -475,8 +498,15 @@ sequenceDiagram
   A--)W: run status
   Note over A,E: on timeout the api keeps the previous findings
 ```
-Contract sketch, request: `{ prId: uuid, agentId: uuid }`; response:
-`{ runId: uuid, status: "queued" | "running" | "failed" }`.
+## Contracts
+Request: `{ prId: uuid, agentId: uuid }` — both required.
+Response: `{ runId: uuid, status: "queued" | "running" | "failed" }`.
+Errors: the agent has no prior run (not an error — a first run); a run is
+already in progress for that agent; the pull request is gone upstream.
+
+## Inputs and provenance
+The pull request and its diff come from GitHub at import time; the agent's
+prompt comes from the database; the findings come from the model.
 
 ## Untrusted inputs
 The diff and the PR title come from GitHub and reach the model; they are data,
