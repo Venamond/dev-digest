@@ -209,6 +209,30 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Recurring Errors & Fixes
 
+- **Normalizing an argument creates a *second* variable, and the raw one stays
+  in scope — treat the raw name as dead from that line on.** `requiredArg` /
+  `optionalArg` return a new binding (`prId`) while the destructured `pr_id`
+  remains perfectly valid TypeScript beside it, so the rule recorded above
+  ("every string argument must be normalized before it is used") is not
+  self-enforcing: a call site added later takes whichever name it reaches for,
+  and the compiler is happy either way. Found 2026-08-22 in
+  `run_agent_on_pr`, which posted with `prId` (`:93`) but polled (`:104`),
+  echoed (`:111`) and re-read (`:123`) with the raw `pr_id`. A
+  whitespace-padded uuid therefore *started a paid run* and then polled
+  `/pulls/%20<uuid>%20/…`, so the poll never found it and the tool burned its
+  full 180 s timeout reporting a finished run as still going — with an error
+  naming the wrong problem. Nine implementer reports and 76 hermetic tests
+  passed over it; an architecture review caught it by reading the whole
+  function rather than the diff. The same review then found a **fourth**
+  instance of the identical shape on `:99` (raw `agent` instead of the
+  normalized `agentName` in a message) — one file, two arguments, so this is a
+  pattern, not a slip. Guards now: two regression tests at
+  `test/tools.test.ts:313` and `:361`, both driving the real
+  `pollRunUntilTerminal` loop under `vi.useFakeTimers()` rather than a mocked
+  shortcut, and both watched failing against the reverted source. Note what
+  cannot help you here: `npm run typecheck` cannot see it, and a hermetic
+  suite that always passes a clean uuid never will either.
+
 ## Session Notes
 
 ## Open Questions

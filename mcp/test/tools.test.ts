@@ -310,6 +310,89 @@ describe('run_agent_on_pr', () => {
     expect(text(result)).toContain('boom');
     expect(text(result)).toContain('run-1');
   });
+
+  it('uses the normalized pr_id for every request, not the padded string the client sent', async () => {
+    // The run used to be started with the trimmed uuid and polled with the
+    // raw one: with a padded value the POST hit `/pulls/pr-1/review` while
+    // every poll asked for `/pulls/%20pr-1%20/runs`, so the poll never found
+    // its own run and a finished paid run was reported as still going after
+    // the full timeout.
+    const requested: string[] = [];
+    let runsCall = 0;
+    stubFetch((path, method) => {
+      requested.push(path);
+      if (path === '/agents') return jsonResponse(agents);
+      if (path === '/pulls/pr-1/review' && method === 'POST') {
+        return jsonResponse({ runs: [{ run_id: 'run-1' }] });
+      }
+      if (path === '/pulls/pr-1/runs') {
+        runsCall += 1;
+        const summary: RunSummary = { run_id: 'run-1', status: runsCall < 2 ? 'running' : 'done', error: null };
+        return jsonResponse([summary]);
+      }
+      if (path === '/pulls/pr-1/reviews') {
+        const review: ReviewRecord = {
+          run_id: 'run-1',
+          agent_id: 'agent-1',
+          agent_name: 'Agent One',
+          verdict: 'approve',
+          summary: 'looks fine',
+          findings: [],
+        };
+        return jsonResponse([review]);
+      }
+      throw new Error(`unexpected path ${path}`);
+    });
+    const api = new DevDigestApi(BASE_URL);
+    const client = await connectClient(api);
+
+    vi.useFakeTimers();
+    const resultPromise = client.callTool({
+      name: 'run_agent_on_pr',
+      arguments: { pr_id: '  pr-1  ', agent: 'Agent One', timeout_s: 30 },
+    });
+    await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
+    await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
+    const result = (await resultPromise) as CallToolResult;
+
+    expect(result.isError).toBeFalsy();
+    expect(structured<{ verdict: string }>(result).verdict).toBe('approve');
+    // A padded uuid would arrive percent-encoded in the path.
+    expect(requested.filter((p) => p.includes('%20'))).toEqual([]);
+    expect(requested).toContain('/pulls/pr-1/runs');
+    expect(requested).toContain('/pulls/pr-1/reviews');
+  });
+
+  it('echoes the normalized pr_id in the timeout message, not the padded input', async () => {
+    stubFetch((path, method) => {
+      if (path === '/agents') return jsonResponse(agents);
+      if (path === '/pulls/pr-1/review' && method === 'POST') {
+        return jsonResponse({ runs: [{ run_id: 'run-1' }] });
+      }
+      if (path === '/pulls/pr-1/runs') {
+        const summary: RunSummary = { run_id: 'run-1', status: 'running', error: null };
+        return jsonResponse([summary]);
+      }
+      throw new Error(`unexpected path ${path}`);
+    });
+    const api = new DevDigestApi(BASE_URL);
+    const client = await connectClient(api);
+
+    vi.useFakeTimers();
+    const resultPromise = client.callTool({
+      name: 'run_agent_on_pr',
+      arguments: { pr_id: '  pr-1  ', agent: 'Agent One', timeout_s: 10 },
+    });
+    for (let i = 0; i < 5; i += 1) {
+      await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
+    }
+    const result = (await resultPromise) as CallToolResult;
+
+    expect(result.isError).toBe(true);
+    // Handing the padded string back would tell the caller to retry with a
+    // value they cannot copy-paste anywhere useful.
+    expect(text(result)).toContain('pr_id "pr-1"');
+  });
 });
 
 describe('get_findings', () => {

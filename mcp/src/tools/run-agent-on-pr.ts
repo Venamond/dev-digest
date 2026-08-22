@@ -101,14 +101,14 @@ export function registerRunAgentOnPr(server: McpServer, api: DevDigestApi): void
         }
         const runId = firstRun.run_id;
 
-        const outcome = await pollRunUntilTerminal(api, pr_id, runId, timeoutS * 1000, {
+        const outcome = await pollRunUntilTerminal(api, prId, runId, timeoutS * 1000, {
           info: logInfo,
           error: logError,
         });
 
         if (outcome.timedOut) {
           return errorContent(
-            `Review run ${runId} is still going after ${timeoutS}s. It is not lost — call get_findings with pr_id "${pr_id}" and agent "${agent}" in a minute to collect the result.`,
+            `Review run ${runId} is still going after ${timeoutS}s. It is not lost — call get_findings with pr_id "${prId}" and agent "${agent}" in a minute to collect the result.`,
           );
         }
 
@@ -120,7 +120,7 @@ export function registerRunAgentOnPr(server: McpServer, api: DevDigestApi): void
           return errorContent(`Review run ${runId} was cancelled.`);
         }
 
-        const reviews = await api.get<ReviewRecord[]>(`/pulls/${encodeURIComponent(pr_id)}/reviews`);
+        const reviews = await api.get<ReviewRecord[]>(`/pulls/${encodeURIComponent(prId)}/reviews`);
         const review = reviews.find((r) => r.run_id === runId);
         if (!review) {
           return errorContent(
