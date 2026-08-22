@@ -124,9 +124,17 @@ the human can see which of the six is still open.
 
 Keep the two apart, because they need different answers:
 
-- **Questions** — things without which the spec cannot be written. At most four
-  per round through `AskUserQuestion`, at most two rounds. What stays
-  unresolved becomes `[NEEDS CLARIFICATION]`, never a silent assumption.
+- **Blocking questions** — without an answer a criterion cannot be written at
+  all: what the feature is for, where its data comes from, who may do it. These
+  go through `AskUserQuestion`, at most four per round, at most two rounds.
+- **Minor questions** — the criterion exists either way and the answer only
+  sharpens it: a default value, a label, an ordering. Ask these inline, in
+  prose, batched at the end of a message. A modal for each one turns the
+  interview into an interrogation and the human stops reading.
+- Either kind, left unresolved, becomes `[NEEDS CLARIFICATION]` — never a
+  silent assumption — but record which kind it was in the briefing: a blocking
+  marker means the spec is not plannable yet, a minor one means it is plannable
+  with a named gap.
 - **Proposals** — improvements the human accepts or rejects in one word. At
   most five, ordered by impact. A rejected proposal goes to Non-goals **with
   its reason**, so it is not re-litigated a month later.

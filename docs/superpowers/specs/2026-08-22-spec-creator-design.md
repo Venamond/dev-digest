@@ -3,6 +3,26 @@
 - **Date:** 2026-08-22
 - **Status:** draft — the human approves before `implementation-planner` writes
   the implementation plan.
+- **Revision 12:** open questions are now classified blocking or minor — the
+  skill asks blocking ones through `AskUserQuestion` and minor ones inline, and
+  the agent marks the kind beside each `[NEEDS CLARIFICATION]`. Since the
+  planner gate refuses any spec carrying a marker, the human's triage depends
+  on knowing which markers actually block.
+- **Revision 11:** two rules added from the first real runs. A spec written for
+  behaviour that already exists must check its criteria against the code and
+  report contradictions — design sources go stale, and a deliberate reversal is
+  usually recorded in `INSIGHTS.md` or a commit, not in the design document.
+  The self-check gained a Reality row and learned to catch an open question
+  that another section of the same spec already answers. Both defects were
+  found by `implementation-planner` reading a produced spec, not by the
+  document review or the conformance script.
+- **Revision 10:** `onion-architecture` and `frontend-architecture` moved from
+  the on-demand allowlist into the preloaded set — the agent's own architectural
+  stop rule depends on them, and a judgement that decides whether it writes at
+  all may not rest on an optional load. The agent also states explicitly that
+  research is finished before it runs: it has no `Agent`, a finding is evidence
+  and not a requirement, and a missing fact becomes a `[NEEDS CLARIFICATION]`
+  rather than a reason to research inside its own turn.
 - **Revision 9:** the reference project drops `Inputs and provenance` in favour
   of `Cross-module interactions` and `Contracts`; this repository keeps all
   four sections, because provenance and untrusted-input handling are the only

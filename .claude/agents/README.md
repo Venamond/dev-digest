@@ -74,7 +74,7 @@ researcher ──▶ implementation-planner ──(docs/plans/*.md)──▶ imp
 |---|---|---|---|
 | `researcher` | Read, Grep, Glob, Bash, WebSearch, WebFetch | — (Write/Edit просто відсутні) | — |
 | `spec-creator` | Read, Grep, Glob, Write, Edit, TodoWrite, Skill | Bash, WebSearch, WebFetch, Agent, NotebookEdit | `mermaid-diagram` |
-| `implementation-planner` | Read, Grep, Glob, Bash, Write, TodoWrite, Skill, Agent | Edit, NotebookEdit, WebFetch, WebSearch | `onion-architecture`, `frontend-architecture` |
+| `implementation-planner` | Read, Grep, Glob, Bash, Write, TodoWrite, Skill, Agent | Edit, NotebookEdit, WebFetch, WebSearch | `onion-architecture`, `frontend-architecture` (+ `postgresql-table-design` / `zod` / `security` / `mermaid-diagram` за умовою в промпті) |
 | `implementer` | Read, Write, Edit, Grep, Glob, Bash, Skill, TodoWrite, `mcp__plugin_context7_context7__*` | WebSearch, WebFetch, Agent, NotebookEdit | — (вантажить за маршрутизацією з плану) |
 | `test-writer` | Read, Write, Edit, Grep, Glob, Bash, Skill, TodoWrite, `mcp__plugin_context7_context7__*` | WebSearch, WebFetch, Agent, NotebookEdit | — (вантажить за областю) |
 | `architecture-reviewer` | Read, Grep, Glob, Bash, Skill | Write, Edit, NotebookEdit, WebSearch, WebFetch, Agent | `onion-architecture`, `frontend-architecture` (+ `zod` / `typescript-expert` за зміною) |

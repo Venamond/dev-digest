@@ -315,6 +315,7 @@ plan's *steps*, never to learn how code should be written:
 | A table is added or its schema changes | `postgresql-table-design` | column types, indexes, constraints, whether a separate migration step is needed |
 | A `vendor/shared` contract is added or changed | `zod` | the contract's shape, which dictates the dependent steps on both sides |
 | Auth, user input, uploads or secrets are in scope | `security` | whether the plan needs an extra validation or authorization step at all |
+| `## 2c`'s call sequence runs past ~3 hops, or forks, or chains LLM calls | `mermaid-diagram` | how that sequence is drawn so the implementer and `architecture-reviewer` read the same flow. A short linear sequence does not need it — use the one-hop-per-line form and skip the load |
 
 Every other skill you **name in the routing, never load** — they describe how to
 write code, not what the steps are.
