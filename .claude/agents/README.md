@@ -51,9 +51,13 @@ researcher ──▶ implementation-planner ──(docs/plans/*.md)──▶ imp
 
 Передача між ланками йде **файлом**, а не переказом: субагент не бачить контексту
 батьківської сесії, тож усе, що не записано в план, для наступної ланки не існує.
-`test-writer`, `architecture-reviewer` і `plan-verifier` віддають звіт у чат, бо
-його споживає людина в тій самій сесії; файлом передають лише
-`spec-creator`, `implementation-planner` і `doc-writer`.
+`test-writer` віддає звіт у чат, бо його споживає людина в тій самій сесії.
+Решта пише файл: `spec-creator`, `implementation-planner` і `doc-writer` — свій
+артефакт, а `implementer`, `architecture-reviewer` і `plan-verifier` — звіт у
+`docs/reports/` плюс короткий підсумок у чат. Причина не стилістична: довге
+фінальне повідомлення обривається в передачі, і відновлення коштує повний
+повторний прогін (див. «Економія токенів»). Для рев'юерів є друга причина —
+оркестратор рахує раунди рев'ю саме по цих файлах.
 
 ## Склад набору
 
@@ -62,10 +66,10 @@ researcher ──▶ implementation-planner ──(docs/plans/*.md)──▶ imp
 | [`researcher`](researcher.md) | `sonnet`, `maxTurns: 40` | Дослідження репозиторію та зовнішніх джерел; звіт із доказами | Не змінює жодного файлу, не планує, не реалізує |
 | [`spec-creator`](spec-creator.md) | `opus`, `effort: high`, `maxTurns: 40` | Пише одну feature-спеку в `specs/` за готовим брифінгом: EARS-критерії з id, джерелом і підказкою верифікації, edge cases, provenance, Mermaid-схеми | Не веде інтерв'ю (не вміє питати), не пише план, код чи тести, не пише архітектурну спеку, не виходить за `specs/**` |
 | [`implementation-planner`](implementation-planner.md) | `opus`, `effort: high` | Фаза 1: підтверджує вимоги (зі спеки), уточнення, рекомендації, вибір режиму виконання. Фаза 2: Implementation Plan | Не пише специфікацій і не вигадує вимог, не редагує продакшн-код, не запускає implementer, не робить рев'ю |
-| [`implementer`](implementer.md) | `inherit`, `maxTurns: 60` | Виконує план у backend і frontend, ганяє гейти | Не планує, не досліджує в інтернеті, не робить рев'ю, не комітить |
+| [`implementer`](implementer.md) | `inherit`, `maxTurns: 100` | Виконує план у backend і frontend, ганяє гейти; окремим режимом — виправляє findings рев'ю за списком `file:line` | Не планує, не досліджує в інтернеті, не робить рев'ю, не комітить |
 | [`test-writer`](test-writer.md) | `inherit`, `maxTurns: 50` | Пише і ганяє тести для `client`, `server` і `reviewer-core`; доводить, що тест уміє падати | Не пише і не лагодить продакшн-код, не робить рев'ю, не комітить |
-| [`architecture-reviewer`](architecture-reviewer.md) | `opus`, `effort: high`, `maxTurns: 30` | Read-only рев'ю меж: спершу детерміновані чекери, потім судження; findings з `file:line` | Нічого не редагує, не робить security-рев'ю, не пише вердикт `/pr-self-review` |
-| [`plan-verifier`](plan-verifier.md) | `sonnet`, `maxTurns: 40` | Звіряє готовий код з кожним пунктом плану; таблиця вердиктів по кроках | Не оцінює якість коду, не править код, не редагує план |
+| [`architecture-reviewer`](architecture-reviewer.md) | `sonnet`, `effort: high`, `maxTurns: 30` — викликач піднімає до `opus` параметром `model`, коли в діфі новий модуль/адаптер/порт, зачеплено `vendor/shared` чи `db/schema`, або в попередньому раунді був CRITICAL | Read-only рев'ю меж: спершу детерміновані чекери, потім судження; findings з `file:line` | Нічого не редагує, не робить security-рев'ю, не пише вердикт `/pr-self-review` |
+| [`plan-verifier`](plan-verifier.md) | `sonnet`, `maxTurns: 40` | Звіряє готовий код з кожним пунктом плану; таблиця вердиктів по кроках, по DoD і — коли план посилається на спеку — по кожному `AC-<n>` | Не оцінює якість коду, не править код, не редагує план |
 | [`doc-writer`](doc-writer.md) | `inherit`, `maxTurns: 40` | Документує реалізоване; сам обирає місце в `docs/` або в доках модуля (ADR — у `<module>/docs/`); діаграми Mermaid | Не пише `INSIGHTS.md`, не документує нереалізоване, не чіпає символлінки `CLAUDE.md`, не створює `docs/adr/` |
 
 ## Дозволи
@@ -73,12 +77,12 @@ researcher ──▶ implementation-planner ──(docs/plans/*.md)──▶ imp
 | Агент | `tools` | Заборонено (`disallowedTools`) | Преднавантажені скіли |
 |---|---|---|---|
 | `researcher` | Read, Grep, Glob, Bash, WebSearch, WebFetch | — (Write/Edit просто відсутні) | — |
-| `spec-creator` | Read, Grep, Glob, Write, Edit, TodoWrite, Skill | Bash, WebSearch, WebFetch, Agent, NotebookEdit | `mermaid-diagram` |
+| `spec-creator` | Read, Grep, Glob, Write, Edit, TodoWrite, Skill | Bash, WebSearch, WebFetch, Agent, NotebookEdit | `mermaid-diagram`, `onion-architecture`, `frontend-architecture` (+ `security` за умовою) |
 | `implementation-planner` | Read, Grep, Glob, Bash, Write, TodoWrite, Skill, Agent | Edit, NotebookEdit, WebFetch, WebSearch | `onion-architecture`, `frontend-architecture` (+ `postgresql-table-design` / `zod` / `security` / `mermaid-diagram` за умовою в промпті) |
 | `implementer` | Read, Write, Edit, Grep, Glob, Bash, Skill, TodoWrite, `mcp__plugin_context7_context7__*` | WebSearch, WebFetch, Agent, NotebookEdit | — (вантажить за маршрутизацією з плану) |
 | `test-writer` | Read, Write, Edit, Grep, Glob, Bash, Skill, TodoWrite, `mcp__plugin_context7_context7__*` | WebSearch, WebFetch, Agent, NotebookEdit | — (вантажить за областю) |
-| `architecture-reviewer` | Read, Grep, Glob, Bash, Skill | Write, Edit, NotebookEdit, WebSearch, WebFetch, Agent | `onion-architecture`, `frontend-architecture` (+ `zod` / `typescript-expert` за зміною) |
-| `plan-verifier` | Read, Grep, Glob, Bash | Write, Edit, NotebookEdit, WebSearch, WebFetch, Agent | — |
+| `architecture-reviewer` | Read, Grep, Glob, Bash, Write, Skill | Edit, NotebookEdit, WebSearch, WebFetch, Agent | `onion-architecture`, `frontend-architecture` (+ `zod` / `typescript-expert` за зміною) |
+| `plan-verifier` | Read, Grep, Glob, Bash, Write | Edit, NotebookEdit, WebSearch, WebFetch, Agent | — |
 | `doc-writer` | Read, Write, Edit, Grep, Glob, Bash, Skill, TodoWrite | WebSearch, WebFetch, Agent, NotebookEdit | `mermaid-diagram` (+ вантажить за темою) |
 
 Особливості, які легко пропустити:
@@ -99,9 +103,13 @@ researcher ──▶ implementation-planner ──(docs/plans/*.md)──▶ imp
   задано критерієм у промпті, а не технічно.
 - `Bash` у `researcher` і `implementation-planner` оголошений read-only на
   рівні промпту; технічно запис через перенаправлення не заблокований.
-- read-only форма з документації — це саме `Read, Grep, Glob, Bash`; у
+- read-only форма з документації — це `Read, Grep, Glob, Bash`; у
   `architecture-reviewer` і `plan-verifier` `Bash` потрібен рівно для запуску
-  детермінованих чекерів і команд перевірки з плану;
+  детермінованих чекерів і команд перевірки з плану. Обидва мають ще `Write`,
+  і **рівно на один шлях** — власний звіт у `docs/reports/**`, межа тримається
+  промптом, як `specs/**` у `spec-creator`. `Edit` немає в жодного: змінити
+  наявний файл вони не вміють технічно, тож «read-only» тут означає «не чіпає
+  репозиторій», а не «не створює жодного файла»;
 - жоден з нових агентів не пише `.claude/pr-self-review.local.md` — цей файл є
   контрактом хука `PreToolUse`, і його заповнює тільки скіл `pr-self-review`;
 - у `plan-verifier` немає `Skill`: його задача — покриття плану, а не рев'ю
@@ -120,8 +128,8 @@ researcher ──▶ implementation-planner ──(docs/plans/*.md)──▶ imp
 | `implementation-planner` | Спека з `specs/` (звичайний випадок) або текст задачі; за потреби звіт researcher'а | Фаза 1: **у чат, без файлу** — які вимоги планує (при спеці: її `AC-<n>`, без перенумерації), ≤4 імплементаційні питання, ≤5 рекомендацій, питання про режим виконання, блок `## Established` для фази 2. Фаза 2: **файл** `docs/plans/<YYYY-MM-DD>-<slug>.md` (англійською) + резюме в чат |
 | `implementer` | Шлях до файлу плану (за потреби — назва треку) | Змінений код і тести + Implementation Report у чат |
 | `test-writer` | Область/модуль або крок плану, що вимагає покриття | Тестові файли в репо + Test Report у чат (цитати виводу + доказ «червоного») |
-| `architecture-reviewer` | Діапазон змін, шлях або питання про межі | Звіт у чат: вивід детермінованих чекерів → findings (severity + `file:line` + цитата рядка + назва правила) → «що не перевірено» |
-| `plan-verifier` | Шлях до плану в `docs/plans/` або явний список вимог | Звіт у чат: таблиця «пункт → вердикт → доказ», зайва робота поза планом, «що не вдалося перевірити» |
+| `architecture-reviewer` | Діапазон змін (краще — готовий набір змінених файлів), шлях або питання про межі | **Файл** `docs/reports/<дата>-arch-review-<slug>-r<N>.md`: вивід детермінованих чекерів → findings (severity + `file:line` + цитата рядка + назва правила) → «що не перевірено». У чат — шлях, вердикт і кожен CRITICAL/HIGH одним рядком |
+| `plan-verifier` | Шлях до плану в `docs/plans/` або явний список вимог | **Файл** `docs/reports/<дата>-plan-verify-<slug>-r<N>.md`: таблиця «пункт → вердикт → доказ», зайва робота поза планом, «що не вдалося перевірити». У чат — шлях, підсумковий рядок і кожен `NOT MET` / `PARTIALLY MET` |
 | `doc-writer` | Реалізована фіча + матеріал (план, спека, звіт `researcher`) | **Файл(и)** документації в `docs/` або в доках модуля (ADR — у `<module>/docs/adr-NNNN-….md`) + резюме в чат |
 
 Розділи плану: вимоги і скоуп (`Execution mode` + таблиця «критерій → крок»,
