@@ -166,3 +166,69 @@ agents read the plan" is a fact and "what it cost" is not.
   spec discussion and the plan before the run, not only the post-run UI work.
   It is an upper bound on that phase, not a measurement of it.
 - This retro itself: 4 tool calls, no subagents, inline.
+
+## Re-measurement (2026-08-23, second pass with the instrumented metrics)
+
+The same session, measured again after `metrics.py` gained per-agent cost,
+model, cache-hit and a conversation figure windowed to the run. Nothing about
+the run changed; three things about the account did.
+
+### 1. "Two thirds is the conversation" was true of the session, not of the run
+
+Finding 2 above and the token analysis both headline **921,232 main-session
+output tokens — twice all nine agents combined**. Windowed to the 85 minutes
+the agents actually ran (00:05–01:30 UTC), the conversation spent:
+
+| | output | cache read | cost |
+|---|---|---|---|
+| nine agents | 459,717 | 109.5M | $89.13 |
+| conversation, **during the run** | 130k | 35.3M | $22.40 |
+| conversation, whole session | 1.2M | 690.9M | $432.13 |
+
+So the run cost **$111.52**, and the conversation was 20% of it, not two
+thirds. The 921k figure covered the spec discussion before the run and the UI
+convergence after it — the file said so in its caveat, and its headline still
+read the other way. This is why the metric now prints both rows and labels
+which one is the run.
+
+### 2. Cost is attributable per agent, and one agent holds a quarter of it
+
+Track C: **$24.85, 27m05s, 116 tool uses** — 28% of the agents' cost and the
+critical path on its own. Track A was $9.58 in 12m27s. Wall was bounded by C
+throughout.
+
+Designed iteration (fix round + both round-2 reviews) was **$20.79 of $89.13,
+23% by cost** against 20% by output tokens — the two measures agree, which they
+would not if a cheap agent had been doing the re-work.
+
+### 3. Cache hit was 97%, and one human message gated nothing
+
+Per-agent cache hit ran 89–98%. The cheapest lever is already saturated; no
+caching proposal is worth writing against this run.
+
+Counting real human messages inside the run window: **one** — *"Какая модель
+используется для имплементации"* at 03:32 local, a question that blocked
+nothing. The other ten user-role records are harness task-notifications. The
+5m37s of wall with no agent running (7%) was the conversation dispatching, not
+a human deciding. For contrast, the spec run measured the same day spent 66% of
+its wall with nothing running.
+
+### Two corrections to the measuring script, found by this run
+
+Both were caught because the new output contradicted this file, and this file
+was right.
+
+- **`re-read within one agent` counted `Edit` and `Write` as reads.** It
+  reported eleven files "re-read" 3–6× — actually an implementer editing one
+  file repeatedly, which is its job. Finding 6 above ("no file was re-read
+  inside a single agent") was correct. Fixed: cross-agent overlap counts
+  Read+Edit+Write, re-read counts Read only.
+- **The idle threshold was 120s and detected no stall.** The largest gap inside
+  any subagent transcript, across 18 agents in two sessions, is 152s — a test
+  run. The two agents that finished with their deliverable missing (finding 4)
+  show no unusual gap at all: a subagent's wait for a resume is not written to
+  its own transcript. `active/wall` is not stall detection and the skill now
+  says so; the default is 300s.
+
+**No new ledger row.** This is a second measurement of a run already in the
+ledger, not a second run.
