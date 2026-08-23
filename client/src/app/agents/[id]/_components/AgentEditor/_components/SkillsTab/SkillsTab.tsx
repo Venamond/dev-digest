@@ -11,6 +11,7 @@ import {
   displayOrderIds,
   enabledCount,
   filterDraftRows,
+  moveLinked,
   reorderLinked,
   toggleEnabled,
   toDraftRows,
@@ -69,6 +70,15 @@ export function SkillsTab({ agent }: { agent: Agent }) {
     return <ErrorState body={t("skills.loadError")} onRetry={() => refetch()} />;
   }
 
+  /* A move IS an explicit reorder, so the frozen display order is reseeded on
+     it — exactly as a drag does. Without that the row would snap back. */
+  const move = (skillId: string, dir: -1 | 1) => {
+    const next = moveLinked(rows, skillId, dir);
+    if (next === rows) return;
+    persist(next);
+    setOrder(displayOrderIds(next));
+  };
+
   return (
     <div style={s.wrap}>
       <div style={s.header}>
@@ -124,9 +134,38 @@ export function SkillsTab({ agent }: { agent: Agent }) {
                 >
                   <Icon.Menu size={14} />
                 </span>
+                {/* The keyboard path to reordering — the same pair the Context
+                    tab uses. Drag alone is pointer-only, so an ordered list
+                    that offers only a handle is unreachable without a mouse. */}
+                {r.linked && (
+                  <span style={s.moveGroup}>
+                    <button
+                      type="button"
+                      style={s.moveBtn}
+                      onClick={() => move(r.skill_id, -1)}
+                      aria-label={t("skills.moveUp", { name: r.name })}
+                    >
+                      <Icon.ArrowUp size={11} />
+                    </button>
+                    <button
+                      type="button"
+                      style={s.moveBtn}
+                      onClick={() => move(r.skill_id, 1)}
+                      aria-label={t("skills.moveDown", { name: r.name })}
+                    >
+                      <Icon.ArrowDown size={11} />
+                    </button>
+                  </span>
+                )}
                 <Checkbox
                   checked={on}
-                  onChange={(v) => persist(toggleEnabled(rows, r.skill_id, v))}
+                  onChange={(v) => {
+                    const next = toggleEnabled(rows, r.skill_id, v);
+                    persist(next);
+                    // Selected rows rise to the top here too — one behaviour
+                    // across every list in the product (2026-08-23).
+                    setOrder(displayOrderIds(next));
+                  }}
                   label={undefined}
                 />
                 <span className="mono" style={s.name}>

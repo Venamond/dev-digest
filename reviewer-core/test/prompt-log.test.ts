@@ -15,7 +15,7 @@ describe('summarizePromptAssembly', () => {
     system: `agent prompt ${PLANTED_SECRET}`,
     skills: ['Flag X when Y'],
     memory: ['remember this'],
-    specs: [PLANTED_SPEC],
+    specs: [{ path: 'specs/api.md', text: PLANTED_SPEC }],
     repoMap: 'src/index.ts — main',
     callers: 'foo() called from bar.ts',
     prDescription: 'Adds a thing',

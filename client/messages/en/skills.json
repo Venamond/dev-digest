@@ -68,7 +68,8 @@
       "config": "Config",
       "preview": "Preview",
       "versions": "Versions",
-      "stats": "Stats"
+      "stats": "Stats",
+      "context": "Context"
     }
   },
   "editor": {
@@ -203,5 +204,51 @@
       "community": "Community",
       "imported_url": "Imported"
     }
+  },
+  "context": {
+    "title": "Project Context",
+    "attachedCount": "{attached} of {total} attached",
+    "filterPlaceholder": "Filter documents…",
+    "orderHint": "Order matters — earlier documents appear earlier in the assembled block. Toggle to attach.",
+    "inheritSentence": "Any agent using this skill inherits these documents.",
+    "repoFallback": "this repository",
+    "noRepo": "Select a repository first — project context is attached per repository.",
+    "loadError": "Could not load project context for this skill.",
+    "empty": "No markdown documents found under specs/, docs/ or insights/ in this repository.",
+    "injectedTotal": "~{tokens, number} tokens selected",
+    "injectedCaption": "Injected as an untrusted ## Project context block into every run of every agent using this skill.",
+    "ceilingWarning": "~{tokens, number} tokens exceeds the {ceiling, number}-token project-context ceiling. A run takes documents in order and skips any that no longer fit — whole, never truncated.",
+    "rowMeta": "in {folder} · used by {agents, plural, =0 {no agents} one {# agent} other {# agents}}",
+    "rowTokens": "~{tokens, number} tok",
+    "unreadable": "cannot be read",
+    "attachAria": "Attach or detach {path}",
+    "attachDoc": "Attach {path}",
+    "detachDoc": "Detach {path}",
+    "moveUp": "Move {path} up",
+    "moveDown": "Move {path} down",
+    "dragHint": "Drag to reorder",
+    "dragDisabledHint": "Attach a document to put it in the order",
+    "preview": "Preview",
+    "previewLoadError": "Could not load this document.",
+    "previewUsedByNone": "No agent reads this document yet.",
+    "previewUsedByVia": "via {skill}",
+    "attach": "Attach",
+    "detach": "Detach",
+    "savedToast": "Project context saved",
+    "panel": {
+      "title": "SERIALIZES AS",
+      "caption": "Grouped by root — a run sends one ## Project context block, in the order above.",
+      "empty": "Nothing attached yet — a run of an agent using this skill sends no ## Project context block.",
+      "group": {
+        "specs": "## Project specifications",
+        "docs": "## Project docs",
+        "insights": "## Project insights",
+        "other": "## Project {root}"
+      }
+    },
+    "attached": "Attached",
+    "previewUsedBy": "Used by {agents, plural, =0 {no agents} one {# agent} other {# agents}}",
+    "previewTokens": "{tokens, number} tokens",
+    "dragAloneHint": "Ordering needs at least two attached documents."
   }
 }

@@ -257,13 +257,90 @@ export const PrCommentInput = z.object({
 export type PrCommentInput = z.infer<typeof PrCommentInput>;
 
 // ---- Project Context ----
+
+/**
+ * One agent that a project-context document reaches. `via: 'agent'` means the
+ * document is attached to the agent directly; `via: 'skill'` means the agent
+ * inherits it through an enabled skill, and `skill_id`/`skill_name` name that
+ * skill. An agent reached both ways is listed ONCE, with `via: 'agent'`.
+ */
+export const ContextDocUser = z.object({
+  agent_id: z.string(),
+  agent_name: z.string(),
+  via: z.enum(['agent', 'skill']),
+  skill_id: z.string().nullish(),
+  skill_name: z.string().nullish(),
+});
+export type ContextDocUser = z.infer<typeof ContextDocUser>;
+
+/**
+ * A markdown document found under one of the configured search roots in the
+ * repository's clone. `path` is repository-relative; `root` is the search root
+ * it was found under (two roots can hold the same file name, so the two are
+ * shown together). `approx_tokens` is the shared `approxTokens` estimate, so
+ * the editor tabs' warning and a run's actual skipping agree.
+ */
 export const SpecFile = z.object({
   path: z.string(),
+  root: z.string(),
+  approx_tokens: z.number().int().nonnegative(),
+  /** Number of DISTINCT agents reaching this document — direct + inherited. */
+  used_by_agents: z.number().int().nonnegative(),
+  used_by: z.array(ContextDocUser),
   content: z.string().nullish(),
   size: z.number().int().nullish(),
   updated_at: z.string().nullish(),
 });
 export type SpecFile = z.infer<typeof SpecFile>;
+
+/** One row of an agent's or a skill's `Context` tab. */
+export const ContextDocEditorRow = z.object({
+  doc: SpecFile,
+  attached: z.boolean(),
+  /** Position in the owner's own ordered list; 0 for an unattached row. */
+  order: z.number().int().nonnegative(),
+  /**
+   * Skills this agent inherits the document from. Empty for a skill's own tab
+   * and for a document attached directly only. A row with entries here and
+   * `attached: false` is inherited — it is not reorderable by the owner.
+   */
+  inherited_from: z.array(
+    z.object({ skill_id: z.string(), skill_name: z.string() }),
+  ),
+  /** False when the document is attached but can no longer be read. */
+  readable: z.boolean(),
+});
+export type ContextDocEditorRow = z.infer<typeof ContextDocEditorRow>;
+
+/**
+ * What an agent's or a skill's `Context` tab is served: its rows, plus the
+ * token ceiling THIS workspace actually runs with.
+ *
+ * The ceiling travels with the rows on purpose. It is a per-workspace setting
+ * (`context.token_ceiling`), and a run caps against that value — so a tab that
+ * warned against a hardcoded default would quote a number the run does not
+ * honour, which is the one thing the shared estimator exists to prevent.
+ */
+export const ContextDocsResponse = z.object({
+  rows: z.array(ContextDocEditorRow),
+  token_ceiling: z.number().int().positive(),
+});
+export type ContextDocsResponse = z.infer<typeof ContextDocsResponse>;
+
+/** Body for POST /agents/:id/context and POST /skills/:id/context. */
+export const SetContextDocsBody = z.object({
+  repo_id: z.string(),
+  /** Repository-relative paths, in the human's order. */
+  paths: z.array(z.string()),
+});
+export type SetContextDocsBody = z.infer<typeof SetContextDocsBody>;
+
+/** Body for PUT /repos/:id/context/doc — writes into the local clone only. */
+export const SaveContextDocBody = z.object({
+  path: z.string().min(1),
+  content: z.string(),
+});
+export type SaveContextDocBody = z.infer<typeof SaveContextDocBody>;
 
 export const IndexStatus = z.object({
   status: z.enum(['idle', 'cloning', 'parsing', 'embedding', 'done', 'error']),

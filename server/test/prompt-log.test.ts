@@ -47,7 +47,7 @@ describe('toPromptLogPayload', () => {
   it('carries correlation id, model, and section stats — never bodies', () => {
     const { assembly } = assemblePrompt({
       system: `sys ${PLANTED_SECRET}`,
-      specs: [PLANTED_SPEC],
+      specs: [{ path: 'specs/planted.md', text: PLANTED_SPEC }],
       diff: PLANTED_DIFF,
     });
     const summary = summarizePromptAssembly(assembly, { diffChars: PLANTED_DIFF.length });
@@ -71,7 +71,7 @@ describe('promptAssemblyFingerprints', () => {
   it('hashes section bodies without returning the bodies', () => {
     const { assembly } = assemblePrompt({
       system: `sys ${PLANTED_SECRET}`,
-      specs: [PLANTED_SPEC],
+      specs: [{ path: 'specs/planted.md', text: PLANTED_SPEC }],
       diff: PLANTED_DIFF,
     });
     const prints = promptAssemblyFingerprints(assembly);

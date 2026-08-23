@@ -1,4 +1,4 @@
-/* SkillEditor — Config / Preview / Stats / Versions (no Evals). */
+/* SkillEditor — Config / Preview / Context / Stats / Versions (no Evals). */
 "use client";
 
 import React from "react";
@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { Badge, Icon, Tabs } from "@devdigest/ui";
 import type { Skill } from "@devdigest/shared";
 import { ConfigTab } from "./_components/ConfigTab/ConfigTab";
+import { ContextTab } from "./_components/ContextTab/ContextTab";
 import { PreviewTab } from "./_components/PreviewTab/PreviewTab";
 import { VersionsTab } from "./_components/VersionsTab/VersionsTab";
 import { StatsTab } from "./_components/StatsTab/StatsTab";
@@ -41,6 +42,7 @@ export function SkillEditor({
       <div style={s.body}>
         {tab === "config" && <ConfigTab skill={skill} />}
         {tab === "preview" && <PreviewTab skill={skill} />}
+        {tab === "context" && <ContextTab skill={skill} />}
         {tab === "stats" && <StatsTab skill={skill} />}
         {tab === "versions" && <VersionsTab skill={skill} />}
       </div>

@@ -224,6 +224,21 @@ export interface GitClient {
   blame(repo: RepoRef, path: string): Promise<BlameLine[]>;
   log(repo: RepoRef, path?: string): Promise<GitCommit[]>;
   readFile(repo: RepoRef, path: string): Promise<string>;
+  /**
+   * Write UTF-8 `content` to a repository-relative `path` inside the clone.
+   * Local-only: it creates no directories, makes no commit and contacts no
+   * remote — the change lives in the working tree until the next resync
+   * overwrites it. `path` is untrusted input, so an implementation MUST refuse
+   * (throw) any path that resolves outside `clonePathFor(repo)`, symlinks
+   * included, rather than trusting the caller to have validated it.
+   */
+  writeFile(repo: RepoRef, path: string, content: string): Promise<void>;
+  /**
+   * Create a NEW file in the clone, making any missing parent folders inside it.
+   * Refuses when the file already exists — overwriting is `writeFile`'s job, and
+   * a create that silently overwrites is how a document is lost.
+   */
+  createFile(repo: RepoRef, path: string, content: string): Promise<void>;
   clonePathFor(repo: RepoRef): string;
 }
 

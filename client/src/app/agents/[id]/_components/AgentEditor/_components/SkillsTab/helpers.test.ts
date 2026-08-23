@@ -149,3 +149,71 @@ describe("SkillsTab helpers", () => {
     expect(filterDraftRows(rows, "security")).toHaveLength(1);
   });
 });
+
+describe("moveLinked wired to the tab's move buttons", () => {
+  // SkillsTab had no component test, which is how a broken drag once shipped.
+  // These pin the pure move the buttons call, including the ends of the list.
+  const rows = (ids: string[]): SkillDraftRow[] =>
+    ids.map((id, i) => ({
+      skill_id: id,
+      name: id,
+      type: "rubric",
+      linked: true,
+      enabled: true,
+      skillEnabled: true,
+      order: i,
+    })) as SkillDraftRow[];
+
+  const order = (rs: SkillDraftRow[]) =>
+    rs.filter((r) => r.linked).sort((a, b) => a.order - b.order).map((r) => r.skill_id);
+
+  it("moves a row up and down by one position", () => {
+    expect(order(moveLinked(rows(["a", "b", "c"]), "c", -1))).toEqual(["a", "c", "b"]);
+    expect(order(moveLinked(rows(["a", "b", "c"]), "a", 1))).toEqual(["b", "a", "c"]);
+  });
+
+  it("returns the SAME array at either end, so the caller can skip the write", () => {
+    // The tab checks `next === rows` before persisting; a fresh array here
+    // would fire a pointless mutation on every click at the top row.
+    const start = rows(["a", "b"]);
+    expect(moveLinked(start, "a", -1)).toBe(start);
+    expect(moveLinked(start, "b", 1)).toBe(start);
+  });
+
+  it("ignores an id that is not linked", () => {
+    const start = rows(["a", "b"]);
+    expect(moveLinked(start, "missing", -1)).toBe(start);
+  });
+});
+
+describe("applyDisplayOrder — a skill created after the tab loaded", () => {
+  it("puts a newly LINKED skill at the top, not below every unlinked one", () => {
+    const frozen = ["a", "b"];
+    const rows = [
+      row({ skill_id: "a", name: "a" }),
+      row({ skill_id: "b", name: "b" }),
+      row({ skill_id: "new", name: "new", linked: true }),
+    ];
+    expect(applyDisplayOrder(rows, frozen).map((r) => r.skill_id)[0]).toBe("new");
+  });
+
+  it("still sends an unlinked newcomer to the bottom", () => {
+    const frozen = ["a", "b"];
+    const rows = [
+      row({ skill_id: "a", name: "a" }),
+      row({ skill_id: "b", name: "b" }),
+      row({ skill_id: "new", name: "new" }),
+    ];
+    expect(applyDisplayOrder(rows, frozen).map((r) => r.skill_id)).toEqual(["a", "b", "new"]);
+  });
+
+  it("leaves rows the frozen order knows exactly where they are", () => {
+    const frozen = ["a", "b", "c"];
+    const rows = [
+      row({ skill_id: "a", name: "a" }),
+      row({ skill_id: "b", name: "b", linked: true }),
+      row({ skill_id: "c", name: "c" }),
+    ];
+    expect(applyDisplayOrder(rows, frozen).map((r) => r.skill_id)).toEqual(frozen);
+  });
+});

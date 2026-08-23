@@ -1,3 +1,4 @@
+import { rootColor } from "@/lib/project-context";
 import type { CSSProperties } from "react";
 
 /** Co-located styles for RunTraceDrawer (extracted from inline styles). */
@@ -96,7 +97,33 @@ export const s = {
   configProvider: { color: "var(--text-secondary)" } satisfies CSSProperties,
   specsWrap: { display: "flex", gap: 6, flexWrap: "wrap" } satisfies CSSProperties,
   specsNone: { color: "var(--text-muted)" } satisfies CSSProperties,
+  specVia: {
+    fontSize: 10.5,
+    color: "var(--text-muted)",
+    flexShrink: 0,
+  } satisfies CSSProperties,
+
+  specRow: {
+    display: "flex",
+    alignItems: "baseline",
+    gap: 7,
+    minWidth: 0,
+  } satisfies CSSProperties,
+
+  /* Same colour per root as the Context tabs — one map, in `@/lib/project-context`. */
+  specRoot: (root: string): CSSProperties => ({
+    fontSize: 9.5,
+    fontWeight: 600,
+    color: rootColor(root).text,
+    background: rootColor(root).bg,
+    padding: "1px 6px",
+    borderRadius: 4,
+    flexShrink: 0,
+  }),
+
   spec: { fontSize: 12, color: "var(--text-secondary)" } satisfies CSSProperties,
+  // An omitted document is muted, not alarming: the run succeeded without it.
+  specOmitted: { fontSize: 12, color: "var(--text-muted)" } satisfies CSSProperties,
   statsRow: { display: "flex", gap: 10 } satisfies CSSProperties,
   rawPre: {
     margin: 0,

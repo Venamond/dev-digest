@@ -21,6 +21,40 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Codebase Patterns
 
+- **A feature with no page and no server route is still probably not
+  greenfield — grep four places before saying so.** (2026-08-23) Scoping the
+  Project Context feature I checked `src/app` (no `context` route) and
+  `server/src/modules/index.ts` (no `context` module) and reported it as
+  starting from zero. Wrong: four independent caches of scaffolding for it
+  already existed, each wired to nothing and each invisible from the two
+  places I looked.
+  1. **Shared contracts** — `src/vendor/shared/contracts/platform.ts:259-274`
+     defines `SpecFile` and `IndexStatus` under a literal
+     `// ---- Project Context ----` comment heading. The feature name appears
+     only in that comment, so grepping module folders for it finds nothing.
+  2. **Query hooks** — `src/lib/hooks/core.ts:123-136` already declares
+     `useContextFiles` (`GET /repos/:id/context`) and `useReindexContext`
+     (`POST /repos/:id/context/reindex`) under
+     `// ---- Project Context (A3 contract; safe to call once API exposes it) ----`.
+     They compile and are callable; only the API side is missing.
+  3. **i18n** — `messages/en/context.json` is fully populated (title, empty
+     state, `mode.preview`/`mode.edit`, `editor.save`) with **zero**
+     `useTranslations("context")` callers anywhere in `src`.
+  4. **Server-side twins** — the same convention runs through the DB schema
+     and `reviewer-core`'s prompt slots; `reviewer-core/AGENTS.md` states it
+     outright ("accepted today but unused by the starter server — a later
+     lesson wires them, don't assume 'unused' means 'dead code'"), and the
+     root `CLAUDE.md` says it of the schema's empty tables.
+
+  The cost of missing it is not just wasted implementation: an unconsumed
+  contract silently constrains the feature (here `IndexStatus` describes
+  embedding indexing, which the spec had listed as a non-goal — a planner
+  reading the hook would have built it).
+
+  **Do this:** before calling anything greenfield, grep the feature's words
+  as a *comment heading* — `grep -rn "Project Context" src/vendor/shared
+  src/lib/hooks messages/` — not just as a directory or symbol name.
+
 - **`BlastCard`'s tree opens nothing on arrival — do not "helpfully" restore
   `defaultOpen={i === 0}`.** Removed on 2026-08-19 at the user's explicit
   request: auto-opening the first symbol presumes it is the one the reader
@@ -215,6 +249,18 @@ ground truth — wrap-ups can mischaracterize a session.
   *specific* rows, first check whether those rows are draggable at all.
   (2026-08-08)
 
+- **That same `SkillsTab` reorder is pointer-only — copying it satisfies no
+  accessibility requirement.** (2026-08-23) It is plain HTML5 drag-and-drop
+  (`draggable` / `onDragStart` / `onDragOver` / `onDrop`,
+  `SkillsTab.tsx:101-118`) with no `onKeyDown`, no `tabIndex` and no `role`,
+  and the ☰ handle at `:123` is `aria-hidden`. There is no keyboard path to
+  reordering at all. It is the obvious thing to reuse — it is the only
+  ordered-list reorder in the client — so a spec that asks for drag ordering
+  *and* keyboard operability is asking for one thing that exists and one that
+  does not. Budget the keyboard affordance as new work (move-up/move-down
+  buttons, or arrow keys on a focusable row), and do not let "we already have
+  drag reorder" stand in for it.
+
 - **Rendered-markdown BLOCK styling lives in `app/globals.css` under `.dd-md`,
   not in the Markdown primitive.** `vendor/ui/primitives/Markdown.tsx`
   (react-markdown + remark-gfm) styles only inline nodes (`p`, `strong`,
@@ -291,6 +337,243 @@ ground truth — wrap-ups can mischaracterize a session.
   via DB if needed (`accepted_at`/`dismissed_at` = null).
 
 ## Tool & Library Notes
+
+- **Adding a query hook to an existing component breaks that component's test
+  with an error naming neither, because the test's `fetch` stub answers unknown
+  URLs with `{}` — and `data ?? []` does NOT guard against it.** These tests stub
+  one `fetch` with a URL-matching chain ending in a catch-all
+  `return jsonResponse({})`. A newly added hook falls into that catch-all, so
+  `data` is `{}` — not `undefined` — the nullish coalesce passes it straight
+  through, and `.filter`/`.map` throws.
+  What makes it cost a cycle: the thrown render surfaces as **five** failures
+  reading `Unable to find an element with the text …`, because nothing rendered
+  at all. The real cause is a `TypeError` in stderr, above the assertion output.
+  Measured 2026-08-23 adding `useAgents()` to `ProjectContextView`:
+  `(agents.data ?? []).filter is not a function`.
+  **Do:** when a component test fails with several "unable to find" errors at
+  once, read stderr before the assertions. When adding a hook to a component
+  that already has a test, extend that test's stub chain with the new URL in the
+  same change. And guard list payloads with `Array.isArray(x) ? … : []` rather
+  than `x ?? []` — a wrong-shaped body is reachable in production too, not only
+  under a stub. (2026-08-23, Project Context COVERAGE ring)
+
+- **The frozen-display-order pattern has a second failure mode: a row the
+  frozen order does not know was dumped at the END, which silently broke the
+  grouping the list exists to show.** The entry below records freezing the order
+  so a ticked row does not jump, and says ids absent from it "sort last by
+  name". That is wrong once the grouping is itself a requirement. Attach a
+  document that appeared in the repository after the tab loaded and it lands
+  **fiftieth**, below every unattached row — the human ticks the box, nothing
+  visibly happens, and they report the reorder as broken. Reported exactly that
+  way on 2026-08-23; the server had returned the row first all along.
+  **Do:** place an unknown row by its KIND (attached / inherited / available, or
+  linked / unlinked), never at the end. Rows the frozen order DOES know still
+  must not move — that is the anti-jump rule and it is unaffected. Both lists
+  carry the fix: `applyDisplayOrder` in `@/lib/project-context` and in
+  `SkillsTab/helpers.ts`, each with three tests — newcomer up, unattached
+  newcomer down, known row unmoved. The third is what stops a future "fix" of
+  one from breaking the other.
+
+- **REVERSED 2026-08-23 — a ticked row now RISES to the top; the frozen-order
+  entry below is superseded on this point.** That entry records freezing the row
+  order so a ticked row cannot jump out from under the pointer, after exactly
+  that was reported as a defect. The human reversed it: in a fifty-row list the
+  opposite complaint is stronger — you tick something and then have to hunt for
+  it — and the instruction was explicit, "все выделенные айтемы должны
+  автоматически перемещаться в начало списка… это касается всех подсистем".
+  Now in all three lists (both `Context` tabs and `SkillsTab`), toggling
+  reseeds the display order, so the ticked rows form a group at the top and the
+  newest joins that group's end.
+  **Do:** do not "restore" the frozen index as a bug fix — it is a decision, and
+  reversing it again needs the human. `ContextTab.test.tsx`'s
+  "ticking the LAST row hoists it to the top" carries the same warning inline.
+  Everything else in the entry below still holds: the order is state, not
+  re-derived per render, and a drag still reseeds it.
+
+- **Two affordances for the same action must compute "can I act" from ONE
+  expression — arrows read a frozen order array, drag read the row, and they
+  disagreed.** `ContextTab` offers move buttons and drag-and-drop for the same
+  reorder. The buttons asked a separately-held `order: string[]` for the row's
+  position; the drag handler asked the row itself. A document added to the
+  repository **after the tab loaded** was never inserted into that array, so
+  `indexOf` returned −1 → no buttons, while the drag still engaged. Reported as
+  "ты убираешь кнопки, но при этом drag and drop работает", which is exactly
+  what it looks like from outside: random.
+  **The same applies across COMPONENTS that must behave alike.** The agent and
+  skill Context tabs each kept their own gate for the identical control —
+  `kind !== "inherited"` in one, `row.attached` in the other. They were aligned
+  by hand three times in one session and drifted anyway; the divergence surfaced
+  only when a test broke, never from reading either file. If two lists are
+  required to behave identically, the predicate belongs in the shared module
+  (`@/lib/project-context`) and each tab calls it — copying it into both is a
+  promise no one can keep.
+
+  **Do:** derive both from the same predicate, and make the state they read
+  cover every row — `reconcileOrder` now inserts a newcomer instead of leaving
+  it out, and drops a path whose document is gone. When a component holds a
+  denormalised copy of a list (a frozen order, a selection set, an expanded-ids
+  set), reconcile it on every data change; seeding it once and reading it
+  forever is the same defect wearing different clothes.
+  (2026-08-23, Project Context)
+
+- **One visual channel, one meaning — a background fill that encoded BOTH "you
+  ticked this" and "this arrives from a skill" made untouched rows look
+  selected.** `ContextTab`'s row used `background: kind === "available" ? … : …`,
+  so attached AND inherited rows shared the lighter fill. The human ticked one
+  box, saw several rows change shade, and reported the list as broken — reading
+  the fill as selection, which is what a fill after a click means to everyone.
+  The two states are not alike: one is the human's action, the other is a
+  property of the data.
+  **Do:** give the state the human CAUSED the strongest channel (here the fill,
+  driven by `attached` alone) and put every intrinsic property on a different
+  one — border style, a badge, an icon. When a row can be in two states at once,
+  check what the combination looks like before shipping: `attached` and
+  `inherited` were individually fine and indistinguishable together.
+  Both tabs now fill on `attached` only; inherited keeps its dashed border.
+  (2026-08-23, Project Context)
+
+- **A reorder test that asserts the MUTATION PAYLOAD can pass while the list on
+  screen never moves.** `ContextTab`'s "reorders the LAST own row by keyboard"
+  checked the `POST` body carried `["a","c","b"]` — and nothing else. Ordering
+  here goes through two independent things: `moveAttached` rewrites each row's
+  `order` field, and a separately-held frozen `order` array decides the rendered
+  sequence (`applyDisplayOrder`). A handler that updates the first and forgets
+  the second sends a perfect request and renders an unchanged list — which is
+  precisely how `SkillsTab`'s drag shipped broken, in the version that had no
+  component test at all.
+  **Do:** for any ordered list, assert the **rendered sequence** after the
+  interaction, not only what was sent. Read it off the DOM in a way that
+  survives restyling — the rows' accessible names in document order — and assert
+  the before AND the after, so a test that never re-renders cannot pass:
+
+  ```ts
+  const paths = () => screen.getAllByRole("checkbox")
+    .map((el) => (el.getAttribute("aria-label") ?? "").replace(/^.*?(?=\S+\/)/, ""));
+  expect(paths()).toEqual([...before]);
+  fireEvent.click(screen.getByRole("button", { name: "Move docs/broken.md up" }));
+  await waitFor(() => expect(paths()).toEqual([...after]));
+  ```
+
+  (2026-08-23 — added to `ContextTab.test.tsx`; the payload-only test was green
+  the whole time.)
+
+- **A component test that asserts a full i18n sentence turns every copy edit
+  into a red suite, and the failure reads like a regression.** Measured across
+  2026-08-23's Project Context work: **four separate fix rounds** were spent on
+  tests that were never wrong — the criteria still held, only the wording had
+  changed. Worse, the failures print as `Unable to find an element with the
+  text: …`, which is what a genuinely broken render prints too, so each one cost
+  a diagnosis before it cost a fix.
+  **Do:** pin what the criterion requires, not the sentence that carries it.
+  - the smallest fragment that would be false if the behaviour were wrong
+    (`/not what a run sends/i`), never the whole string;
+  - structure over prose — `getByRole("link", { name })`, `within(getByRole(
+    "dialog"))`, `aria-current`, a count badge's own text;
+  - when a test really must pin exact copy — a legal notice, a format the
+    feature exists to display — say so in a comment, so the next person edits
+    the message file and the test together on purpose.
+  A test that breaks on every rewording is not protecting the criterion; it is
+  protecting the draft. (2026-08-23, Project Context)
+
+- **You can screenshot the running app yourself — headless Chrome is on the
+  machine, and this repo has no Playwright or Puppeteer to look for.** When the
+  Claude Chrome extension answers `Browser extension is not connected`, this is
+  the fallback, and it needs no install:
+
+  ```sh
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+    --headless --disable-gpu --hide-scrollbars \
+    --window-size=1600,1000 --virtual-time-budget=10000 \
+    --screenshot=/tmp/page.png "http://localhost:3000/<route>"
+  ```
+
+  `--virtual-time-budget` is the load-bearing flag: this app renders through
+  TanStack Query after hydration, so a smaller budget captures the skeleton or
+  an empty pane. 8–10s produced a fully populated page here. It prints unrelated
+  `task_policy_set` and `externally_managed_app_manager` errors on macOS and
+  still writes the file — check the file exists rather than trusting the exit
+  output.
+  Why it matters: this is the only way to verify a screen against its design.
+  Measured 2026-08-23 — after `typecheck` clean and 348 green tests, the first
+  screenshot immediately showed four defects no test could see: file names
+  wrapping to two lines, an empty detail pane where the mockup opens a document,
+  the document body never loading (the view derived `docs[0]` for display but
+  still fetched by the unset `selectedPath`), and the selected row not
+  highlighted for the same reason. Three screenshot rounds fixed all of them.
+  **Its one real limit: you cannot carry app state between two runs.**
+  `--virtual-time-budget` exits Chrome the moment the budget is spent, before
+  `localStorage` is flushed to the profile, so the usual trick — warm one URL
+  with `--user-data-dir` to set state, then screenshot a second URL with the
+  same profile — silently produces the un-warmed page. Tried on 2026-08-23 to
+  switch the active repo (`dd-repo` in localStorage) before shooting an editor
+  tab; both attempts rendered the default repo, and one hung for five minutes
+  until `--no-first-run --no-default-browser-check` was added.
+  So: a screen whose content depends on state you can only set through the UI
+  is not screenshot-verifiable this way. Shoot the routes that carry their input
+  in the URL path, and say plainly that the rest is unverified rather than
+  implying it was seen.
+
+  **Do:** for any UI change with a design, screenshot before saying it is done,
+  and re-screenshot after each fix — reading the JSX back finds none of this.
+  (2026-08-23, Project Context)
+
+- **No gate in this repo can see a mockup, so a screen that matches no design
+  passes everything.** Measured 2026-08-23 on the Project Context page: 42
+  acceptance criteria MET, 342 client tests green, `architecture-reviewer`
+  CLEAR, `plan-verifier` 58 MET — and the page still had a layout the mockup
+  does not contain (a page-level `<h1>` and subtitle the design has none of,
+  two rounded cards where the design is a rail plus a divider, a labelled
+  `Refresh` button where the design has an icon toolbar, the full path where
+  the design shows a bare file name). Every reviewer was *correct*: no
+  criterion describes layout, so nothing was violated.
+  The upstream cause is that a mockup is consumed once — to write the criteria
+  — and then nothing carries it. The spec cites it as a design source, the plan
+  step paraphrases it in prose, and neither the criteria nor the tests can
+  encode "what nests inside what".
+  **Do:** when a screen has a mockup, turn it into an explicit **element
+  checklist** (region tree, each control's exact label, its position) and put
+  that checklist in the plan step, so `plan-verifier` can check it item by item.
+  Record every intentional departure from the design as its own line with the
+  criterion or non-goal that forced it — otherwise a departure and a drift look
+  identical in review. Reviewing UI against criteria alone will not catch
+  drift, and asking a reviewer to "check it matches the design" cannot work:
+  the subagents receive text, never images. (2026-08-23, Project Context)
+
+- **`src/vendor/ui/nav.ts` is this app's own route configuration, not a
+  vendored primitive — a new page's sidebar entry is one line there, and every
+  attempt to avoid touching it edits MORE vendored code.** `client/AGENTS.md:47`
+  says "vendored UI primitives; treat as read-only third-party code", which
+  reads as covering the whole folder. But `nav.ts` contains only DevDigest
+  routes (`/repos/:repoId/pulls`, `/skills`, `/agents`,
+  `/repos/:repoId/conventions`, `/settings/api-keys`) and DevDigest's own
+  `SHORTCUTS` registry; `Conventions` was added there the same way. There is no
+  seam to reach it from outside: `Sidebar.tsx:3` imports `NAV` directly and
+  `Sidebar({ ctx })` takes no nav prop, so an "override" approach means editing
+  `Sidebar.tsx` **and** `ShellContext` — strictly more of the same folder.
+  Cost of getting this wrong, measured 2026-08-23: a plan told an implementer to
+  add the entry in `src/components/app-shell` (where no nav exists), the step
+  came back PARTIALLY MET, both review rounds classified it unfixable, and the
+  page shipped reachable only by typing its URL.
+  **Do:** to add a page to the sidebar, add one `NavItemDef` to the right `NAV`
+  group and one row to `SHORTCUTS`. That single line also yields the ⌘K command
+  and the `g <key>` shortcut for free — `components/app-shell/hooks/
+  useShellCommands.ts:21` and `useGlobalShortcuts.ts:45` both read `NAV`. Check
+  `grep -oE 'gKey: "[a-z]"' src/vendor/ui/nav.ts` for a free letter first.
+  (2026-08-23, Project Context)
+
+- **A `<` in a `messages/**.json` string makes next-intl throw `INVALID_TAG`
+  and render NOTHING — and no gate can see it.** ICU parses `<name>` as the
+  opening of a rich-text tag, so copy that quotes markup or a placeholder —
+  `<path>`, `<untrusted source="...">`, `<T>` — kills the whole message at
+  runtime. `pnpm typecheck` does not read message files, `pnpm test` only
+  catches it if a test asserts that exact rendered string, and the visible
+  symptom is an empty element rather than an error. Same blind-spot family as
+  the duplicate-top-level-key entry below.
+  **Do:** never put a literal `<` in a message value. Write the shape in prose,
+  or quote it with apostrophes/backticks instead of angle brackets, and pin the
+  rendered text with a test when the string exists precisely to show a format.
+  Found 2026-08-23 writing the skill Context tab's caption, which had to
+  describe a `<untrusted source="…">` wrapper. (2026-08-23, Project Context S13)
 
 - **Mermaid: style nodes with literal hex, never `var(--token)`, and expect
   silence when the chart is wrong.** `classDef`/`class` values are written into

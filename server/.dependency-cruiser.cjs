@@ -47,7 +47,12 @@ module.exports = {
       from: {
         // feature-models is application-layer (reads settings via repository);
         // keep it in the ring-1 ban so it never grows a direct drizzle import again.
-        path: '^src/modules/[^/]+/(service|helpers|run-executor|diff-loader|feature-models)\\.ts$|^src/modules/repo-intel/pipeline/|^src/modules/reviews/intent/|^src/modules/smart-diff/pure/|^src/modules/blast/(constants|shape|summary)\\.ts$',
+        // This list enumerates BASENAMES: an application file whose name is not
+        // here is silently unprotected, and the rule then prints the same
+        // "0 violations" it prints when nothing is wrong. `walk`/`resolve`/
+        // `facade` were added with `modules/context` for exactly that reason —
+        // extend this in the same commit that creates such a file.
+        path: '^src/modules/[^/]+/(service|helpers|walk|resolve|facade|run-executor|diff-loader|feature-models)\\.ts$|^src/modules/repo-intel/pipeline/|^src/modules/reviews/intent/|^src/modules/smart-diff/pure/|^src/modules/blast/(constants|shape|summary)\\.ts$',
       },
       to: {
         path: '^(node_modules/\\.pnpm/[^/]+/node_modules/drizzle-orm|node_modules/drizzle-orm|src/db/schema)',

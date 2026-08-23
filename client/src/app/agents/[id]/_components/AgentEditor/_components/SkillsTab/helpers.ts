@@ -63,13 +63,25 @@ export function displayOrderIds(rows: SkillDraftRow[]): string[] {
  */
 export function applyDisplayOrder(rows: SkillDraftRow[], order: string[]): SkillDraftRow[] {
   const rank = new Map(order.map((id, i) => [id, i]));
+  // A row the frozen order does not know — a skill created after the tab
+  // loaded — is placed by whether it is LINKED, not dumped at the end. Sending
+  // it to the bottom put a freshly linked skill below every unlinked one, which
+  // reads as "linking did nothing". Same fix as `applyDisplayOrder` in
+  // `@/lib/project-context`; the two lists must not diverge.
   return [...rows].sort((a, b) => {
     const ra = rank.get(a.skill_id);
     const rb = rank.get(b.skill_id);
     if (ra != null && rb != null) return ra - rb;
-    if (ra != null) return -1;
-    if (rb != null) return 1;
-    return a.name.localeCompare(b.name);
+    if (ra == null && rb == null) {
+      if (a.linked !== b.linked) return a.linked ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    }
+    const unknownLinked = (ra == null ? a : b).linked;
+    const knownLinked = (ra == null ? b : a).linked;
+    if (unknownLinked !== knownLinked) {
+      return ra == null ? (unknownLinked ? -1 : 1) : knownLinked ? 1 : -1;
+    }
+    return ra == null ? 1 : -1;
   });
 }
 

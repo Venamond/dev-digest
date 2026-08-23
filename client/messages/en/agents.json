@@ -53,7 +53,8 @@
       "skills": "Skills",
       "evals": "Evals",
       "stats": "Stats",
-      "ci": "CI"
+      "ci": "CI",
+      "context": "Context"
     }
   },
   "config": {
@@ -96,13 +97,15 @@
     "title": "Skills",
     "enabledCount": "{linked} of {total} enabled",
     "filterPlaceholder": "Filter skills…",
-    "orderHint": "Order matters — earlier skills appear earlier in the assembled prompt. Drag to reorder.",
+    "orderHint": "Order matters — earlier skills appear earlier in the assembled prompt. Drag a row, or use its move buttons, to reorder.",
     "loadError": "Could not load skills for this agent.",
     "empty": "No skills in this workspace yet. Create skills in Skills Lab, then bind them here.",
     "globallyOff": "globally off",
     "dragHint": "Drag to reorder",
     "dragDisabledHint": "Only enabled skills are ordered — tick this one to reorder it",
-    "savedToast": "Agent skills saved"
+    "savedToast": "Agent skills saved",
+    "moveUp": "Move {name} up",
+    "moveDown": "Move {name} down"
   },
   "stats": {
     "loadError": "Could not load stats for this agent.",
@@ -135,5 +138,40 @@
   },
   "mount": {
     "body": "Mount point for {owner}. The Agent Editor shell + tab routing are wired by A2 — {owner} renders this tab."
+  },
+  "context": {
+    "title": "Project Context",
+    "attachedCount": "{attached} of {total} attached",
+    "filterPlaceholder": "Filter documents…",
+    "orderHint": "Order matters — earlier documents appear earlier in the assembled block. Toggle to attach.",
+    "repoFallback": "this repository",
+    "noRepo": "Select a repository first — project context is attached per repository.",
+    "loadError": "Could not load project context for this agent.",
+    "empty": "No markdown documents found under specs/, docs/ or insights/ in this repository.",
+    "injectedTotal": "~{tokens, number} tokens selected",
+    "injectedCaption": "Injected as an untrusted ## Project context block into every run.",
+    "ceilingWarning": "~{tokens, number} tokens exceeds the {ceiling, number}-token project-context ceiling. A run takes documents in order and skips any that no longer fit — whole, never truncated.",
+    "rowMeta": "in {folder} · used by {agents, plural, =0 {no agents} one {# agent} other {# agents}}",
+    "rowTokens": "~{tokens, number} tok",
+    "rootPill": "{root}",
+    "unreadable": "cannot be read",
+    "attachAria": "Attach or detach {path}",
+    "moveUp": "Move {path} up",
+    "moveDown": "Move {path} down",
+    "dragHint": "Drag to reorder",
+    "dragDisabledHint": "Only this agent’s own documents are ordered here — an inherited one is positioned by its skill",
+    "preview": "Preview",
+    "previewLoadError": "Could not load this document.",
+    "previewUsedByNone": "No agent reads this document yet.",
+    "previewUsedByVia": "via {skill}",
+    "attach": "Attach",
+    "detach": "Detach",
+    "savedToast": "Project context saved",
+    "attachDoc": "Attach {path}",
+    "detachDoc": "Detach {path}",
+    "attached": "Attached",
+    "previewUsedBy": "Used by {agents, plural, =0 {no agents} one {# agent} other {# agents}}",
+    "previewTokens": "{tokens, number} tokens",
+    "dragAloneHint": "Ordering needs at least two attached documents."
   }
 }

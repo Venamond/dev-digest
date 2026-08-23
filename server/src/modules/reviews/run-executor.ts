@@ -20,6 +20,54 @@ import { loadDiff } from './diff-loader.js';
 import { promptSkillBodies, promptSkillRefs } from '../agents/helpers.js';
 import { classify, type ClassifyResult } from './intent/classify.js';
 import { scopeFilter } from './intent/scope-filter.js';
+import { createContextService, rootOf } from '../context/facade.js';
+import { approxTokens } from '../context/constants.js';
+
+/**
+ * "1 spec, 2 docs" — the attached documents counted per search root, in the
+ * order the roots are configured, so a log line says what kind of context went
+ * in and not only how much. A root contributing nothing is left out entirely;
+ * a document under no known root is counted as `other`.
+ *
+ * The root names are already plural (`specs`, `docs`), so ONE document drops the
+ * trailing `s` — "1 spec, 2 docs". Naive on purpose: these are folder names, not
+ * prose, and a reader matches them against the rail's own labels.
+ */
+export function describeByRoot(
+  docs: ReadonlyArray<{ path: string }>,
+  roots: readonly string[],
+): string {
+  const counts = new Map<string, number>();
+  for (const doc of docs) {
+    const root = rootOf(doc.path, roots) ?? 'other';
+    counts.set(root, (counts.get(root) ?? 0) + 1);
+  }
+  const ordered = [...roots, 'other'].filter((r) => counts.has(r));
+  if (ordered.length === 0) return `${docs.length} document(s)`;
+  return ordered
+    .map((root) => {
+      const n = counts.get(root)!;
+      const label = n === 1 && root.endsWith('s') ? root.slice(0, -1) : root;
+      return `${n} ${label}`;
+    })
+    .join(', ');
+}
+
+/**
+ * "2 via skill lethal-trifecta" / "3 via 2 skills" — how the inherited part of
+ * the project context arrived. One skill is named, because naming it is what
+ * lets a reader go and change it; several are counted, because a log line is
+ * not a list.
+ */
+export function describeInherited(
+  inherited: ReadonlyArray<{ skills: string[] }>,
+): string {
+  const names = new Set<string>();
+  for (const src of inherited) for (const name of src.skills) names.add(name);
+  if (names.size === 1) return `${inherited.length} via skill ${[...names][0]}`;
+  if (names.size === 0) return `${inherited.length} inherited`;
+  return `${inherited.length} via ${names.size} skills`;
+}
 
 /** Thrown by a run when the user cancels it mid-flight (between map files). */
 export class RunCancelledError extends Error {
@@ -45,6 +93,34 @@ export type RunOutcome = {
   grounding: string;
   raw: Review;
 };
+
+/**
+ * The project-context documents one run resolved, read and capped, plus what it
+ * had to leave out and the clone revision it read at. Everything here goes on
+ * to the trace (S16), so a run's own record explains its `## Project context`
+ * block without re-reading the clone.
+ */
+export type ProjectContext = {
+  /** Survivors, in the resolver's order — passed straight to `specs`. */
+  docs: Array<{ path: string; text: string }>;
+  /**
+   * Where each survivor came from, same order as `docs`. A document inherited
+   * from a skill is injected exactly like one attached to the agent, so without
+   * this the log and the trace cannot tell the reader which is which.
+   */
+  sources: Array<{ path: string; via: 'agent' | 'skill'; skills: string[] }>;
+  /** Attached documents that did NOT reach the prompt, with why (AC-25). */
+  omitted: Array<{ path: string; reason: 'unreadable' | 'over_ceiling' }>;
+  /** Clone HEAD the documents were read at (AC-33); null when unknown. */
+  revision: string | null;
+};
+
+/**
+ * Nothing attached, or the clone could not be read at all. Both arrays empty is
+ * how AC-32 tells "nothing attached" from "attached but unusable", which shows
+ * up as an empty `docs` with a NON-empty `omitted`.
+ */
+const NO_PROJECT_CONTEXT: ProjectContext = { docs: [], sources: [], omitted: [], revision: null };
 
 /**
  * Owns the background execution of queued agent runs (extracted from
@@ -223,6 +299,10 @@ export class ReviewRunExecutor {
 
     runLog.info(`Starting review with agent "${agent.name}" (${agent.provider}/${agent.model})`);
 
+    // Declared OUTSIDE the try: the failure path's trace has to say what this
+    // run read too, and by then the try block's scope is gone.
+    let projectContext: ProjectContext = NO_PROJECT_CONTEXT;
+
     try {
       // Resolve the agent's LLM provider. (container.llm throws if the provider
       // key is missing — caught below and persisted as a failed run.)
@@ -270,6 +350,12 @@ export class ReviewRunExecutor {
         runLog.info(`run_skills recording failed (non-fatal): ${(err as Error).message}`);
       }
 
+      // ---- Project context: the agent's attached documents ------------------
+      // Resolved through context/facade.ts, read in order, capped whole-or-
+      // nothing against the workspace ceiling. Best-effort by contract: no
+      // failure in this path may fail a review (AC-22).
+      projectContext = await this.loadProjectContext(workspaceId, repo, agent, runLog);
+
       // ---- Engine: assemble → single-pass → grounding -----------------------
       // The pure review pipeline lives in @devdigest/reviewer-core (shared with
       // the CI runner). The service owns only I/O: repo-intel context resolution
@@ -288,6 +374,9 @@ export class ReviewRunExecutor {
         ...(callersDigest ? { callers: callersDigest } : {}),
         // T3 — repo skeleton, same omit-when-empty contract.
         ...(repoMap ? { repoMap } : {}),
+        // Project context — nothing readable means no `## Project context`
+        // section at all, not an empty one (AC-32).
+        ...(projectContext.docs.length > 0 ? { specs: projectContext.docs } : {}),
         // PR author's description/body — untrusted; assemblePrompt wraps +
         // truncates it. Omitted when the PR has no body.
         ...(pull.body ? { prDescription: pull.body } : {}),
@@ -408,7 +497,15 @@ export class ReviewRunExecutor {
         ],
         raw_output: outcome.raw,
         memory_pulled: [],
-        specs_read: [],
+        // What the `## Project context` block actually contains, what was left
+        // out and why, and the clone revision it was read at (AC-25, AC-33).
+        // Empty `specs_read` WITH empty `specs_omitted` = nothing attached;
+        // empty `specs_read` with a non-empty `specs_omitted` = attached but
+        // unusable (AC-32).
+        specs_read: projectContext.docs.map((doc) => doc.path),
+        specs_sources: projectContext.sources,
+        specs_omitted: projectContext.omitted,
+        specs_revision: projectContext.revision,
         // Persisted log = the run's FULL event buffer (incl. shared pre-work:
         // diff load + intent), not just events recorded inside this method.
         log: runLog.logFor(runId),
@@ -441,7 +538,12 @@ export class ReviewRunExecutor {
       // says the run is over, so "failed" never means "failed, and the log
       // explaining why is not there yet".
       await this.repo
-        .saveRunTrace(runId, this.traceFromBuffer(runId, pull, agent, '0/0 passed', Date.now() - start))
+        .saveRunTrace(
+          runId,
+          // A run that failed still says what it read — the read happens before
+          // the LLM call, so by the time most failures land the answer exists.
+          this.traceFromBuffer(runId, pull, agent, '0/0 passed', Date.now() - start, projectContext),
+        )
         .catch(() => undefined);
       await this.repo
         .completeAgentRun(runId, {
@@ -456,6 +558,127 @@ export class ReviewRunExecutor {
         .catch(() => undefined);
       this.container.runBus.complete(runId);
       throw err;
+    }
+  }
+
+  /**
+   * Resolve, read and cap this agent's project-context documents (AC-19, AC-22,
+   * AC-23, AC-28, AC-39, AC-40).
+   *
+   * Best-effort by contract. An unreadable document is skipped and recorded; a
+   * clone that cannot be read at all yields no project context and a completed
+   * run. NOTHING here may fail a review — a repository document is an input to
+   * the review, never a precondition of it.
+   *
+   * Reading goes through `ContextService.readDoc`, not a raw `git.readFile`:
+   * `resolveInsideClone` is lexical only (it cannot resolve symlinks — `CloneFs`
+   * has no `realpath`), so containment actually comes from `walkMarkdown`, which
+   * never emits a symlink, and `readDoc` checks membership of that walked set.
+   * A raw read would bypass the only check there is.
+   */
+  private async loadProjectContext(
+    workspaceId: string,
+    repo: RepoRow,
+    agent: AgentRow,
+    runLog: RunLogger,
+  ): Promise<ProjectContext> {
+    try {
+      const context = createContextService(this.container);
+      // The SAME resolver the editor tabs render, so the tab cannot promise a
+      // set or an order the run does not honour (AC-20, AC-34, AC-39, AC-40).
+      const effective = await context.effectiveDocsForAgent(agent.id, repo.id);
+      if (effective.length === 0) return NO_PROJECT_CONTEXT;
+
+      const ceiling = await context.tokenCeiling(workspaceId);
+      const roots = await context.searchRoots(workspaceId);
+      const docs: ProjectContext['docs'] = [];
+      const sources: ProjectContext['sources'] = [];
+      const omitted: ProjectContext['omitted'] = [];
+      let usedTokens = 0;
+
+      for (const doc of effective) {
+        const text = await this.readContextDoc(context, workspaceId, repo.id, doc.path);
+        if (text === undefined) {
+          omitted.push({ path: doc.path, reason: 'unreadable' });
+          continue;
+        }
+        // Whole or not at all, and skip-and-continue: a document that does not
+        // fit in what REMAINS is left out, and the documents after it are still
+        // considered — a small one behind a huge one still gets in. Never
+        // truncated: half an invariant is worse than none (AC-23).
+        //
+        // `approxTokens` is the ONE estimator this feature uses; the tab's
+        // over-ceiling warning calls the same function, so the warning and the
+        // actual skipping cannot disagree.
+        const cost = approxTokens(text.length);
+        if (usedTokens + cost > ceiling) {
+          omitted.push({ path: doc.path, reason: 'over_ceiling' });
+          continue;
+        }
+        usedTokens += cost;
+        docs.push({ path: doc.path, text });
+        // `own` wins when a document arrives BOTH ways (AC-20): it holds the
+        // agent's position, so that is the provenance a reader should see.
+        sources.push({
+          path: doc.path,
+          via: doc.own ? 'agent' : 'skill',
+          skills: doc.skills.map((sk) => sk.skill_name),
+        });
+      }
+
+      const revision = await this.container.git
+        .currentHead({ owner: repo.owner, name: repo.name })
+        .catch(() => null);
+
+      if (docs.length > 0 || omitted.length > 0) {
+        // Break the count down by search root, so the log says WHAT went in and
+        // not merely how much: "1 spec, 2 docs" answers the question a reader
+        // actually has. Roots are configurable, so the labels come from the
+        // paths themselves rather than from a fixed list.
+        const inherited = sources.filter((src) => src.via === 'skill');
+        runLog.info(
+          `Project context: ${describeByRoot(docs, roots)} attached to prompt` +
+            // A document inherited from a skill is injected exactly like the
+            // agent's own, so the log has to say which — otherwise a reader
+            // cannot tell why a document they never attached to this agent is
+            // in the prompt.
+            (inherited.length > 0 ? ` (${describeInherited(inherited)})` : '') +
+            (omitted.length > 0 ? `, ${omitted.length} omitted` : ''),
+        );
+      }
+      return { docs, sources, omitted, revision };
+    } catch (err) {
+      // A repo with no clone, an unreadable clone, a database hiccup — the run
+      // goes on without project context rather than failing.
+      runLog.info(`Project context unavailable (non-fatal): ${(err as Error).message}`);
+      return NO_PROJECT_CONTEXT;
+    }
+  }
+
+  /**
+   * One document's text, or `undefined` when it must be recorded `unreadable`:
+   * missing, deleted since it was attached, outside the configured roots
+   * (`readDoc` throws a 400 for that), empty, or not text at all.
+   *
+   * Note `readFile(..., 'utf8')` does NOT throw on invalid UTF-8 — Node decodes
+   * lossily to U+FFFD. The NUL-byte check is what catches a file that is not
+   * text; a stray replacement character in otherwise valid markdown is left
+   * alone rather than costing the human a document.
+   */
+  private async readContextDoc(
+    context: ReturnType<typeof createContextService>,
+    workspaceId: string,
+    repoId: string,
+    path: string,
+  ): Promise<string | undefined> {
+    try {
+      const doc = await context.readDoc(workspaceId, repoId, path);
+      if (!doc) return undefined;
+      if (doc.content.trim().length === 0) return undefined;
+      if (doc.content.includes('\u0000')) return undefined;
+      return doc.content;
+    } catch {
+      return undefined;
     }
   }
 
@@ -557,6 +780,7 @@ export class ReviewRunExecutor {
     agent: AgentRow,
     grounding: string,
     durationMs = 0,
+    projectContext: ProjectContext = NO_PROJECT_CONTEXT,
   ): RunTrace {
     return {
       config: {
@@ -572,7 +796,10 @@ export class ReviewRunExecutor {
       tool_calls: [],
       raw_output: '',
       memory_pulled: [],
-      specs_read: [],
+      specs_read: projectContext.docs.map((doc) => doc.path),
+      specs_sources: projectContext.sources,
+      specs_omitted: projectContext.omitted,
+      specs_revision: projectContext.revision,
       log: this.container.runBus.buffer(runId).map((e) => ({ t: e.t, kind: e.kind, msg: e.msg })),
     };
   }

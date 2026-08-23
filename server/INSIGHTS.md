@@ -42,6 +42,27 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Codebase Patterns
 
+- **The root `CLAUDE.md`'s "DB schema already has every table for every future
+  course lesson" is a generalisation, not a guarantee — check before planning a
+  lesson around it.** Verified 2026-08-23 while planning the Project Context
+  lesson: the schema holds **42** tables, and the ones that lesson needs — any
+  table associating a document PATH with an agent or a skill — are not among
+  them. `grep -rn "path" src/db/schema/*.ts | grep -iE "agent|skill"` returns
+  nothing. The lesson's own pre-built scaffolding is real and extensive
+  (`SpecFile` in `vendor/shared/contracts/platform.ts:259`, the client's
+  `useContextFiles` hook, `PromptParts.specs` in `reviewer-core`, and
+  `trace-builder.ts`'s unused `specsRead`), which makes it easy to assume the
+  DB half was pre-built too. It was not.
+  **Do:** before writing a plan that assumes a table exists, enumerate them —
+  `grep -rhoE "pgTable\(\s*'[a-z_]+'" src/db/schema/`; note that a bare
+  `grep pgTable(` under-counts, because several definitions wrap the name onto
+  the next line. The rule that IS reliable is the other half of the same
+  CLAUDE.md entry: an empty table is not dead code, so never drop one. Adding a
+  new migration is permitted (`migrations/` says "never hand-edit without
+  coordination", which is about editing EXISTING files); hand-written ones need
+  their own `meta/_journal.json` entry, per the `0015_snapshot_baseline` entry
+  below. (2026-08-23, Project Context planning)
+
 - **`agents.name` has no unique constraint, and the create path does not
   check for one — so resolving an agent *by name* can silently pick the
   wrong row.** `db/schema/agents.ts:13` is a bare `text('name').notNull()`
@@ -409,6 +430,31 @@ ground truth — wrap-ups can mischaracterize a session.
   (pkg1|pkg2)(/|$)`) fixed it. (2026-08-04, Onion Architecture skill
   implementation, Task 6)
 
+- **`no-app-to-schema` protects application files by ENUMERATING THEIR
+  BASENAMES, so a new application-layer file whose name is not on the list is
+  silently unprotected — `arch:check` reports 0 violations because it never
+  looked.** The rule's `from.path`
+  (`server/.dependency-cruiser.cjs:50`) is
+  `^src/modules/[^/]+/(service|helpers|run-executor|diff-loader|feature-models)\.ts$`
+  plus four directory alternatives (`repo-intel/pipeline/`, `reviews/intent/`,
+  `smart-diff/pure/`, `blast/(constants|shape|summary).ts`). Tested the regex
+  directly (2026-08-23): `src/modules/<m>/service.ts` matches,
+  `src/modules/<m>/walk.ts`, `resolve.ts` and `facade.ts` do **not** — and
+  neither does the existing `src/modules/pulls/facade.ts`. It happens to import
+  no schema, so there is no live violation today; the point is that nothing
+  would stop one.
+  The four directory alternatives are themselves the fossil record of this
+  recurring: each was appended when a module grew application files that the
+  basename list did not name.
+  **Do:** when adding an application-layer file under `src/modules/` whose name
+  is not `service.ts` or `helpers.ts`, extend that `from.path` in the SAME
+  commit that creates the file. Verify by regex, not by running `arch:check` —
+  a rule that matches nothing and a rule that finds nothing wrong produce the
+  identical "0 violations" output, which is why this class of gap survives a
+  green build. Repository files (`repository.ts`) are correctly outside the
+  rule: the data layer is *supposed* to import `db/schema`.
+  (2026-08-23, Project Context planning)
+
 - A `dependency-cruiser` `forbidden` rule's `to.path` regex written as
   `node_modules/<pkg-name>` will silently never match in this repo, because
   `server`'s pnpm install resolves packages through a nested store —
@@ -462,6 +508,189 @@ ground truth — wrap-ups can mischaracterize a session.
   here, do NOT propose adding eslint-plugin-boundaries or a new tool; write a
   `.dependency-cruiser.cjs` and a `depcruise --ignore-known` script instead.
   (2026-08-03, Onion Architecture skill research)
+
+- **`getRepo` exists in this codebase in BOTH a workspace-scoped and an
+  unscoped form, and copying the wrong one into a URL-facing route is a
+  cross-tenant read.** Scoped: `modules/context/repository.ts:28`,
+  `modules/conventions/repository.ts:42`, `modules/pulls/repository.ts:46` —
+  all `getRepo(workspaceId, repoId)`. Unscoped: `modules/blast/repository.ts:28`
+  `getRepo(repoId)`, `modules/pulls/repository.ts:54` `getRepoById(repoId)`, and
+  most of `modules/repo-intel/repository.ts`. Both spellings are legitimate —
+  the unscoped ones are called with a `repoId` the server already resolved —
+  but nothing in the type system or in `arch:check` distinguishes them, and the
+  names do not warn you.
+  Caught 2026-08-23 while building `modules/context`: the plan specified the
+  unscoped signature, and on these routes `repoId` arrives straight off the URL
+  (`GET /repos/:id/context`), so an unscoped lookup would have served another
+  workspace's documents to any caller who guessed a uuid.
+  **Do:** the test is not "which module am I copying from" but **where does this
+  `repoId` come from**. Off a request param ⇒ the lookup must take
+  `workspaceId` from `getContext(app.container, req)` and filter on it. Only
+  reuse an unscoped variant when the id was produced by code that already
+  checked the workspace. Whether any *existing* unscoped call site is reachable
+  with a user-supplied id has NOT been audited here — treat that as an open
+  question, not as a cleared one. (2026-08-23, Project Context track B)
+
+- **Narrowing a record to what the NEXT step needs starves the log and the
+  trace, and the feature then works while being unexplainable.**
+  `resolveEffectiveDocs` returns an `EffectiveDoc` carrying `own` and the
+  contributing `skills`, because the editor tab needs both. `run-executor` then
+  did `docs.push({ path, text })` — everything the prompt builder wanted, and
+  nothing else. Documents inherited from a skill were injected correctly and
+  were **indistinguishable** in the run log and in the trace from ones attached
+  to the agent, so a reader could see a document in the prompt and have no way
+  to learn why. Nothing was broken; nothing could be explained.
+  **Do:** in this repo the trace and the live log are consumers with their own
+  requirements, not a by-product. When threading a value into a run, ask what
+  the run's own record will have to say about it before dropping fields — the
+  producer is the only place that still knows. Here it cost re-plumbing
+  provenance through `ProjectContext`, a new trace field, and a mirrored
+  contract, all of which would have been free at the `docs.push`.
+  (2026-08-23, Project Context — skill-inherited documents)
+
+- **"Is this path a project-context document?" existed in THREE copies, and
+  widening one of them made the other two reject exactly what it had just made
+  visible.** `modules/context` had the rule in `walk.ts` (which files to
+  enumerate), in `service.assertInsideRoots` (read and save), and again in
+  `service.createDoc`. Extending only the walk to honour AC-2's any-depth glob
+  made `client/specs/README.md` appear in the list and answer **400** when
+  opened — the list and the reader disagreed about what a document is.
+  It is now one exported function, `rootOf(relPath, roots)` in `walk.ts`, used
+  by all three, with unit tests for the outermost-match and file-name-is-not-a-
+  segment cases.
+  **Do:** before widening a predicate, grep for its shape rather than its name —
+  here `startsWith(\`${root}/\`)` found all three sites while "root" found
+  dozens. A predicate that answers a question about a domain object belongs in
+  one place the moment it has a second caller.
+  **And note how it surfaced:** every gate was green, because the fixture repos
+  in the tests have no nested roots. It appeared the first time the page was
+  screenshotted against a clone that did — a fix correct on 5 documents was
+  broken on 49. (2026-08-23)
+
+- **The Studio reads the CLONE, which tracks the repo's DEFAULT BRANCH — never
+  your working tree and never your feature branch. "My files are not showing" is
+  almost always this.** Diagnosed 2026-08-23 on Project Context: the page listed
+  5 documents while the working tree held over a hundred. The clone sat on
+  `main` at a commit from four weeks earlier, because the 191 commits since were
+  on an unpushed local branch. Both the old and the new enumeration were right;
+  there was nothing else in the clone to find.
+  **Check in this order before suspecting the reader:**
+  `git -C server/clones/<owner>/<name> log -1 --format='%h %ad' --date=short`,
+  then the same for your working tree, then
+  `git log origin/<default>..HEAD --oneline | wc -l`. A large third number with
+  an old first number is the whole explanation.
+  Note `POST /repos/:id/resync` answers `202` and does its work in the
+  background, so a `202` is not evidence the clone moved — re-read the clone's
+  HEAD afterwards. Sibling of `repo-intel`'s entry that every stored line number
+  is relative to the default branch. (2026-08-23)
+
+- **Every repo clone under `server/clones/` carries a live GitHub token INSIDE
+  its remote URL, so `git remote -v` on one prints a credential.** The clone is
+  created with `https://x-access-token:<token>@github.com/<owner>/<name>`, which
+  means the token sits in that clone's `.git/config` and comes back out of any
+  command that echoes the remote — `git remote -v`, `git config --get
+  remote.origin.url`, `git fetch`'s error messages, and `git ls-remote`'s
+  diagnostics. Leaked into a transcript this way on 2026-08-23, which cost the
+  human a token rotation.
+  **Do:** never dump a clone's remote while diagnosing. Ask git the questions
+  that do not name it — `git log`, `git rev-parse --abbrev-ref HEAD`,
+  `git ls-remote --heads origin <branch>` (its stdout is refs, not the URL) —
+  and if a command might echo it, pipe through
+  `sed 's/gho_[A-Za-z0-9]*/<redacted>/g'`. Note the same applies to anything
+  pasting clone paths into a report or an issue. (2026-08-23)
+
+- **To check that a WRITE route is live against the running dev server, send a
+  request you expect it to REJECT.** A `400` proves the route is registered and
+  reached its validation; a `201` proves the same thing and leaves a real file
+  in the human's clone (or a real row in their database). Done here 2026-08-23
+  to confirm `tsx watch` had picked up a new `POST /repos/:id/context/doc`: it
+  answered `201` and created `docs/__probe__.md` inside the user's actual
+  repository clone, which then had to be deleted.
+  **Do:** probe with a body the route must refuse — a path outside the
+  configured roots, a missing required field — or with the `GET` sibling.
+  Reserve real writes for the integration suite, which runs against a
+  throwaway Postgres and a fixture clone. Same family as the client's entry on
+  the dev server being live, shared state. (2026-08-23)
+
+- **A stub that models an OS primitive can make a test pass on the stub's shape
+  rather than on behaviour — check that the stub lists what a real syscall
+  lists.** `context-walk.test.ts`'s in-memory `CloneFs` registered symlinks in a
+  separate `links` table that only `realpath` consulted, so a linked directory
+  was resolvable **by path but absent from its parent's `readdir`**. A real
+  `readdir` returns the symlink as a dirent; only `realpath` follows it.
+  The original walk never noticed, because it built each root's path from the
+  configured list (`<clone>/docs`) and called `readdir` on it directly — it
+  never needed the entry to be listed. Rewriting the walk to DISCOVER roots by
+  listing the tree turned the same fixture red, and the failure read like a
+  regression in the new code. It was a gap in the fixture: the behaviour it
+  claimed to pin (a link resolving back inside the clone is followed) had never
+  been exercised through a listing at all.
+  **Do:** when a stub stands in for the filesystem, make each modelled entity
+  appear in EVERY call a real one would appear in — a symlink in `readdir` as
+  well as in `realpath`. And when a rewrite turns one old test red, ask whether
+  the fixture ever expressed the case, before assuming the new code broke it.
+  (2026-08-23, Project Context — AC-2 nested roots)
+
+- **A recursive walk that skips symlink DIRENTS still follows a symlinked
+  ROOT — the seed of the traversal is never one of the entries it inspects.**
+  `walkMarkdown` (`modules/context/walk.ts`) refused every symlink it
+  enumerated (`if (entry.isSymbolicLink()) continue`) and handed each configured
+  search root straight to `readdir`, so a reviewed repository containing
+  `docs -> /etc` produced documents whose bytes live outside the clone. Proven
+  2026-08-23 by deleting the guard again: the fixture emits
+  `{ path: 'docs/passwd.md', root: 'docs' }`.
+  Two things made it survive review the first time. The module's own docstring
+  asserted the invariant ("never emits a symlink at all") in prose, which reads
+  as a check; and the escape then **poisons every downstream membership test** —
+  `readDoc` validates a requested path against the walked set, so once the walk
+  is wrong the validation confirms the attack instead of blocking it. The
+  browser-reachable route was `GET /repos/:id/context/doc?path=`.
+  Note also which half had the guard: `SimpleGitClient.writeFile` re-checked
+  through `realpath`, while `readFile` (`adapters/git/simple-git.ts:137-139`) is
+  still a bare `readFile(join(clonePath, path), 'utf8')`. The write path — the
+  scary-looking new one — was the safe half; the read path was not.
+  **Do:** guard the seed separately from the entries. Containment for this walk
+  now goes through `CloneFs.realpath` on the clone base and on every root
+  (`adapters/clone-fs.ts`); resolve `realpath` rather than comparing lexical
+  paths, because the clone base itself is legitimately a symlink on macOS
+  (`/tmp`). And when a docstring states a containment invariant, test it by
+  removing the line that supposedly enforces it — prose is not a control.
+  (2026-08-23, Project Context arch review r1 / fix r1)
+
+- **`pnpm typecheck` in `server/` does not look at `server/test/**` at all —
+  `tsconfig.json:28` is `"include": ["src/**/*.ts"]`.** So a test fixture that
+  no longer matches a changed contract is invisible to typecheck AND to `tsc`
+  entirely; it surfaces only when the suite runs, as a runtime failure. This is
+  a strictly worse version of the client's "vitest does not typecheck" entry:
+  there, `pnpm typecheck` still covers the test files; here it does not compile
+  them at all.
+  Measured 2026-08-23: changing `PromptParts.specs` from `string[]` to
+  `Array<{path,text}>` left stale `specs: string[]` fixtures in
+  `test/prompt-callers.test.ts`, `test/prompt-log.test.ts` and
+  `test/prompt-structured.test.ts` — all three typechecked green and failed at
+  run time.
+  **Do:** after changing any shared contract, grep `server/test/` for literals
+  of the changed type yourself; a green `pnpm typecheck` is not evidence about
+  them. Budget the fixture updates as part of the contract change, in the same
+  step. (2026-08-23, Project Context track D)
+
+- **`.default([])` on a shared-contract field does NOT keep existing object
+  literals compiling — it is the sibling trap of the `.nullable()` entry below,
+  and worse, because `.default()` reads as "the caller may omit this".** In Zod
+  3 (`zod@^3.24.1` here) `.default()` makes the field optional on the *input*
+  type and **required on the output type**, and `z.infer<T>` is the output. Any
+  literal annotated with the contract type — `const trace: RunTrace = {…}` —
+  therefore stops compiling the moment the field is added.
+  Measured 2026-08-23 while extending `RunTrace` with `specs_omitted`: with
+  `.default([])` it broke `modules/reviews/run-executor.ts:373` and `:561` and
+  `platform/trace-builder.ts:38`. `.optional()` is the form that leaves them
+  alone; consumers then read the field as `?? []`.
+  **Do:** to add a collection field to an existing contract without touching
+  every construction site, use `.optional()` and normalise at the read side.
+  Reserve `.default()` for schemas you only ever `.parse()` into, never for one
+  used as a TypeScript annotation on hand-written literals. Check which you have
+  before choosing: `grep -rn ": RunTrace = {" server/src` finds the literals
+  that decide it. (2026-08-23, Project Context track A)
 
 - A `z.object({ field: z.number().nullable() })` field is REQUIRED at the TS
   level, not optional — `.nullable()` only unions in `null`, it does not add

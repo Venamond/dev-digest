@@ -87,6 +87,44 @@ export const RunTrace = z.object({
   raw_output: z.string(),
   memory_pulled: z.array(MemoryPulled),
   specs_read: z.array(z.string()),
+  /**
+   * Attached project-context documents that did NOT reach the prompt, with
+   * why. `unreadable` = missing, empty or not valid UTF-8; `over_ceiling` =
+   * whole document did not fit in what remained of the token ceiling (it is
+   * skipped, never truncated, and later documents are still considered).
+   *
+   * `.optional()`, NOT `.default([])`: a Zod default is stripped of `undefined`
+   * in `z.infer`, so the key would be REQUIRED at the TS level and every
+   * existing `const trace: RunTrace = {…}` literal would stop compiling
+   * (`run-executor.ts:373`/`:561`, `platform/trace-builder.ts:38` — verified).
+   * Absent and `[]` mean the same thing here; read it as `?? []`.
+   */
+  /**
+   * Where each read document came from: attached to the agent itself, or
+   * inherited from a skill (and which). `.optional()`, not `.default([])` — a
+   * default makes the key REQUIRED on the inferred output type and breaks every
+   * existing `const trace: RunTrace = {…}` literal.
+   */
+  specs_sources: z
+    .array(
+      z.object({
+        path: z.string(),
+        via: z.enum(['agent', 'skill']),
+        /** Names of the enabled skills contributing it; empty when `via: 'agent'`. */
+        skills: z.array(z.string()),
+      }),
+    )
+    .optional(),
+  specs_omitted: z
+    .array(
+      z.object({
+        path: z.string(),
+        reason: z.enum(['unreadable', 'over_ceiling']),
+      }),
+    )
+    .optional(),
+  /** Clone HEAD the documents were read at; null when there was no clone. */
+  specs_revision: z.string().nullish(),
   log: z.array(RunLogLine),
 });
 export type RunTrace = z.infer<typeof RunTrace>;

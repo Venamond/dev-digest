@@ -261,6 +261,8 @@ export interface MockGitOptions {
 export class MockGitClient implements GitClient {
   public cloned: { repo: RepoRef; url: string }[] = [];
   public syncs: { repo: RepoRef; branch: string }[] = [];
+  /** Every accepted `writeFile`, so a test can assert what a save actually wrote. */
+  public wrote: { path: string; content: string }[] = [];
   private syncedHead?: string;
 
   constructor(private opts: MockGitOptions = {}) {}
@@ -299,6 +301,27 @@ export class MockGitClient implements GitClient {
   }
   async readFile(_repo: RepoRef, path: string): Promise<string> {
     return this.opts.files?.[path] ?? '';
+  }
+  /**
+   * Writes into the in-memory `files` map instead of the disk, so a test can
+   * read the bytes back through `readFile`. Refuses the same paths the real
+   * adapter refuses — a traversal that "works" against the mock would let a
+   * route test pass while the production write throws.
+   */
+  async writeFile(_repo: RepoRef, path: string, content: string): Promise<void> {
+    if (!path || path.startsWith('/') || path.split(/[\\/]/).some((s) => s === '..')) {
+      throw new Error(`refusing to write outside the clone: ${path}`);
+    }
+    this.opts.files = { ...(this.opts.files ?? {}), [path]: content };
+    this.wrote.push({ path, content });
+  }
+
+  /** Same refusals as `writeFile`, plus the real adapter's no-overwrite rule. */
+  async createFile(repo: RepoRef, path: string, content: string): Promise<void> {
+    if (this.opts.files?.[path] != null) {
+      throw new Error(`refusing to overwrite an existing document: ${path}`);
+    }
+    await this.writeFile(repo, path, content);
   }
 }
 

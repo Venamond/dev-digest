@@ -9,16 +9,22 @@ export const queryKeys = {
   pulls: (repoId: string | null | undefined) => ["pulls", repoId] as const,
   pull: (prId: string | number | null | undefined) => ["pull", prId] as const,
   context: (repoId: string | null | undefined) => ["context", repoId] as const,
+  contextDoc: (repoId: string | null | undefined, path: string | null | undefined) =>
+    ["context-doc", repoId, path] as const,
 
   agents: ["agents"] as const,
   agent: (id: string | null | undefined) => ["agent", id] as const,
   agentSkills: (id: string | null | undefined) => ["agent-skills", id] as const,
   agentStats: (id: string | null | undefined) => ["agent-stats", id] as const,
+  agentContext: (id: string | null | undefined, repoId: string | null | undefined) =>
+    ["agent-context", id, repoId] as const,
 
   skills: ["skills"] as const,
   skill: (id: string | null | undefined) => ["skill", id] as const,
   skillVersions: (id: string | null | undefined) => ["skill-versions", id] as const,
   skillStats: (id: string | null | undefined) => ["skill-stats", id] as const,
+  skillContext: (id: string | null | undefined, repoId: string | null | undefined) =>
+    ["skill-context", id, repoId] as const,
 
   conventions: (repoId: string | null | undefined) => ["conventions", repoId] as const,
   conventionSkillDraft: (repoId: string | null | undefined) =>

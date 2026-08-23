@@ -66,6 +66,24 @@ export const s = {
    * on the unlinked ones at the bottom of the list — that read as "drag is
    * broken down here". Dimmed + default cursor when reordering is unavailable.
    */
+  /* Identical to the Context tab's: reordering must look and behave the same
+     wherever this product orders a list. */
+  moveGroup: { display: "flex", flexDirection: "column", gap: 2, flexShrink: 0 } satisfies CSSProperties,
+  moveBtn: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 18,
+    height: 14,
+    padding: 0,
+    borderRadius: 3,
+    border: "1px solid var(--border)",
+    background: "transparent",
+    color: "var(--text-muted)",
+    cursor: "pointer",
+    font: "inherit",
+  } satisfies CSSProperties,
+
   dragHandle: (canDrag: boolean) =>
     ({
       color: "var(--text-muted)",
