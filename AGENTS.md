@@ -57,6 +57,24 @@ here.
   auto-loader still finds it under its expected filename — edit `AGENTS.md`,
   never the symlink.
 
+## Claims
+
+Both rules exist so the human can catch a wrong claim in one second. They are
+format requirements, not appeals to care — care is what fails.
+
+- **Never assert a negative without naming the search.** Not "the editors have
+  no tab bars" but "I searched `client/src/app/agents/_components/` and
+  `agents/[id]/page.tsx`; no tab bar". A bare negative cannot be refuted by a
+  reader who knows the codebase; a bounded one is refuted instantly. Two
+  unbounded negatives shipped on 2026-08-23: the tab bars existed in
+  `agents/[id]/_components/AgentEditor/constants.ts`, and the "unmeasurable"
+  main-session transcript sat one directory level above where I looked.
+- **When quoting a figure, name what it excludes.** Not "the run cost 117k" but
+  "subagents cost 117k; the conversation itself and `claude -p` subprocesses
+  are not in that number". Same session: 117k was reported as the run's cost
+  while the conversation alone was 523k — the figure was correct and the
+  sentence was wrong by a factor of five.
+
 ## Do-not-touch
 
 - `server/src/vendor/shared` and `client/src/vendor/shared` must stay
