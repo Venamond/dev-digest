@@ -64,25 +64,78 @@ re-invocation a resume rather than a repeat.
 **Every dispatch carries a scoped brief**, and this is where the run's cost is
 decided. Include: the plan path, the step ids in scope, which `Depends on`
 branch earlier steps took, what earlier files already contain, and the report
-file name to use. That brief is what lets `implementer` use its scoped
-single-step invocation instead of reading a plan that can run past 130 KB.
+file name to use.
+
+**Point the agent at a per-track EXTRACT, not at the plan.** Naming the step ids
+in a brief does not stop an agent opening the whole plan — measured 2026-08-23,
+six of nine agents read a 1000-line plan in full. Before dispatching a track,
+write `docs/plans/.extract/<slug>-<track>.md` containing, **copied verbatim**:
+
+- `## 0` (scope, decisions, criterion table), `## 1`, `## 2`, `## 2b`, `## 2c`
+- the `### S<n>` sections of that track only
+- the rows of `## 3` and `## 5` that name those steps
+
+Then say in the brief: *this extract is the authority for your steps; open the
+plan itself only if the extract is missing something you need, and say so in
+your report if you do.*
+
+**Slice, never summarise.** A paraphrased extract is a second source of truth
+that drifts from the plan on its first revision; a verbatim slice cannot. If a
+step's text is unclear, that is a defect to report, not to rewrite here.
 
 Add one line to every brief: **the report file is a requested deliverable, not
 proactive documentation** — otherwise the agent may return it inline and the
 resolver will read that step as unfinished and run it again.
+
+Add a second: **stop at turn N and emit what you have.** An agent with a large
+tabular deliverable spends its budget investigating and then has none left to
+write; what you get is a final message that stops mid-sentence.
+
+**Then check the disk. A completion notification is not evidence.** Before
+advancing a phase, re-run `./scripts/run-plan-state.sh <slug>` (or `ls
+docs/reports/`) and confirm the artifacts exist. An agent can finish, report
+`completed`, and have written nothing — resume it with `SendMessage` rather
+than dispatching a fresh one, so its context is not paid for twice.
+
+This is not rare. On 2026-08-23 it happened **twice in one run**: an
+`implementer` stopped part-way through its last step and a `plan-verifier`
+stopped before writing its report, both returning a truncated final message
+that read like success. Neither was caught by the notification. The previous
+retro had already proposed the turn budget and it had not been applied, so the
+same failure recurred.
 
 **Gates are split.** Steps verify themselves narrowly. When the last track
 lands, you run the full gate once — the plan's `## 5` table plus
 `arch:check` and `check-shared-sync.sh` where they apply. Paste the summary,
 not the whole runner output.
 
+**Visual work cannot be delegated.** Subagents receive text; images never reach
+them. No reviewer you dispatch can compare a screen against its mockup, and
+asking one to "check it matches the design" produces a confident answer about
+something it did not see. A plan step's element checklist is the design in the
+only form an agent can consume; the screenshot that confirms the rendered page
+is yours, in this session, with the command in the plan's `## 5`.
+
 ## Phase 2 — review
 
-Dispatch `architecture-reviewer` and `plan-verifier` **in parallel, in one
-message**. Both are read-only towards the code and independent of each other.
+**Round 1 dispatches both** `architecture-reviewer` and `plan-verifier`, in
+parallel in one message. They answer different questions over the whole change
+set, and both are read-only towards the code.
 
 Give both: the resolved list of changed files (so neither spends a turn
 re-deriving it), the plan path, the slug, and the round number.
+
+**Round 2 and later dispatch only the source whose findings the fix round
+actually addressed**, scoped to the files that round changed.
+
+- fixed only `architecture-reviewer` findings → re-run it alone;
+- fixed only `NOT MET` / `PARTIALLY MET` items → re-run `plan-verifier` alone,
+  and name the items;
+- fixed both → both, each scoped to its own items.
+
+A reviewer whose findings nothing touched has nothing to re-derive, and running
+it produces a second full pass over unchanged code. Measured 2026-08-23: round 2
+spent 39k output tokens across two agents to confirm four fixes.
 
 **Escalate the reviewer's model to `opus`** — via the `Agent` tool's `model`
 parameter, which overrides frontmatter — when any of these holds:
@@ -91,7 +144,10 @@ parameter, which overrides frontmatter — when any of these holds:
 - it touches `vendor/shared` or `db/schema`;
 - the previous round produced a CRITICAL.
 
-Otherwise leave it on its `sonnet` default. Say which you chose and why.
+**Judge those triggers against the change set of the round being reviewed**, not
+of the whole run. Round 1 sees a new module and escalates; round 2 usually sees
+four edited files and does not. Otherwise leave it on its `sonnet` default. Say
+which you chose and why.
 
 ## Phase 3 — the fix cycle
 

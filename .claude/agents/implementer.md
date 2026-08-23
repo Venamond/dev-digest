@@ -386,3 +386,24 @@ planned.>
 - If the plan turns out to lead into an architectural violation, stop at that
   step, describe the conflict under `## Deviations from plan`, and hand the task
   back to the implementation-planner rather than working around the rule.
+
+## Assertions pin the criterion, not the copy
+
+A test that asserts a whole i18n sentence turns every wording change into a red
+suite, and the failure prints as `Unable to find an element with the text: …` —
+exactly what a genuinely broken render prints. Each one therefore costs a
+diagnosis before it costs a fix.
+
+Assert instead:
+
+- the **smallest fragment that would be false if the behaviour were wrong**
+  (`/not what a run sends/i`), never the whole string;
+- **structure over prose** — `getByRole("link", { name })`,
+  `within(screen.getByRole("dialog"))`, `aria-current`, a badge's own count;
+- exact copy **only** when the feature exists to display that exact text (a
+  format, a legal notice) — and then say so in a comment, so the next person
+  edits the message file and the test together on purpose.
+
+Measured 2026-08-23 (Project Context): four separate fix rounds went to tests
+that were never wrong — the criteria held, only the wording had changed. A test
+that breaks on every rewording protects the draft, not the criterion.

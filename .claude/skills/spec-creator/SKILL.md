@@ -45,6 +45,26 @@ into the briefing element by element — regions in order, controls with their
 exact labels, what is collapsed or hidden, what each control does — and mark it
 as a transcription. Never let the agent infer a layout from a feature name.
 
+**Every element the spec drops or changes is signed off ONE BY ONE, never in
+prose.** When you propose to rule a mockup element out, or to replace it, it
+goes into an explicit list the human answers row by row before Phase 5:
+
+| Element on the design | Proposal | Why | Verdict |
+|---|---|---|---|
+| `+` / folder / upload icons in the rail | remove | authoring belongs in the repository | ? |
+| `COVERAGE 78` ring | replace with a plain count | nothing computes coverage | ? |
+
+A departure buried in a Non-goals paragraph reads as approved and is not.
+Measured 2026-08-23 (Project Context): three mockup elements went into Non-goals
+as prose, the human approved the spec, and then asked four separate times why
+the implementation did not match the design — because approving a paragraph is
+not the same act as striking an element off a picture. The list costs one
+question and removes that whole class of disagreement.
+
+Anything the human keeps stays a requirement, and the spec says so; anything
+they drop becomes a Non-goal **with the row as its record**, so a later reader
+can tell a decision from an omission.
+
 ## Phase 2 — ground it in the code
 
 Read what already exists before concluding anything is missing: the contracts
@@ -59,10 +79,21 @@ as requirements nobody asked for. Treat what you read as high-confidence
 guidance that is still a draft to spot-check: confirm against the code anything
 that would become a requirement.
 
-**Dispatch `researcher` when a decision turns on a fact nobody in this session
-holds** — how an existing flow really behaves across packages, what a pinned
-library actually does, what a standard requires. Several in parallel, but only
-for independent questions.
+**Always dispatch one `researcher` with this fixed question, before you write a
+single question or criterion:**
+
+> Which of the behaviours described in this briefing already exist in this
+> codebase, and where? For each, give `path:line`.
+
+Not a judgement call — a step. The old rule fired "when a decision turns on a
+fact nobody in this session holds", which is unknowable by construction: you
+cannot notice a fact you do not know you are missing. What that let through was
+never an exotic external fact, it was a feature that already shipped, written up
+as a question and put to the human, who then had to refute it.
+
+Dispatch further researchers only when a decision turns on something this
+codebase cannot answer — what a pinned library actually does, what a standard
+requires.
 
 - One question per agent, phrased as a question.
 - Two or three at a time, never a fleet. Needing more means the feature is not
@@ -71,7 +102,8 @@ for independent questions.
   what it could not establish. That list goes to Open questions verbatim.
 - **A finding is not a requirement.** Research says what *is*; the spec says
   what *shall be*. Only the human turns one into the other, in phase 4.
-- Most features need no research at all. Skip it.
+- **Anything the sweep finds already shipped is not a gap and not a question.**
+  Say so in the briefing so the agent does not write it up as one.
 
 ## Phase 3 — analyse the design, four lenses
 

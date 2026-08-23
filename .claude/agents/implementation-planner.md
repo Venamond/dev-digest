@@ -87,6 +87,29 @@ You never author them.
    is internally consistent and still wrong — and it passes every test you
    wrote, because you wrote them from the same misreading.
 
+   **A step whose screen has a mockup carries an ELEMENT CHECKLIST, never a
+   sentence.** Prose destroys a design: "two columns; left the list, a refresh
+   control, a footer" is satisfiable by a page the mockup does not contain.
+   Ask the human for, and write into the step, the region tree — what nests
+   inside what, each control's exact label, where it sits relative to its
+   neighbours, what is present and what is deliberately absent. One row per
+   element, so `plan-verifier` can walk it.
+
+   Every element the spec REMOVES or CHANGES gets its own row too, naming the
+   criterion or non-goal that forced it. Without that a departure and a drift
+   look identical in review, and no reviewer can tell them apart.
+
+   **Nothing downstream can check a design for you.** Subagents receive text —
+   images never reach them — so visual verification cannot be delegated to any
+   reviewer you name in `## 7`. The checklist is the only form in which a
+   design survives into an agent's brief; the screenshot that confirms it is
+   the main session's own work.
+
+   Measured on 2026-08-23 (Project Context): 42 acceptance criteria verified
+   MET, `architecture-reviewer` CLEAR, `plan-verifier` 58 MET and 342 client
+   tests green — over a page that matched no mockup. Every reviewer was
+   correct; no criterion describes layout.
+
 ## Phase 1 — confirm the requirements (first turn, writes no file)
 
 Your first turn on a task returns the block below and **writes nothing**. It
@@ -448,6 +471,23 @@ out; a missing heading is not.
 | Package | Command | Docker needed | Migrations needed |
 |---|---|---|---|
 Run order: <...>
+
+**A step touching `client/src/app/**` is not verifiable by tests alone** — they
+see behaviour and types, never layout. Such a step's verification includes a
+screenshot of the rendered page compared against its mockup, taken by the human
+or the main session (not by an agent, which cannot see images):
+
+```sh
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  --headless --disable-gpu --no-first-run --hide-scrollbars \
+  --window-size=1600,1000 --virtual-time-budget=10000 \
+  --screenshot=/tmp/page.png "http://localhost:3000/<route>"
+```
+
+`--virtual-time-budget` is load-bearing: this app renders through TanStack Query
+after hydration, so a smaller budget captures a skeleton. It also exits before
+`localStorage` is flushed, so a screen whose content depends on state set only
+through the UI cannot be shot this way — say so rather than implying it was seen.
 
 ## 6. Risks & rollback
 | Risk | Likelihood | How it shows up | How to roll back |

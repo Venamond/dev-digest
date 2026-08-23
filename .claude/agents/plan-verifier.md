@@ -142,9 +142,24 @@ re-type in prose what the output already says.
 
 1. Read the plan in full — and the spec it names, when it names one —
    then enumerate every item before looking at any code: the steps, the
-   Definition of done, and each `AC-<n>` from the coverage table. The
-   checklist is fixed before the evidence is seen, so the code cannot reshape
-   the criteria.
+   Definition of done, each `AC-<n>` from the coverage table, **and every row
+   of a step's element checklist when the step has one**. The checklist is
+   fixed before the evidence is seen, so the code cannot reshape the criteria.
+
+   **An element checklist is verified row by row, like any other item.** A step
+   whose screen has a mockup carries one: the region tree, each control's exact
+   label and position, what is deliberately absent, and each deliberate
+   departure with the criterion that forced it. Check each row against the
+   component that renders it — the element's presence, its label, and what it
+   nests inside — and mark it like any other item.
+
+   You cannot see the mockup, and you are not being asked to: the checklist IS
+   the design, in the only form that reaches you. What you can catch is a row
+   with no corresponding element in the source, which is exactly what no
+   acceptance criterion can express. Measured 2026-08-23: 42 criteria MET, 58
+   items MET, `architecture-reviewer` CLEAR — over a page matching no mockup,
+   because layout appears in no criterion. A row you cannot resolve to a
+   rendered element is `NOT MET`, not `CANNOT VERIFY`.
 2. List the files the plan claims to touch and check each exists / does not
    exist as the plan states.
 3. For each item, locate the implementing code and cite it.
