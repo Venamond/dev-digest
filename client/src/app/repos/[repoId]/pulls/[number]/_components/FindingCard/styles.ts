@@ -4,15 +4,20 @@ import type { CSSProperties } from "react";
 export const s = {
   card: (focused: boolean, sevColor: string, muted: boolean): CSSProperties => ({
     borderRadius: 8,
-    // All-longhand (never mix `border` shorthand with `borderLeft` — React warns
-    // about updating shorthand + non-shorthand on the same rerender).
+    // All-longhand, including per-side *Color (never pair `borderColor` — a
+    // shorthand for all 4 sides — with `borderLeftColor`; React warns about
+    // updating a shorthand + non-shorthand pair on the same rerender, and
+    // `borderColor` counts as one even though it isn't the `border` shorthand).
     borderStyle: "solid",
-    borderColor: focused ? sevColor : "var(--border)",
+    borderTopColor: focused ? sevColor : "var(--border)",
+    borderRightColor: focused ? sevColor : "var(--border)",
+    borderBottomColor: focused ? sevColor : "var(--border)",
     borderWidth: 1,
     borderLeftWidth: 3,
     borderLeftColor: sevColor,
     background: "var(--bg-elevated)",
     overflow: "hidden",
+    scrollMarginTop: 16,
     opacity: muted ? 0.6 : 1,
     transition: "opacity .2s, border-color .12s, box-shadow .12s",
     boxShadow: focused ? "0 0 0 1px " + sevColor : "none",

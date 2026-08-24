@@ -2,17 +2,22 @@
    Run a review, stream RunEvents live, act on findings. */
 "use client";
 
+import { queryKeys } from "./keys";
 import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, API_BASE } from "../api";
 import { notify } from "../toast";
 import type {
+  BlastResponse,
+  BlastSummaryResponse,
   FindingActionKind,
+  PrIntentRecord,
   PrReviewComment,
   ReviewRecord,
   ReviewRunResponse,
   RunEvent,
   RunSummary,
+  SmartDiffResponse,
 } from "@devdigest/shared";
 
 // ---- Active (in-flight) runs — server-side source of truth ----
@@ -27,7 +32,7 @@ export interface ActiveRun {
    Survives reloads/devices; polls while anything is running so it self-clears. */
 export function usePrActiveRuns(prId: string | null | undefined) {
   return useQuery({
-    queryKey: ["pr-active-runs", prId],
+    queryKey: queryKeys.prActiveRuns(prId),
     queryFn: () => api.get<ActiveRun[]>(`/pulls/${prId}/runs/active`),
     enabled: !!prId,
     refetchInterval: (query) => ((query.state.data?.length ?? 0) > 0 ? 4000 : false),
@@ -39,7 +44,7 @@ export function usePrActiveRuns(prId: string | null | undefined) {
    reload (DB-backed). Polls while anything is running so it self-updates. */
 export function usePrRuns(prId: string | null | undefined) {
   return useQuery({
-    queryKey: ["pr-runs", prId],
+    queryKey: queryKeys.prRuns(prId),
     queryFn: () => api.get<RunSummary[]>(`/pulls/${prId}/runs`),
     enabled: !!prId,
     refetchInterval: (query) =>
@@ -48,11 +53,19 @@ export function usePrRuns(prId: string | null | undefined) {
 }
 
 // ---- Persisted reviews + findings for a PR ----
-export function usePrReviews(prId: string | null | undefined) {
+/** `opts.enabled` lets a caller gate the fetch behind its own condition (e.g.
+ *  "only after the user has hovered for 200ms") without losing the `!!prId`
+ *  guard. `opts.staleTime` lets a caller that only needs an occasional lazy
+ *  read (e.g. a hover preview) avoid refetching on every re-hover. */
+export function usePrReviews(
+  prId: string | null | undefined,
+  opts: { enabled?: boolean; staleTime?: number } = {},
+) {
   return useQuery({
-    queryKey: ["reviews", prId],
+    queryKey: queryKeys.reviews(prId),
     queryFn: () => api.get<ReviewRecord[]>(`/pulls/${prId}/reviews`),
-    enabled: !!prId,
+    enabled: !!prId && (opts.enabled ?? true),
+    staleTime: opts.staleTime,
   });
 }
 
@@ -64,8 +77,9 @@ export function useDeleteRun(prId: string | null | undefined) {
     // Deleting a run also deletes the review it produced (server-side), so drop
     // both the timeline and the Review Runs list from cache.
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["pr-runs", prId] });
-      qc.invalidateQueries({ queryKey: ["reviews", prId] });
+      qc.invalidateQueries({ queryKey: queryKeys.prRuns(prId) });
+      qc.invalidateQueries({ queryKey: queryKeys.reviews(prId) });
+      qc.invalidateQueries({ queryKey: queryKeys.smartDiff(prId) });
     },
   });
 }
@@ -82,7 +96,10 @@ export function useDeleteReview(prId: string | null | undefined) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (reviewId: string) => api.del<{ ok: boolean }>(`/reviews/${reviewId}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["reviews", prId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.reviews(prId) });
+      qc.invalidateQueries({ queryKey: queryKeys.smartDiff(prId) });
+    },
   });
 }
 
@@ -90,7 +107,7 @@ export function useDeleteReview(prId: string | null | undefined) {
 /** Existing GitHub PR review comments, fetched live. */
 export function usePrComments(prId: string | null | undefined) {
   return useQuery({
-    queryKey: ["pr-comments", prId],
+    queryKey: queryKeys.prComments(prId),
     queryFn: () => api.get<PrReviewComment[]>(`/pulls/${prId}/comments`),
     enabled: !!prId,
   });
@@ -110,7 +127,7 @@ export function useCreatePrComment(prId: string | null | undefined) {
   return useMutation({
     mutationFn: (input: CreateCommentInput) =>
       api.post<PrReviewComment>(`/pulls/${prId}/comments`, input),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["pr-comments", prId] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.prComments(prId) }),
   });
 }
 
@@ -130,12 +147,74 @@ export function useRunReview() {
         ...(all ? { all } : {}),
       }),
     onSuccess: (_d, { prId }) => {
-      qc.invalidateQueries({ queryKey: ["reviews", prId] });
+      qc.invalidateQueries({ queryKey: queryKeys.reviews(prId) });
+      qc.invalidateQueries({ queryKey: queryKeys.prIntent(prId) });
+      qc.invalidateQueries({ queryKey: queryKeys.smartDiff(prId) });
+    },
+  });
+}
+
+export function usePrIntent(prId: string | null | undefined) {
+  return useQuery({
+    queryKey: queryKeys.prIntent(prId),
+    queryFn: () => api.get<PrIntentRecord | null>(`/pulls/${prId}/intent`),
+    enabled: !!prId,
+  });
+}
+
+/** Deterministic role-sorted diff (core/wiring/boilerplate), zero LLM calls. */
+export function useSmartDiff(prId: string | null | undefined) {
+  return useQuery({
+    queryKey: queryKeys.smartDiff(prId),
+    queryFn: () => api.get<SmartDiffResponse>(`/pulls/${prId}/smart-diff`),
+    enabled: !!prId,
+  });
+}
+
+/** Blast radius map for a PR (zero LLM calls; every state is a 200). */
+export function useBlast(prId: string | null | undefined) {
+  return useQuery({
+    queryKey: queryKeys.blast(prId),
+    queryFn: () => api.get<BlastResponse>(`/pulls/${prId}/blast`),
+    enabled: !!prId,
+  });
+}
+
+/** Passive reader of the cached summary. There is no queryFn to run:
+ *  the value is only ever written by useDeriveBlastSummary's onSuccess
+ *  (plan §2b D18 — a mutation's own data dies when the tab unmounts). */
+export function useBlastSummary(prId: string | null | undefined) {
+  return useQuery<BlastSummaryResponse>({
+    queryKey: queryKeys.blastSummary(prId),
+    queryFn: () => Promise.reject(new Error("blast summary is POST-only")),
+    enabled: false,
+    staleTime: Infinity,
+  });
+}
+
+/** The one optional LLM paragraph — explicitly triggered, never persisted. */
+export function useDeriveBlastSummary(prId: string | null | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<BlastSummaryResponse>(`/pulls/${prId}/blast/summary`),
+    onSuccess: (data) => qc.setQueryData(queryKeys.blastSummary(prId), data),
+  });
+}
+
+export function useDeriveIntent(prId: string | null | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (opts?: { force?: boolean }) =>
+      api.post<PrIntentRecord>(`/pulls/${prId}/intent`, opts?.force ? { force: true } : {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.prIntent(prId) });
     },
   });
 }
 
 // ---- Finding actions (accept/dismiss) ----
+// Deliberately does NOT invalidate the smart-diff query key: accept/dismiss
+// only mutates accepted_at/dismissed_at, so finding_lines is unchanged (plan §2b).
 export function useFindingAction() {
   const qc = useQueryClient();
   return useMutation({
@@ -155,7 +234,7 @@ export function useFindingAction() {
         reply ? { reply } : undefined,
       ),
     onSuccess: (_d, { prId }) => {
-      if (prId) qc.invalidateQueries({ queryKey: ["reviews", prId] });
+      if (prId) qc.invalidateQueries({ queryKey: queryKeys.reviews(prId) });
     },
   });
 }

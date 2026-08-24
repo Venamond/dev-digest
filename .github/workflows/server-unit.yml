@@ -65,6 +65,36 @@ jobs:
 
       - run: pnpm typecheck
 
+  architecture:
+    name: arch check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: server/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      # Onion rings for server + purity rules for reviewer-core (see
+      # .claude/skills/onion-architecture). reviewer-core uses npm.
+      - name: Install reviewer-core deps
+        working-directory: reviewer-core
+        run: npm ci
+
+      - run: pnpm arch:check
+      - run: pnpm arch:check:core
+
   unit:
     name: tests
     runs-on: ubuntu-latest

@@ -1,5 +1,6 @@
 import type {
   Finding,
+  Intent,
   LLMProvider,
   PromptAssembly,
   Review,
@@ -7,7 +8,8 @@ import type {
   UnifiedDiff,
 } from '@devdigest/shared';
 import { Review as ReviewSchema } from '@devdigest/shared';
-import { assemblePrompt } from '../prompt.js';
+import { assemblePrompt, type ProjectContextDoc } from '../prompt.js';
+import { summarizePromptAssembly } from '../prompt-log.js';
 import { groundFindings, groundingSummary } from '../grounding.js';
 import { reduceReviews, scoreFromFindings, sliceDiff } from './reduce.js';
 
@@ -56,8 +58,11 @@ export interface ReviewInput {
   skills?: string[];
   /** Curated memory items. */
   memory?: string[];
-  /** Project-context spec chunks (untrusted; delimiter-wrapped downstream). */
-  specs?: string[];
+  /**
+   * Attached project-context documents (untrusted; each delimiter-wrapped
+   * downstream under a `### <path>` heading, in the order given).
+   */
+  specs?: ProjectContextDoc[];
   /**
    * Optional callers-of-changed-symbols digest (T1.3). Untrusted; rendered
    * before the diff section. Empty/undefined → section omitted.
@@ -71,6 +76,8 @@ export interface ReviewInput {
   /** PR author's description/body (untrusted; truncated + delimiter-wrapped in
       the prompt). Empty/undefined → section omitted. */
   prDescription?: string;
+  /** Classified PR intent (untrusted). Empty/undefined → section omitted. */
+  intent?: Intent;
   /** Task framing line, e.g. "Review PR #482 …". */
   task?: string;
   /** Override the structured-output retry budget. */
@@ -82,6 +89,8 @@ export interface ReviewInput {
    * review group into one session in the OpenRouter dashboard.
    */
   sessionId?: string;
+  /** Correlation id for prompt-assembly logs (studio: agent_runs.id). */
+  correlationId?: string;
   /** Progress sink. */
   onEvent?: (e: ReviewEvent) => void;
   /**
@@ -135,6 +144,15 @@ export async function reviewPullRequest(input: ReviewInput): Promise<ReviewOutco
     callers: input.callers,
     repoMap: input.repoMap,
     prDescription: input.prDescription,
+    intent: input.intent
+      ? JSON.stringify({
+          intent: input.intent.intent,
+          in_scope: input.intent.in_scope,
+          out_of_scope: input.intent.out_of_scope,
+          risk_areas: input.intent.risk_areas,
+          missing_context: input.intent.missing_context,
+        })
+      : undefined,
     task: input.task,
   };
 
@@ -171,6 +189,19 @@ export async function reviewPullRequest(input: ReviewInput): Promise<ReviewOutco
     );
     const a = assemblePrompt({ ...promptParts, diff: chunk.diffText });
     if (mode === 'single-pass') assembly = a.assembly;
+    const summary = summarizePromptAssembly(a.assembly, {
+      diffChars: chunk.diffText.length,
+      taskChars: input.task?.length,
+    });
+    emit('info', 'Prompt assembled', {
+      correlationId: input.correlationId ?? input.sessionId ?? '',
+      model: input.model,
+      prompt: 'review',
+      chunk: chunk.label,
+      sections: summary.sections,
+      totalChars: summary.totalChars,
+      tokensApprox: summary.tokensApprox,
+    });
     const res = await input.llm.completeStructured<Review>({
       model: input.model,
       schema: ReviewSchema,

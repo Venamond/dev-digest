@@ -9,9 +9,12 @@ import {
   vector,
   index,
   uniqueIndex,
+  primaryKey,
 } from 'drizzle-orm/pg-core';
 import { workspaces } from './core';
 import { repos } from './repos';
+import { agents } from './agents';
+import { skills } from './skills';
 
 // ============================================================ Context & codebase
 
@@ -124,3 +127,54 @@ export const onboarding = pgTable('onboarding', {
   json: jsonb('json').notNull(),
   generatedAt: timestamp('generated_at', { withTimezone: true }).defaultNow().notNull(),
 });
+
+// ---------------------------------------------------- Project Context folder
+
+/**
+ * Documents of the reviewed repository attached to an agent, mirroring
+ * `agent_skills`: the join carries only the repository-relative PATH and the
+ * human's order — never the document's text, which is re-read from the clone
+ * on every run.
+ *
+ * The composite primary key makes "the same path twice in one list"
+ * unrepresentable rather than merely rejected, and `repo_id`'s cascade means a
+ * deleted repository takes its attachments with it with no application code.
+ * `order` is a reserved word in SQL — it is quoted in the migration.
+ */
+export const agentContextDocs = pgTable(
+  'agent_context_docs',
+  {
+    agentId: uuid('agent_id')
+      .notNull()
+      .references(() => agents.id, { onDelete: 'cascade' }),
+    repoId: uuid('repo_id')
+      .notNull()
+      .references(() => repos.id, { onDelete: 'cascade' }),
+    path: text('path').notNull(),
+    order: integer('order').notNull().default(0),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.agentId, t.repoId, t.path] }) }),
+);
+
+/**
+ * The same, for a skill. Every agent linked to the skill with BOTH switches on
+ * (`agent_skills.enabled` AND `skills.enabled`) inherits these documents.
+ *
+ * Deliberately NOT covered by `skill_versions`: attaching a document writes no
+ * version snapshot, so restoring an older skill version leaves the attachments
+ * untouched.
+ */
+export const skillContextDocs = pgTable(
+  'skill_context_docs',
+  {
+    skillId: uuid('skill_id')
+      .notNull()
+      .references(() => skills.id, { onDelete: 'cascade' }),
+    repoId: uuid('repo_id')
+      .notNull()
+      .references(() => repos.id, { onDelete: 'cascade' }),
+    path: text('path').notNull(),
+    order: integer('order').notNull().default(0),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.skillId, t.repoId, t.path] }) }),
+);

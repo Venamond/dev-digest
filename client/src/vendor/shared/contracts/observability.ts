@@ -10,6 +10,7 @@ import { Severity } from './findings.js';
  *   - AgentColumn          one agent's column in the multi-agent view
  *   - Conflict / ConflictTake  where agents disagree on the same file:line
  *   - AgentStats           per-agent quality aggregates (GET /agents/:id/stats)
+ *   - SkillStats           per-skill usage aggregates (GET /skills/:id/stats)
  *   - CuratorResult        the cross-session memory curator outcome
  *
  * The single-document run trace itself stays in `contracts/trace.ts` (RunTrace).
@@ -93,6 +94,20 @@ export type MultiAgentRun = z.infer<typeof MultiAgentRun>;
 export const StatPoint = z.object({ label: z.string(), value: z.number() });
 export type StatPoint = z.infer<typeof StatPoint>;
 
+/** One row in the Agent Stats → Run history table. */
+export const AgentStatsRun = z.object({
+  run_id: z.string(),
+  ran_at: z.string(),
+  pr_number: z.number().int().nullable(),
+  repo_id: z.string().nullable(),
+  tokens_in: z.number().int().nullable(),
+  tokens_out: z.number().int().nullable(),
+  cost_usd: z.number().nullable(),
+  findings_count: z.number().int().nullable(),
+  source: z.enum(['local', 'ci']),
+});
+export type AgentStatsRun = z.infer<typeof AgentStatsRun>;
+
 export const AgentStats = z.object({
   agent_id: z.string(),
   agent_name: z.string(),
@@ -113,10 +128,47 @@ export const AgentStats = z.object({
     WARNING: z.number().int(),
     SUGGESTION: z.number().int(),
   }),
-  /** recent runs for a small trend chart (oldest→newest). */
+  /** Category → count for the findings donut. */
+  findings_by_category: z.record(z.string(), z.number().int()),
+  /** Daily run counts for a small trend chart (oldest→newest). */
   trend: z.array(StatPoint),
+  /** Newest-first run rows for the history table. */
+  recent_runs: z.array(AgentStatsRun),
 });
 export type AgentStats = z.infer<typeof AgentStats>;
+
+/** One agent currently linked to a skill (Stats → Agents using this skill). */
+export const SkillStatsAgent = z.object({
+  id: z.string(),
+  name: z.string(),
+  /** Agent's own enabled flag. */
+  enabled: z.boolean(),
+  /** Per-agent link toggle (agent_skills.enabled). */
+  link_enabled: z.boolean(),
+});
+export type SkillStatsAgent = z.infer<typeof SkillStatsAgent>;
+
+/** Per-skill usage aggregates for GET /skills/:id/stats. */
+export const SkillStats = z.object({
+  skill_id: z.string(),
+  skill_name: z.string(),
+  /** Window applied to findings only — runs / pull rate are all-time. */
+  findings_window_days: z.number().int(),
+  agent_count: z.number().int(),
+  agents: z.array(SkillStatsAgent),
+  /** Runs that could have pulled the skill (denominator). */
+  runs_total: z.number().int(),
+  /** Runs whose prompt actually contained it. */
+  runs_pulled: z.number().int(),
+  pull_rate: z.number().nullable(),
+  findings_total: z.number().int(),
+  accepted: z.number().int(),
+  dismissed: z.number().int(),
+  pending: z.number().int(),
+  accept_rate: z.number().nullable(),
+  findings_by_category: z.record(z.string(), z.number().int()),
+});
+export type SkillStats = z.infer<typeof SkillStats>;
 
 // ---------------------------------------------------------------------------
 // Cross-session memory curator

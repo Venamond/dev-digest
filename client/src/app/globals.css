@@ -12,6 +12,119 @@
   src: local("Inter");
 }
 
+/* Rendered-markdown block elements (`.dd-md` is the wrapper emitted by
+   vendor/ui's Markdown primitive). That primitive only styles inline nodes
+   (p / strong / code / a), and styles.css resets `h1..h4, p { margin: 0 }`
+   globally — so without the rules below, headings collapse against their
+   text and fenced blocks get no block treatment. vendor/ui is read-only
+   (root AGENTS.md), which is why this lives here. */
+.dd-md h1,
+.dd-md h2,
+.dd-md h3,
+.dd-md h4 {
+  margin: 18px 0 8px;
+  line-height: 1.3;
+  color: var(--text-primary);
+}
+.dd-md h1 {
+  font-size: 1.35em;
+  font-weight: 650;
+}
+.dd-md h2 {
+  font-size: 1.15em;
+  font-weight: 650;
+}
+.dd-md h3,
+.dd-md h4 {
+  font-size: 1em;
+  font-weight: 600;
+}
+/* No leading gap at the top of a preview panel. */
+.dd-md > :first-child {
+  margin-top: 0;
+}
+
+/* `list-style` must be restated: styles.css imports tailwindcss, whose
+   preflight resets `ul, ol { list-style: none }` — without this, bullets
+   and numbers disappear and items read as plain indented text. */
+.dd-md ul,
+.dd-md ol {
+  margin: 0 0 10px;
+  padding-left: 22px;
+}
+.dd-md ul {
+  list-style: disc;
+}
+.dd-md ol {
+  list-style: decimal;
+}
+.dd-md ul ul {
+  list-style: circle;
+}
+.dd-md li {
+  margin: 3px 0;
+}
+.dd-md li::marker {
+  color: var(--text-muted);
+}
+.dd-md li > ul,
+.dd-md li > ol {
+  margin: 3px 0 0;
+}
+
+.dd-md pre {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow-x: auto;
+  tab-size: 2;
+  line-height: 1.5;
+}
+/* The primitive renders fenced code through the same `code` component as
+   inline code, applying an inline-pill look via a React `style={}` attribute.
+   Inline styles outrank class selectors, so `!important` is required to undo
+   it inside a block. */
+.dd-md pre code {
+  padding: 0 !important;
+  background: none !important;
+  border-radius: 0 !important;
+  color: var(--text-primary) !important;
+  font-size: 12px !important;
+}
+
+.dd-md blockquote {
+  margin: 0 0 10px;
+  padding: 2px 0 2px 12px;
+  border-left: 2px solid var(--border-strong);
+  color: var(--text-secondary);
+}
+
+.dd-md hr {
+  margin: 16px 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+/* remark-gfm is enabled, so tables can appear. */
+.dd-md table {
+  margin: 0 0 10px;
+  border-collapse: collapse;
+  display: block;
+  overflow-x: auto;
+}
+.dd-md th,
+.dd-md td {
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+.dd-md th {
+  background: var(--bg-surface);
+  font-weight: 600;
+}
+
 @keyframes ddToastIn {
   from {
     opacity: 0;
@@ -21,4 +134,34 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* File/line deep links inside cards (BlastCard's callers and importers).
+   A hover state cannot live in `styles.ts` — those are inline style objects
+   and inline styles carry no pseudo-classes. Same reason `.dd-md` above is
+   here rather than in the Markdown primitive.
+
+   The link keeps its resting colour so the blue in that column stays with the
+   `<>` marks and the endpoint chips; hover is what promotes it, which is also
+   the affordance that says "this opens something". */
+.dd-fileref:hover,
+.dd-fileref:focus-visible {
+  /* `!important` is load-bearing, not decoration. The resting colour comes
+     from a React `style={}` attribute (BlastCard's styles.ts), and an inline
+     style outranks any class selector — without this the rule parses, matches,
+     and changes nothing. Same trap as the `pre > code` override recorded in
+     client/INSIGHTS.md. */
+  color: var(--accent-text) !important;
+  text-decoration-line: underline !important;
+}
+
+/* One review-focus entry is a hoverable item: the whole row lifts, not just the
+   link inside it, so the target of the click is unambiguous. Requested on
+   2026-08-24; M1 draws only the resting state, so this is an addition to the
+   design rather than a departure from it.
+   `!important` for the same reason as `.dd-fileref` above — the row's resting
+   background comes from a React `style={}` attribute, and an inline style
+   outranks any class selector. */
+.dd-focus-row:hover {
+  background: var(--bg-hover) !important;
 }

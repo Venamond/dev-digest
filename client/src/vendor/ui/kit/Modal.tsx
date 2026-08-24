@@ -8,6 +8,8 @@ export function Modal({
   onClose,
   children,
   footer,
+  /** When false, the dialog body does not scroll — callers own nested scroll (e.g. a textarea). */
+  bodyScroll = true,
 }: {
   width?: number;
   title?: React.ReactNode;
@@ -15,6 +17,7 @@ export function Modal({
   onClose?: () => void;
   children?: React.ReactNode;
   footer?: React.ReactNode;
+  bodyScroll?: boolean;
 }) {
   return (
     <div style={{ position: "fixed", inset: 0, display: "grid", placeItems: "center", zIndex: 50, padding: 28 }}>
@@ -47,6 +50,7 @@ export function Modal({
             gap: 14,
             padding: "18px 24px",
             borderBottom: "1px solid var(--border)",
+            flexShrink: 0,
           }}
         >
           <div style={{ flex: 1 }}>
@@ -57,9 +61,26 @@ export function Modal({
           </div>
           {onClose && <IconBtn icon="X" label="Close" onClick={onClose} />}
         </div>
-        <div style={{ flex: 1, overflow: "auto" }}>{children}</div>
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            overflow: bodyScroll ? "auto" : "hidden",
+            display: bodyScroll ? undefined : "flex",
+            flexDirection: bodyScroll ? undefined : "column",
+          }}
+        >
+          {children}
+        </div>
         {footer && (
-          <div style={{ borderTop: "1px solid var(--border)", padding: "16px 24px", background: "var(--bg-surface)" }}>
+          <div
+            style={{
+              borderTop: "1px solid var(--border)",
+              padding: "16px 24px",
+              background: "var(--bg-surface)",
+              flexShrink: 0,
+            }}
+          >
             {footer}
           </div>
         )}

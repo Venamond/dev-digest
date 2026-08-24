@@ -1,24 +1,56 @@
 {
   "title": "Project Context",
-  "chunks": "{count} chunks",
-  "reindex": "Re-index",
-  "indexing": "Indexing…",
-  "resync": "Resync",
-  "resyncing": "Resyncing…",
-  "indexStatus": "Index status: {status}",
-  "loadError": "Couldn’t load specs",
-  "kb": "{kb}kb",
+  "crumbWorkspace": "Workspace",
+  "crumbContext": "Project Context",
+  "refresh": "Refresh",
+  "refreshing": "Refreshing…",
+  "loadError": "Couldn’t load the documents",
+  "list": {
+    "folderLabel": "in {folder}"
+  },
+  "totals": {
+    "line": "{files, plural, one {# document} other {# documents}} · ~{tokens, number} tokens in total",
+    "caption": "What this repository holds — not what a run sends.",
+    "updated": "last updated {ago}"
+  },
   "empty": {
-    "title": "No spec files yet",
-    "body": "Drop your PRDs, tech specs, and acceptance criteria under .devdigest/specs/. Every agent and the PR brief read them as grounding context."
+    "title": "No markdown documents found",
+    "body": "DevDigest reads markdown from specs/, docs/ and insights/ in this repository. Add a file under one of those folders, then refresh."
+  },
+  "select": {
+    "title": "Select a document",
+    "body": "Pick a document on the left to read it or edit it."
+  },
+  "detail": {
+    "tokens": "~{tokens, number} tokens"
   },
   "mode": {
-    "preview": "preview",
-    "edit": "edit"
+    "preview": "Preview",
+    "edit": "Edit"
+  },
+  "usedBy": {
+    "heading": "Used by {count, plural, =0 {no agents} one {# agent} other {# agents}}",
+    "viaSkill": "via {skill}",
+    "none": "No agent reads this document yet. Attach it on an agent’s or a skill’s Context tab."
   },
   "editor": {
-    "loadError": "Couldn’t load spec",
+    "loadError": "Couldn’t load this document",
+    "localOnly": "A saved change stays on this machine only: it is lost on the next resync of this repository and never reaches GitHub.",
     "save": "Save",
-    "saving": "Saving…"
+    "saving": "Saving…",
+    "saveError": "Couldn’t save. Your changes are still in the editor — try again.",
+    "saved": "Saved to this machine. {count, plural, =0 {No agent reads} one {# agent reads} other {# agents read}} this document.",
+    "unsaved": "Unsaved",
+    "ariaLabel": "Document body"
+  },
+  "railNoSelection": "—",
+  "coverage": "COVERAGE",
+  "toolbar": {
+    "newDoc": "New document",
+    "newFolder": "New folder",
+    "upload": "Upload a markdown file",
+    "namePrompt": "Path under a search root, e.g. docs/architecture.md",
+    "folderPrompt": "Folder path, e.g. docs/adr — a README.md is created inside it",
+    "createFailed": "Couldn’t create it: {reason}"
   }
 }

@@ -48,13 +48,18 @@ describe('reviewPullRequest (engine)', () => {
     const diff = await new MockGitClient().diff();
 
     const events: string[] = [];
+    const eventData: unknown[] = [];
     const outcome = await reviewPullRequest({
-      systemPrompt: 'security reviewer',
+      systemPrompt: 'security reviewer PLANTED_SECRET_NOT_FOR_LOG',
       model: 'gpt-4.1',
       diff,
       llm,
       task: 'Review PR #482',
-      onEvent: (e) => events.push(e.msg),
+      correlationId: 'run-test-1',
+      onEvent: (e) => {
+        events.push(e.msg);
+        if (e.data !== undefined) eventData.push(e.data);
+      },
     });
 
     expect(outcome.mode).toBe('single-pass');
@@ -67,6 +72,15 @@ describe('reviewPullRequest (engine)', () => {
     expect(outcome.review.score).toBe(65);
     // progress is surfaced (server bridges this onto SSE; runner logs it)
     expect(events.some((m) => m.includes('Citation grounding'))).toBe(true);
+    expect(events.some((m) => m === 'Prompt assembled')).toBe(true);
+    const dumped = JSON.stringify(eventData);
+    expect(dumped).not.toContain('PLANTED_SECRET_NOT_FOR_LOG');
+    const assembled = eventData.find(
+      (d) => d !== null && typeof d === 'object' && 'sections' in d && 'correlationId' in d,
+    ) as { correlationId: string; model: string; sections: unknown[] };
+    expect(assembled.correlationId).toBe('run-test-1');
+    expect(assembled.model).toBe('gpt-4.1');
+    expect(assembled.sections.length).toBeGreaterThan(0);
   });
 
   it('score is deterministic from findings: a clean approve scores 100', async () => {

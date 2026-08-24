@@ -45,6 +45,21 @@ function makeService(opts: { basics: Basics | null; state?: IndexState | null; g
     db: {}, // never queried — service.repo is overridden below
     depgraph: { buildEdges: async () => [] },
     tokenizer: { count: (text: string) => Math.ceil(text.length / 4) },
+    fs: {
+      readFile: async () => '',
+      readdir: async () => [],
+      stat: async () => ({ size: 0 }),
+      realpath: async (p: string) => p,
+    },
+    codeAnalysis: {
+      langForFile: () => null,
+      parseSymbols: () => [],
+      parseReferences: () => [],
+      parseImports: () => [],
+      parseInvocationHeads: () => [],
+      extractEndpoints: () => [],
+      extractCrons: () => [],
+    },
   } as unknown as Container;
 
   const service = new RepoIntelService(container);

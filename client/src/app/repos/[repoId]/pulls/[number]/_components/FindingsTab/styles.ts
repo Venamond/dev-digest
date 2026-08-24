@@ -35,6 +35,17 @@ export const s = {
     fontWeight: 700,
     color: "var(--crit)",
   } satisfies CSSProperties,
+  findingNotFound: {
+    marginBottom: 18,
+    display: "flex",
+    alignItems: "center",
+    padding: "12px 16px",
+    borderRadius: 8,
+    border: "1px solid var(--border)",
+    background: "var(--bg-elevated)",
+    fontSize: 13,
+    color: "var(--text-muted)",
+  } satisfies CSSProperties,
   liveRunSection: {
     marginBottom: 18,
   } satisfies CSSProperties,

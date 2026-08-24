@@ -1,13 +1,15 @@
-/* AppShell.tsx — thin orchestrator: wires @devdigest/ui AppFrame to the command
-   palette, shortcuts help, global keyboard shortcuts, and the shell context.
-   All concerns live in ./hooks; overlay open/close is local view state. */
+/* AppShell.tsx — persistent chrome: AppFrame + command palette + shortcuts.
+   Mounted once under Providers so sidebar/nav survive route changes.
+   Pages publish breadcrumbs via useSetCrumb — they must NOT wrap AppShell. */
 "use client";
 
 import React from "react";
-import { AppFrame, CommandPalette, ShortcutsHelp, type Crumb } from "@devdigest/ui";
+import { AppFrame, CommandPalette, ShortcutsHelp } from "@devdigest/ui";
+import { useCrumb } from "./crumb-context";
 import { useGlobalShortcuts, useShellCommands, useShellContext } from "./hooks";
 
-export function AppShell({ children, crumb }: { children: React.ReactNode; crumb?: Crumb[] }) {
+export function AppShell({ children }: { children: React.ReactNode }) {
+  const crumb = useCrumb();
   const [paletteOpen, setPaletteOpen] = React.useState(false);
   const [helpOpen, setHelpOpen] = React.useState(false);
   const openPalette = React.useCallback(() => setPaletteOpen(true), []);

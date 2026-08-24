@@ -20,6 +20,30 @@ coverage/
 clones/
 playwright-report/
 test-results/
+.playwright-mcp/
 
 # emdash worktree config (local)
 .emdash.json
+
+# local git worktrees
+.claude/worktrees/
+
+# pr-self-review verdict memoization (local state, not a shared report)
+.claude/pr-self-review.local.md
+
+# local brainstorm companion sessions
+.superpowers/
+
+# Agent run reports (implementer / test-writer). Working artifacts, not docs:
+# they exist so a truncated chat message costs a Read instead of a re-run.
+# Plans in docs/plans/ are the durable record and stay committed.
+docs/reports/
+
+# Per-track plan extracts written by /run-plan — generated verbatim from the
+# plan at dispatch time, never edited by hand, never a source of truth.
+docs/plans/.extract/
+
+# Design mockups handed to /spec-creator. They are inputs to a spec interview,
+# not repository artifacts — a spec's "Design sources" table names them by path
+# and that path resolves only on the machine the interview ran on.
+img/

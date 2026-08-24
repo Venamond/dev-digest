@@ -1,7 +1,12 @@
 {
   "card": {
     "noDescription": "No description",
-    "skillCount": "{count} skills"
+    "skillCount": "{count} skills",
+    "runs": "{count} runs",
+    "accept": "{pct}% accept",
+    "avgCost": "${cost} avg",
+    "deleteConfirm": "Delete agent \"{name}\"? This cannot be undone.",
+    "deleteTitle": "Delete agent"
   },
   "list": {
     "breadcrumbLab": "Skills Lab",
@@ -48,7 +53,8 @@
       "skills": "Skills",
       "evals": "Evals",
       "stats": "Stats",
-      "ci": "CI"
+      "ci": "CI",
+      "context": "Context"
     }
   },
   "config": {
@@ -91,9 +97,81 @@
     "title": "Skills",
     "enabledCount": "{linked} of {total} enabled",
     "filterPlaceholder": "Filter skills…",
-    "orderHint": "Order matters — earlier skills appear earlier in the assembled prompt. Toggle to attach."
+    "orderHint": "Order matters — earlier skills appear earlier in the assembled prompt. Drag a row, or use its move buttons, to reorder.",
+    "loadError": "Could not load skills for this agent.",
+    "empty": "No skills in this workspace yet. Create skills in Skills Lab, then bind them here.",
+    "globallyOff": "globally off",
+    "dragHint": "Drag to reorder",
+    "dragDisabledHint": "Only enabled skills are ordered — tick this one to reorder it",
+    "savedToast": "Agent skills saved",
+    "moveUp": "Move {name} up",
+    "moveDown": "Move {name} down"
+  },
+  "stats": {
+    "loadError": "Could not load stats for this agent.",
+    "emptyTitle": "No runs yet",
+    "emptyBody": "Run this agent on a PR to populate accept-rate, findings, cost and latency.",
+    "kpi": {
+      "runs": "TOTAL RUNS",
+      "avgCost": "AVG COST / RUN",
+      "avgDuration": "AVG DURATION",
+      "acceptRate": "ACCEPT RATE"
+    },
+    "mostUsedSkills": "Most-used skills",
+    "mostPulledMemory": "Most-pulled memory",
+    "skillsLater": "Skill usage telemetry ships in a later lesson.",
+    "memoryLater": "Memory pull rates ship in a later lesson.",
+    "bySeverity": "Findings by severity",
+    "byCategory": "Findings by category",
+    "noFindings": "No findings yet.",
+    "runHistory": "Run history",
+    "noRuns": "No runs recorded.",
+    "viewTrace": "View trace",
+    "col": {
+      "timestamp": "Timestamp",
+      "pr": "PR",
+      "tokens": "Tokens",
+      "cost": "Cost",
+      "findings": "Findings",
+      "source": "Source"
+    }
   },
   "mount": {
     "body": "Mount point for {owner}. The Agent Editor shell + tab routing are wired by A2 — {owner} renders this tab."
+  },
+  "context": {
+    "title": "Project Context",
+    "attachedCount": "{attached} of {total} attached",
+    "filterPlaceholder": "Filter documents…",
+    "orderHint": "Order matters — earlier documents appear earlier in the assembled block. Toggle to attach.",
+    "repoFallback": "this repository",
+    "noRepo": "Select a repository first — project context is attached per repository.",
+    "loadError": "Could not load project context for this agent.",
+    "empty": "No markdown documents found under specs/, docs/ or insights/ in this repository.",
+    "injectedTotal": "~{tokens, number} tokens selected",
+    "injectedCaption": "Injected as an untrusted ## Project context block into every run.",
+    "ceilingWarning": "~{tokens, number} tokens exceeds the {ceiling, number}-token project-context ceiling. A run takes documents in order and skips any that no longer fit — whole, never truncated.",
+    "rowMeta": "in {folder} · used by {agents, plural, =0 {no agents} one {# agent} other {# agents}}",
+    "rowTokens": "~{tokens, number} tok",
+    "rootPill": "{root}",
+    "unreadable": "cannot be read",
+    "attachAria": "Attach or detach {path}",
+    "moveUp": "Move {path} up",
+    "moveDown": "Move {path} down",
+    "dragHint": "Drag to reorder",
+    "dragDisabledHint": "Only this agent’s own documents are ordered here — an inherited one is positioned by its skill",
+    "preview": "Preview",
+    "previewLoadError": "Could not load this document.",
+    "previewUsedByNone": "No agent reads this document yet.",
+    "previewUsedByVia": "via {skill}",
+    "attach": "Attach",
+    "detach": "Detach",
+    "savedToast": "Project context saved",
+    "attachDoc": "Attach {path}",
+    "detachDoc": "Detach {path}",
+    "attached": "Attached",
+    "previewUsedBy": "Used by {agents, plural, =0 {no agents} one {# agent} other {# agents}}",
+    "previewTokens": "{tokens, number} tokens",
+    "dragAloneHint": "Ordering needs at least two attached documents."
   }
 }

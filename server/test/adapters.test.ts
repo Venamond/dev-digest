@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { Review } from '@devdigest/shared';
+import { mkdtemp, mkdir, readFile, writeFile, rm, symlink } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { Review, type RepoRef } from '@devdigest/shared';
+import { SimpleGitClient } from '../src/adapters/git/simple-git.js';
 import {
   MockLLMProvider,
   MockGitClient,
@@ -10,6 +15,8 @@ import {
 import { assemblePrompt } from '../src/platform/prompt.js';
 import { groundFindings } from '../src/platform/grounding.js';
 import { estimateCost } from '../src/adapters/llm/pricing.js';
+
+const REPO: RepoRef = { owner: 'acme', name: 'payments-api' };
 
 describe('mock adapters (no network)', () => {
   it('MockGitClient.diff parses into hunks with new line numbers', async () => {
@@ -37,6 +44,76 @@ describe('mock adapters (no network)', () => {
     expect((await ci.symbols({ owner: 'a', name: 'b' }))[0]!.name).toBe('rateLimit');
     const emb = await new MockEmbedder().embed(['a', 'b']);
     expect(emb[0]!).toHaveLength(1536);
+  });
+
+  it('MockGitClient implements writeFile and refuses a traversing path', async () => {
+    const git = new MockGitClient({ files: { 'specs/api.md': 'old' } });
+    await git.writeFile(REPO, 'specs/api.md', 'new');
+    expect(await git.readFile(REPO, 'specs/api.md')).toBe('new');
+    expect(git.wrote).toEqual([{ path: 'specs/api.md', content: 'new' }]);
+    await expect(git.writeFile(REPO, '../../etc/passwd', 'x')).rejects.toThrow(/outside the clone/);
+    await expect(git.writeFile(REPO, '/etc/passwd', 'x')).rejects.toThrow(/outside the clone/);
+  });
+});
+
+describe('SimpleGitClient.writeFile (real fs, no network)', () => {
+  /** A clone directory laid out the way `clonePathFor` expects. */
+  async function makeClone(): Promise<{ dir: string; clone: string }> {
+    const dir = await mkdtemp(join(tmpdir(), 'devdigest-writefile-'));
+    const clone = join(dir, REPO.owner, REPO.name);
+    await mkdir(join(clone, 'specs'), { recursive: true });
+    return { dir, clone };
+  }
+
+  it('writes UTF-8 into the clone and reads the same bytes back', async () => {
+    const { dir, clone } = await makeClone();
+    try {
+      const git = new SimpleGitClient(dir);
+      expect(git.clonePathFor(REPO)).toBe(clone);
+      await git.writeFile(REPO, 'specs/api.md', '# API\n\nNever log a token — ünicode ✓\n');
+      expect(await readFile(join(clone, 'specs', 'api.md'), 'utf8')).toBe(
+        '# API\n\nNever log a token — ünicode ✓\n',
+      );
+      expect(await git.readFile(REPO, 'specs/api.md')).toContain('Never log a token');
+      // No commit, no remote: the clone is not even a git repository here, and
+      // the write still succeeds.
+      expect(existsSync(join(clone, '.git'))).toBe(false);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('refuses a traversal, an absolute path, and a symlink pointing out of the clone', async () => {
+    const { dir, clone } = await makeClone();
+    const outside = join(dir, 'outside.md');
+    await writeFile(outside, 'untouched', 'utf8');
+    try {
+      const git = new SimpleGitClient(dir);
+      await expect(git.writeFile(REPO, '../../outside.md', 'pwned')).rejects.toThrow(
+        /outside the clone/,
+      );
+      await expect(git.writeFile(REPO, outside, 'pwned')).rejects.toThrow(/outside the clone/);
+      await expect(git.writeFile(REPO, 'specs/../../../outside.md', 'pwned')).rejects.toThrow(
+        /outside the clone/,
+      );
+
+      // A symlink INSIDE the clone pointing at a file outside it.
+      await symlink(outside, join(clone, 'specs', 'escape.md'));
+      await expect(git.writeFile(REPO, 'specs/escape.md', 'pwned')).rejects.toThrow(
+        /outside the clone/,
+      );
+      // A symlinked DIRECTORY inside the clone pointing out of it.
+      await symlink(dir, join(clone, 'up'));
+      await expect(git.writeFile(REPO, 'up/outside.md', 'pwned')).rejects.toThrow(
+        /outside the clone/,
+      );
+
+      expect(await readFile(outside, 'utf8')).toBe('untouched');
+      // It creates no directories, so a write into a missing folder fails.
+      await expect(git.writeFile(REPO, 'nope/api.md', 'x')).rejects.toThrow();
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });
 

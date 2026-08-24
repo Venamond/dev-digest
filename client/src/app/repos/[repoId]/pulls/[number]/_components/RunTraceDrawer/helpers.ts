@@ -22,7 +22,12 @@ export function formatSeconds(ms: number): string {
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
-/** Token in→out summary (e.g. "12k→1.5k"). */
-export function formatTokens(tokensIn: number, tokensOut: number): string {
-  return `${(tokensIn / 1000).toFixed(0)}k→${(tokensOut / 1000).toFixed(1)}k`;
+
+/**
+ * Abbreviate a git sha for display. Anything that is not a full sha (a branch
+ * name, a tag) is returned untouched — the trace stores whatever
+ * `git.currentHead` answered, and truncating a name would misread it.
+ */
+export function shortRevision(revision: string): string {
+  return /^[0-9a-f]{40}$/i.test(revision) ? revision.slice(0, 7) : revision;
 }
