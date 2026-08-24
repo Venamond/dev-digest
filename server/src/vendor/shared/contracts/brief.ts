@@ -132,13 +132,129 @@ export const SmartDiff = z.object({
 export type SmartDiff = z.infer<typeof SmartDiff>;
 
 // ---- Composed PR Brief (pr_brief.json) ----
+
+/**
+ * One risk the brief raises. Distinct from `Risk` above: no `kind`, and its
+ * `file_refs` are grounded against the deterministic name set before the
+ * brief is ever persisted.
+ */
+export const BriefRisk = z.object({
+  title: z.string(),
+  explanation: z.string(),
+  severity: RiskSeverity,
+  file_refs: z.array(z.string()),
+});
+export type BriefRisk = z.infer<typeof BriefRisk>;
+
+export const ReviewFocusItem = z.object({
+  file_ref: z.string(),
+  reason: z.string(),
+  /**
+   * The line to open the file at (AC-40), attached by the SERVER after the
+   * model's answer is accepted. Three sources, first one that yields a line:
+   *
+   *  1. the highest-severity finding of this pull request's finished run
+   *     naming the same file, the lowest line number breaking a tie — it
+   *     points at the problem itself;
+   *  2. otherwise that file's first changed line from its stored patch, as
+   *     the HEAD numbers it — the diff can only point at where the file's
+   *     edits begin, which is why it loses to a finding;
+   *  3. otherwise none. Absent is a NORMAL value; the row still links to the
+   *     file.
+   *
+   * Never from the model, which is neither asked for a line nor told one
+   * exists. **`AC-2` does not forbid source 2**: it bounds what the model is
+   * SHOWN, not what the server may read, and a patch read to compute a line
+   * number is sent nowhere. This comment previously named the finding as the
+   * only source — an exclusion asserted without checking, which left every row
+   * lineless on any pull request that had never been reviewed.
+   *
+   * Never from the blast map either: a `BlastLink`'s `file:line` is relative
+   * to the INDEXED commit, not to this pull request's head.
+   *
+   * `.nullish()`, not `.nullable()`: `.nullable()` is required at the TS level
+   * and would break every existing literal of this shape, and a `pr_brief.json`
+   * row written before this field existed has no key here — a parse that fails
+   * on it would take the whole brief with it
+   * (`server/INSIGHTS.md:695-720`).
+   */
+  line: z.number().int().nullish(),
+});
+export type ReviewFocusItem = z.infer<typeof ReviewFocusItem>;
+
+/**
+ * What the brief carries. Every field is the model's, EXCEPT where the server
+ * completes or corrects it after the answer is accepted — two places today:
+ *
+ *  - `review_focus[].line` is set by the server and never asked of the model
+ *    (AC-40);
+ *  - `risk_level` is raised to the most severe entry in `risks` when the model
+ *    put it lower (AC-42). Raising only — a level ABOVE the listed risks is
+ *    the model's judgement that small risks compound, and is kept.
+ *
+ * Both happen before the brief is persisted, so a cached read serves the
+ * corrected values rather than the raw answer. Everything the server knows
+ * ABOUT the call — model id, cost, cache key, what was cut — lives on
+ * `PrBriefRecord` instead, not here.
+ *
+ * `risk_level` reuses `RiskSeverity`: high | medium | low, with no fourth
+ * value. No field here uses `.default()` — in Zod 3 a default is required on
+ * the OUTPUT type, so it breaks every hand-written literal annotated with
+ * this type.
+ */
 export const PrBrief = z.object({
-  intent: Intent,
-  blast: BlastRadius,
-  risks: Risks,
-  history: PrHistory,
+  what: z.string(),
+  why: z.string(),
+  risk_level: RiskSeverity,
+  risks: z.array(BriefRisk),
+  review_focus: z.array(ReviewFocusItem),
 });
 export type PrBrief = z.infer<typeof PrBrief>;
+
+/** The inputs a brief can be assembled from — the vocabulary of both the
+ * "included" list and the "cut"/"missing" lists the UI renders. */
+export const BriefInputId = z.enum([
+  'pr_meta',
+  'intent',
+  'blast_map',
+  'blast_summary',
+  'issue',
+  'documents',
+  'findings',
+  'changed_files',
+]);
+export type BriefInputId = z.infer<typeof BriefInputId>;
+
+/**
+ * One input the budget fitter removed, with a short deterministic phrase
+ * saying what went — e.g. 'caller tails', '3rd fragment of docs/x.md',
+ * 'issue body', 'findings below high', '412 of 530 changed files'.
+ * Built by the server, never by the model.
+ */
+export const BriefCut = z.object({
+  input: BriefInputId,
+  detail: z.string(),
+});
+export type BriefCut = z.infer<typeof BriefCut>;
+
+/**
+ * Present only when the fitter ran EVERY cut it is allowed to make and the
+ * request still exceeded the budget — an input nothing on AC-13's list can
+ * shrink far enough (a very wide pull request, or a blast map whose never-cut
+ * names of AC-14 alone are larger than the cap).
+ *
+ * It exists because the alternative is silence: before it, `fitToBudget`
+ * returned an oversized input with no signal, and a live build of 2026-08-24
+ * cut all 100 changed files and still sent 35 299 tokens against a 16 000
+ * budget while the card reported an ordinary brief. `measured` is the same
+ * quantity `BRIEF_TOKEN_BUDGET` bounds (system prompt + JSON schema + user
+ * text), counted with `cl100k_base` on the FITTED input.
+ */
+export const BriefOverBudget = z.object({
+  measured: z.number().int(),
+  budget: z.number().int(),
+});
+export type BriefOverBudget = z.infer<typeof BriefOverBudget>;
 
 // ---- Blast Radius API (L04) — distinct from the older BlastRadius above,
 // which is the PrBrief building block and keeps its shape. ----
@@ -299,3 +415,40 @@ export const BlastSummaryResponse = z.object({
   nodes: z.number().int(),
 });
 export type BlastSummaryResponse = z.infer<typeof BlastSummaryResponse>;
+
+/**
+ * A persisted brief plus its provenance: which model wrote it, what it cost,
+ * the cache key it was built under, and which inputs went in, were cut or
+ * were missing.
+ *
+ * Declared HERE rather than beside `PrBrief` above only because it references
+ * `BlastState`, and a `const` is in its temporal dead zone until the line that
+ * defines it has run. Moving it up would throw at module evaluation.
+ *
+ * `stale` is computed per request by comparing `state_key` against the
+ * current one — it is never stored.
+ */
+export const PrBriefRecord = z.object({
+  pr_id: z.string(),
+  brief: PrBrief,
+  model: z.string(),
+  cost_usd: z.number().nullable(),
+  tokens_in: z.number().int(),
+  tokens_out: z.number().int(),
+  built_at: z.string(),
+  state_key: z.string(),
+  head_sha: z.string(),
+  stale: z.boolean(),
+  inputs_included: z.array(BriefInputId),
+  inputs_cut: z.array(BriefCut),
+  inputs_missing: z.array(BriefInputId),
+  /**
+   * Non-null when the brief was built from an input that STILL exceeded the
+   * budget after every cut. Nullable rather than optional: a brief that does
+   * not say so must say so explicitly, and a reader who forgets the key reads
+   * `null`, never `undefined`.
+   */
+  inputs_over_budget: BriefOverBudget.nullable(),
+  blast_state: BlastState.nullable(),
+});
+export type PrBriefRecord = z.infer<typeof PrBriefRecord>;

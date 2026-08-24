@@ -7,7 +7,8 @@ import { type ReviewDto, type ReviewDtoFinding } from './helpers.js';
 import { ReviewRunExecutor, type Logger } from './run-executor.js';
 import { actOnFinding as actOnFindingImpl } from './findings.js';
 import { reviewToDto } from './helpers.js';
-import { classify, toPrIntentRecord } from './intent/classify.js';
+import { classify } from './intent/classify.js';
+import { toPrIntentRecord } from './intent/record.js';
 import { emitPromptAssemblyLog } from '../../platform/prompt-log.js';
 
 // Re-export DTO types + converters for backward-compatible imports from

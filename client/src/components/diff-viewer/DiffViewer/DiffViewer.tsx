@@ -23,6 +23,8 @@ export function DiffViewer({
   grouped = false,
   findings,
   onOpenFinding,
+  targetFile,
+  targetLine,
 }: {
   files: PrFile[];
   commenting?: DiffCommentApi;
@@ -30,6 +32,9 @@ export function DiffViewer({
   grouped?: boolean;
   findings?: FindingRecord[];
   onOpenFinding?: (findingId: string) => void;
+  /** A `?file=`/`?line=` deep link out of the brief (AC-29). */
+  targetFile?: string | null;
+  targetLine?: number | null;
 }) {
   const t = useTranslations("shell");
 
@@ -69,6 +74,8 @@ export function DiffViewer({
             commenting={commenting}
             findings={findingsByPath.get(f.path)}
             onOpenFinding={onOpenFinding}
+            targetFile={targetFile}
+            targetLine={targetLine}
           />
         ))}
       </div>
@@ -94,6 +101,8 @@ export function DiffViewer({
         commenting={commenting}
         smart={smart}
         onOpenFinding={onOpenFinding}
+        targetFile={targetFile}
+        targetLine={targetLine}
       />
     );
   });
@@ -112,6 +121,8 @@ export function DiffViewer({
           commenting={commenting}
           smart={smart}
           onOpenFinding={onOpenFinding}
+          targetFile={targetFile}
+          targetLine={targetLine}
           defaultOpen
         />
       )}

@@ -42,3 +42,8 @@ docs/reports/
 # Per-track plan extracts written by /run-plan — generated verbatim from the
 # plan at dispatch time, never edited by hand, never a source of truth.
 docs/plans/.extract/
+
+# Design mockups handed to /spec-creator. They are inputs to a spec interview,
+# not repository artifacts — a spec's "Design sources" table names them by path
+# and that path resolves only on the machine the interview ran on.
+img/

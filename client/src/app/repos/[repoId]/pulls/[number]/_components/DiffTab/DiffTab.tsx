@@ -25,6 +25,10 @@ interface DiffTabProps {
    *  101+ file PR summing `files` undercounts while `filesCount` is right. */
   additions: number;
   deletions: number;
+  /** A `?file=`/`?line=` deep link out of the brief: the card for that file
+   *  opens and scrolls itself into view (AC-29). */
+  targetFile?: string | null;
+  targetLine?: number | null;
 }
 
 export function DiffTab({
@@ -37,6 +41,8 @@ export function DiffTab({
   findings,
   onOpenFinding,
   runs,
+  targetFile,
+  targetLine,
 }: DiffTabProps) {
   const t = useTranslations("prReview");
   const { data: comments } = usePrComments(prId);
@@ -98,6 +104,8 @@ export function DiffTab({
         grouped={order === "smart"}
         findings={findings}
         onOpenFinding={onOpenFinding}
+        targetFile={targetFile}
+        targetLine={targetLine}
       />
     </section>
   );

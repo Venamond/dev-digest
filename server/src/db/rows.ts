@@ -23,6 +23,7 @@ export type RepoRow = typeof t.repos.$inferSelect;
 export type PrFileRow = typeof t.prFiles.$inferSelect;
 export type PrCommitRow = typeof t.prCommits.$inferSelect;
 export type PrIntentRow = typeof t.prIntent.$inferSelect;
+export type PrBriefRow = typeof t.prBrief.$inferSelect;
 
 /**
  * A projection, not a table row: the prior-PR list `modules/blast` shows is a

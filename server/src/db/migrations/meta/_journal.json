@@ -127,6 +127,13 @@
       "when": 1786310400000,
       "tag": "0017_project_context_attachments",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1786396800000,
+      "tag": "0018_pr_brief_cache",
+      "breakpoints": true
     }
   ]
 }

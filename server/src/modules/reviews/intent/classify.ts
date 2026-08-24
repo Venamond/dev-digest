@@ -2,7 +2,6 @@ import type { PrIntentRecord, GitHubClient } from '@devdigest/shared';
 import {
   Intent as IntentSchema,
   IntentMissingContext,
-  IntentRiskArea,
   RiskSeverity,
 } from '@devdigest/shared';
 import { z } from 'zod';
@@ -13,11 +12,12 @@ import {
 import type { Container } from '../../../platform/container.js';
 import { ConfigError } from '../../../platform/errors.js';
 import { fingerprint } from '../../../platform/prompt-log.js';
-import type { PrIntentRow, PullRow, RepoRow } from '../../../db/rows.js';
+import type { PullRow, RepoRow } from '../../../db/rows.js';
 import type { ReviewRepository } from '../repository.js';
 import { resolveFeatureModel } from '../../settings/feature-models.js';
 import { gather } from './gather.js';
 import { INTENT_SYSTEM_PROMPT } from './prompt.js';
+import { toPrIntentRecord } from './record.js';
 
 /** All fields required — OpenAI/OpenRouter strict json_schema rejects `.default()` optionals. */
 const IntentLlmSchema = z.object({
@@ -49,23 +49,6 @@ export type ClassifyResult = {
   /** sha256-12 of system + evidence; never the bodies. */
   promptFingerprints?: { system: string; evidence: string };
 };
-
-export function toPrIntentRecord(row: PrIntentRow, pull: PullRow): PrIntentRecord {
-  return {
-    intent: row.intent,
-    in_scope: row.inScope,
-    out_of_scope: row.outOfScope,
-    risk_areas: (row.riskAreas ?? []).map((r) => IntentRiskArea.parse(r)),
-    confidence: row.confidence ?? 0,
-    sources: row.sources ?? [],
-    missing_context: row.missingContext ?? [],
-    pr_id: pull.id,
-    head_sha: row.headSha ?? '',
-    model: row.model ?? '',
-    classified_at: row.classifiedAt?.toISOString() ?? '',
-    stale: !row.headSha || row.headSha !== pull.headSha,
-  };
-}
 
 export async function classify(args: {
   container: Container;

@@ -55,6 +55,11 @@ describe("A5 Run Trace drawer (smoke)", () => {
     expect(screen.getByText("Tool calls")).toBeInTheDocument();
     // CostBadge (Task 10) formats sub-$1 costs with 3 decimals: 0.06 -> "$0.060".
     expect(screen.getByText("$0.060")).toBeInTheDocument();
+    // AC-25: the drawer inherits the product's single token format from
+    // `@/lib/format-tokens` — one decimal each side, uppercase K. Exact copy is
+    // deliberate here: the format IS the criterion (client/INSIGHTS.md:460-476).
+    // 12000 -> "12.0K", 1500 -> "1.5K"; the old helper rendered "12k\u21921.5k".
+    expect(screen.getByText("12.0K\u21921.5K")).toBeInTheDocument();
   });
 
   it("switches to the live log tab", () => {

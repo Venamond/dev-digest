@@ -13,6 +13,7 @@ when a run left a narrative worth keeping.
 
 | date | workflow | agents | out | cache hit | wall | cost | rework | applied since last retro |
 |---|---|---|---|---|---|---|---|---|
+| 2026-08-24 | [PR Why + Risk Brief (spec→plan→run-plan→10 fix rounds)](2026-08-24-pr-why-risk-brief.md) | 24 | 903k | 94% | 7h05m | $412 | 37% (29 pts accidental) | P1–P3 of the run-plan retro held: tracks stayed file-disjoint, the stalled agent was caught by the disk check, the extract kept agents off the 842-line plan |
 | 2026-08-23 | [run-plan: project-context](2026-08-23-run-plan-project-context.md) | 9 | 460k | 97% | 85m | $112 | 20% (all by design) | P1 applied (spec sweep); P2 had not been, and its failure recurred twice here — **all six proposals applied same day, plus P4–P5 from the token analysis** |
 | 2026-08-23 | [spec: project-context](2026-08-23-spec-project-context.md) | 9 | 117k | 91% | 74m | $53 | 78% | — (first run) |
 | 2026-08-22 | run-plan: mcp-server | 10 | 131k | 93% | 37m | $36 | ~30% (by design) | n/a — measured retroactively |

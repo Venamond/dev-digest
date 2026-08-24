@@ -1,5 +1,13 @@
 import type { BlastResponse } from '@devdigest/shared';
 import { z } from 'zod';
+import { addPath, ungroundedNodes } from '../_shared/name-set.js';
+
+/**
+ * Re-exported so `blast/service.ts` and this module's tests keep importing the
+ * grounding check from here. The implementation moved to `_shared/name-set.ts`
+ * when `modules/brief` became its second consumer; its behaviour is unchanged.
+ */
+export { ungroundedNodes };
 
 /**
  * The optional one-paragraph explanation of a blast map.
@@ -28,9 +36,6 @@ export const BLAST_SUMMARY_SYSTEM_PROMPT = [
  *  `.default()` optionals (same constraint as reviews/intent/classify.ts:22). */
 export const BlastSummaryLlmSchema = z.object({ summary: z.string() });
 
-/** Backtick-quoted spans, the only thing the grounding check looks at. */
-const BACKTICKED = /`([^`\n]+)`/g;
-
 /**
  * A deterministic rendering of the map, plus the exact set of names the model
  * is allowed to mention. No diff, no file contents, no source lines.
@@ -40,22 +45,9 @@ export function buildBlastSummaryPrompt(res: BlastResponse): {
   nodes: Set<string>;
 } {
   const nodes = new Set<string>();
-  /**
-   * A path contributes its segments too, not just the whole string.
-   * `client/.../SettingsModels/SettingsModels.tsx` legitimately lets the model
-   * write `SettingsModels` — that name is in the map, character for character,
-   * just not as a standalone entry. Rejecting it made a correct summary a 422,
-   * which is the validator being stricter than the instruction it enforces.
-   * Segments of one or two characters are dropped: they match noise.
-   */
-  const addPath = (path: string) => {
-    nodes.add(path);
-    for (const seg of path.split('/')) {
-      if (seg.length > 2) nodes.add(seg);
-      const bare = seg.replace(/\.[a-z0-9]+$/i, '');
-      if (bare.length > 2) nodes.add(bare);
-    }
-  };
+  /** Segment-splitting lives in `_shared/name-set.ts` — see its docstring for
+   *  why a path contributes its segments and not just the whole string. */
+  const add = (path: string) => addPath(path, nodes);
   const lines: string[] = [];
 
   lines.push(`state: ${res.state}`);
@@ -66,7 +58,7 @@ export function buildBlastSummaryPrompt(res: BlastResponse): {
 
   for (const sym of res.symbols) {
     nodes.add(sym.name);
-    addPath(sym.file);
+    add(sym.file);
     lines.push('');
     lines.push(`symbol: ${sym.name} (${sym.kind}) in ${sym.file}`);
     lines.push(
@@ -74,14 +66,14 @@ export function buildBlastSummaryPrompt(res: BlastResponse): {
         `${sym.callers_truncated ? ', truncated' : ''}):`,
     );
     for (const c of sym.callers) {
-      addPath(c.file);
+      add(c.file);
       nodes.add(c.symbol);
       lines.push(`    - ${c.symbol} in ${c.file}:${c.line}`);
     }
     if (sym.importers.length > 0) {
       lines.push('  importers:');
       for (const imp of sym.importers) {
-        addPath(imp.file);
+        add(imp.file);
         lines.push(`    - ${imp.file} (depth ${imp.depth})`);
       }
     }
@@ -107,45 +99,4 @@ export function buildBlastSummaryPrompt(res: BlastResponse): {
   }
 
   return { mapText: lines.join('\n'), nodes };
-}
-
-/**
- * Normalise a backticked span to the bare name the map stores.
- *
- * The prompt tells the model to backtick every name, and a model writing
- * naturally produces `rateLimit()` for a function and `src/a.ts:23` for a call
- * site. The node set holds bare names and bare paths, so checking the raw span
- * rejected correct output — a validator stricter than the instruction it
- * enforces. Strip a trailing call suffix and a trailing `:line` / `:line-line`
- * before comparing.
- */
-function normaliseSpan(span: string): string {
-  return span
-    .trim()
-    .replace(/\(\s*\)$/, '')
-    .replace(/:\d+(?:-\d+)?$/, '')
-    .trim();
-}
-
-/**
- * Every backtick-quoted span in `summary` must name something in the map.
- * Checking only backticked spans is deliberate: the system prompt instructs
- * the model to backtick every name it uses, which makes the check cheap and
- * complete for what it promises. Free-text scanning would flag ordinary
- * English words containing a dot or a slash.
- *
- * Returns the offending spans (as written, so the error names what the model
- * actually said); an empty array means the summary is grounded.
- */
-export function ungroundedNodes(summary: string, nodes: Set<string>): string[] {
-  const bad: string[] = [];
-  for (const match of summary.matchAll(BACKTICKED)) {
-    const raw = (match[1] ?? '').trim();
-    if (raw.length === 0) continue;
-    const span = normaliseSpan(raw);
-    if (span.length === 0) continue;
-    if (nodes.has(raw) || nodes.has(span)) continue;
-    if (!bad.includes(raw)) bad.push(raw);
-  }
-  return bad;
 }

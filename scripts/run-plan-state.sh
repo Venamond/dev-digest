@@ -31,11 +31,16 @@ slug="$(sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}-//' <<<"$base")"
 
 # --- header facts ------------------------------------------------------------
 status_line="$(grep -m1 -E '^\- \*\*Status:\*\*' "$plan" || true)"
-case "$status_line" in
-  *approved*)    status=approved ;;
-  *implemented*) status=implemented ;;
-  *draft*)       status=draft ;;
-  *)             status=unknown ;;
+# Take ONLY the first word after the marker, never a substring of the whole line.
+# A plan whose status line explains itself — "draft — the human flips this to
+# `approved` before implementation" — matched *approved* under the old glob and
+# was executed as an approved plan. Measured 2026-08-24: a `draft` plan ran all
+# 15 of its steps because of that. The trailing prose is deliberately discarded.
+# The word may be bare, backticked, or bold — `approved`, **approved**, approved.
+status="$(sed -nE 's/^- \*\*Status:\*\*[[:space:]]*[`*]*([A-Za-z]+).*/\1/p' <<<"$status_line" | tr 'A-Z' 'a-z')"
+case "$status" in
+  approved|implemented|draft) ;;
+  *) status=unknown ;;
 esac
 
 mode="$(grep -m1 -E '^\- \*\*Execution mode:\*\*' "$plan" \

@@ -387,7 +387,16 @@ export function BlastCard({ prId }: { prId: string | null }) {
   );
 
   const summaryText = summary.data?.summary;
-  const hasMap = data != null && (data.state === "ok" || data.state === "partial");
+  /* `symbols.length > 0`, not the state alone. A map can be `ok` and empty —
+     a pull request touching only paths the indexer excludes (`vendor/` is in
+     EXCLUDED_DIRS, server/src/modules/repo-intel/constants.ts:24) resolves to
+     no symbols at all. `BlastService.summarize` guards on exactly this
+     (`symbols.length === 0` → `empty_map`), so gating on the state alone
+     offered a button whose only outcome was that error. */
+  const canExplain =
+    data != null &&
+    (data.state === "ok" || data.state === "partial") &&
+    data.symbols.length > 0;
   // The map is worth drawing only when something downstream was actually found.
   // Whether there is a tree to draw is exactly "did any symbol survive the
   // partition", and nothing else. Asking `totals.callers > 0` separately hid
@@ -530,7 +539,7 @@ export function BlastCard({ prId }: { prId: string | null }) {
             <Icon.Workflow size={14} style={{ color: "var(--text-muted)" }} />
             <span style={s.headerTitle}>{t("title")}</span>
           </div>
-          {hasMap && !summaryText && !derive.isError && (
+          {canExplain && !summaryText && !derive.isError && (
             <div style={s.actions}>
               <Button
                 kind="ghost"

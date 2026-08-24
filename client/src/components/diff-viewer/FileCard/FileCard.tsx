@@ -43,6 +43,8 @@ export function FileCard({
   smart,
   findings,
   onOpenFinding,
+  targetFile,
+  targetLine,
 }: {
   file: PrFile;
   commenting?: DiffCommentApi;
@@ -50,6 +52,10 @@ export function FileCard({
   smart?: boolean;
   findings?: FindingRecord[];
   onOpenFinding?: (findingId: string) => void;
+  /** The file a `?file=` deep link is pointing at. This card opens and scrolls
+   *  itself into view when it is that file (AC-29). */
+  targetFile?: string | null;
+  targetLine?: number | null;
 }) {
   const t = useTranslations("shell");
   // Boilerplate always starts collapsed. In Smart order a file with findings
@@ -66,12 +72,16 @@ export function FileCard({
     () => (findings ?? []).filter((f) => !f.dismissed_at),
     [findings],
   );
-  const defaultOpen = fileCardStartsOpen({
-    role,
-    smart,
-    changedLines,
-    findingsCount: activeFindings.length,
-  });
+  const isTarget = !!targetFile && file.path === targetFile;
+  // `fileCardStartsOpen` itself is untouched — its rules are load-bearing
+  // elsewhere; being the deep link's target is an additional reason to open.
+  const defaultOpen =
+    fileCardStartsOpen({
+      role,
+      smart,
+      changedLines,
+      findingsCount: activeFindings.length,
+    }) || isTarget;
   const [userOpen, setUserOpen] = React.useState<boolean | null>(null);
   const open = userOpen ?? defaultOpen;
   const large = !!smart && changedLines > LARGE_FILE_CHANGED_LINES;
@@ -102,8 +112,22 @@ export function FileCard({
     ? commenting.comments.filter((c) => c.path === file.path).length
     : 0;
 
+  const cardRef = React.useRef<HTMLDivElement | null>(null);
+  const bodyRef = React.useRef<HTMLDivElement | null>(null);
+  // This app scrolls an inner `<main overflow-y: auto>`, not the window
+  // (client/INSIGHTS.md:777-800), so the target's own `scrollIntoView` is what
+  // moves the view — router options cannot. Prefer the targeted LINE's row and
+  // fall back to the card: the body renders one child per parsed line, in the
+  // same order, so the line's index is its child index.
+  React.useEffect(() => {
+    if (!isTarget) return;
+    const lineIndex = targetLine != null ? lines.findIndex((l) => l.newNo === targetLine) : -1;
+    const el = (lineIndex >= 0 ? bodyRef.current?.children[lineIndex] : null) ?? cardRef.current;
+    el?.scrollIntoView?.({ block: "center" });
+  }, [isTarget, targetLine, lines]);
+
   return (
-    <div style={s.fileCard(large)}>
+    <div ref={cardRef} style={s.fileCard(large)}>
       <div onClick={() => setUserOpen(!(userOpen ?? defaultOpen))} style={s.fileHeader}>
         <Icon.ChevronRight size={13} style={chevronFor(open)} />
         <Icon.FileText size={14} style={s.fileIcon} />
@@ -142,7 +166,7 @@ export function FileCard({
         )}
       </div>
       {open && (
-        <div style={s.fileBody}>
+        <div ref={bodyRef} style={s.fileBody}>
           {lines.length === 0 ? (
             <div style={s.noDiff}>{t("diffViewer.noDiffText")}</div>
           ) : (

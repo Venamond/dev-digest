@@ -20,6 +20,8 @@ export function DiffGroupSection({
   commenting,
   smart,
   onOpenFinding,
+  targetFile,
+  targetLine,
   defaultOpen,
 }: {
   role: SmartDiffRole | null;
@@ -29,10 +31,16 @@ export function DiffGroupSection({
   commenting?: DiffCommentApi;
   smart?: boolean;
   onOpenFinding?: (findingId: string) => void;
+  /** A `?file=`/`?line=` deep link out of the brief (AC-29). */
+  targetFile?: string | null;
+  targetLine?: number | null;
   defaultOpen?: boolean;
 }) {
   const t = useTranslations("shell");
-  const [open, setOpen] = React.useState(defaultOpen ?? role !== "boilerplate");
+  // A group holding the deep link's target starts open, or the card the link
+  // points at is not rendered at all — the boilerplate group starts collapsed.
+  const holdsTarget = !!targetFile && files.some((f) => f.path === targetFile);
+  const [open, setOpen] = React.useState((defaultOpen ?? role !== "boilerplate") || holdsTarget);
 
   const label = role ? t(`diffViewer.role.${role}`) : t("diffViewer.otherFiles");
 
@@ -54,6 +62,8 @@ export function DiffGroupSection({
               role={roleByPath.get(f.path) ?? null}
               findings={findingsByPath.get(f.path)}
               onOpenFinding={onOpenFinding}
+              targetFile={targetFile}
+              targetLine={targetLine}
             />
           ))}
         </div>

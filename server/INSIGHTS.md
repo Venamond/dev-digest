@@ -707,6 +707,16 @@ ground truth — wrap-ups can mischaracterize a session.
   `.nullable()` when it must always be present with `null` as a valid value
   (e.g. `RunStats.cost_usd`, `RunSummary.cost_usd` — always set, sometimes to
   null). (2026-07-31, run-cost-ui feature)
+  **The same choice has a second, runtime consequence when the shape lives in
+  a jsonb blob.** A row written before the field existed has no such key, so
+  `.nullable()` fails the parse of the WHOLE object — and every other field
+  stored in that blob disappears with it, including ones the UI is rendering
+  beside the new one. Adding `inputs_over_budget` to `pr_brief.inputs` on
+  2026-08-24 would have blanked the "what was cut" list that its own sentence
+  stands next to, on every brief built before that day. `.nullish().default(…)`
+  reads old rows and new ones alike. **A jsonb blob has no migration to remind
+  you** that older shapes are still on disk — the column type never changes,
+  so nothing fails until a real row from last week is read back. (2026-08-24)
 
 - `PriceBook.estimate(model, tokensIn, tokensOut)`
   (`server/src/platform/price-book.ts`) keys the live map by OpenRouter
@@ -757,6 +767,29 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Recurring Errors & Fixes
 
+- **The integration suite can report "8 passed | 12 skipped" while Docker is
+  running perfectly, and that line reads as green at a glance.** The gate is
+  `dockerAvailable()` in `test/helpers/pg.ts:23-33`: it shells out to
+  `docker info` with `timeout: 5000` and memoises the answer in `dockerCache`
+  for the whole process. One slow call — Docker Desktop busy right after
+  another container command, an image pull, a laptop under load — makes every
+  `.it.test.ts` file self-skip, and vitest's summary counts skipped files as a
+  clean run. Measured 2026-08-24 during `/run-plan`: a first
+  `vitest run .it.test` gave `Test Files 8 passed | 12 skipped (20)` and
+  `Tests 34 passed | 115 skipped (149)`; `docker info` on its own then took
+  **108 ms**; an immediate re-run gave `20 passed (20)` / `149 passed (149)`.
+  Nothing had changed but the timing.
+  **Do:** read the SKIPPED count, never just the exit code or the word
+  "passed". `115 skipped` means the DB-backed half of the suite did not run at
+  all — re-run before believing any integration result, and before reporting
+  one to a human. This bites hardest right after `docker compose exec` or any
+  other command that has just made the daemon work.
+  **Better than this entry:** the gate should fail loudly rather than skip
+  silently when `docker info` times out but the daemon is in fact reachable —
+  a retry, or an env var that turns "Docker unavailable" into an error in
+  local runs. Until that exists, this entry is the only thing standing between
+  a green-looking summary and 115 tests nobody ran. (2026-08-24)
+
 - **An `.it.test` suite that fails a DIFFERENT file each full run, while every
   file passes in isolation, is a product race — not test flakiness. Do not
   "fix" it with retries or a longer timeout.** Diagnosed 2026-08-19:
@@ -785,6 +818,198 @@ ground truth — wrap-ups can mischaracterize a session.
   are called in, and asserts `['trace', 'status']`. It fails 100% on the old
   ordering and passes 100% on the new. Note the stubs mean the run never
   reaches a terminal status, so poll the recorded calls, not the database.
+
+- **A prompt edit is not local: it changes answers it has nothing to do with,
+  and the grounding check turns that into a hard failure.** Measured
+  2026-08-24: adding an 83-token rubric defining `risk_level` made the brief
+  for an unrelated pull request start naming
+  `client/src/vendor/shared/contracts/platform.ts` — the byte-identical twin of
+  the `server/` copy the PR actually changes. That file is not in the input, so
+  AC-9 rejected the whole answer with 422 and a pull request that had a stored
+  brief minutes earlier could no longer be rebuilt.
+  **The model invented nothing — we showed it that path.** Traced the same day:
+  the document-relevance rule selects any document that literally names a
+  changed file, so `server/.../platform.ts` pulled in three plans
+  (`docs/plans/2026-08-13-intent-layer.md`,
+  `docs/plans/2026-08-19-blast-radius.md`,
+  `docs/superpowers/plans/2026-07-30-run-cost-ui.md`) — and each of those names
+  the `client/` twin too, inside its prose. The fragments went into the prompt;
+  the allowed-name set did not, because it is assembled from STRUCTURAL inputs
+  (changed files, blast map, document PATHS, finding files) and never from the
+  names written inside the text we send.
+  **So the set and the prompt disagree about what "the input" is** — we
+  instruct the model to name nothing outside its input, then reject it for
+  naming something that was in it. Any name occurring in text the system chose
+  to send is by definition not invented; the fix belongs in how the set is
+  built, not in reprompting the model out of quoting us.
+  And after ANY change to a system prompt, rebuild a few real pull requests,
+  not one: temperature 0 does not make the output stable across a changed
+  prompt, and a latent gap like this one stays invisible until some edit
+  happens to make the model quote the wrong half. (2026-08-24)
+
+- **A field of a structured response that nothing cross-checks against the rest
+  of that same response will eventually contradict it — and it is usually the
+  most prominent field.** Measured 2026-08-24 on a live brief: `risk_level`
+  came back `medium` while the `risks` array beside it, from the same answer,
+  carried a `high` entry. The card showed both. Cause: the system prompt named
+  the three words and defined none of them, required no agreement with `risks`,
+  and the server validated only `risks[].file_refs` and `review_focus[]`
+  against the allowed-name set. The one field a reviewer reads first was the
+  one field grounded in nothing.
+  **Do:** when a schema has both a summary field and the detail it summarises,
+  the summary is the server's to derive or to floor — never the model's alone.
+  Here `risk_level` is raised to the highest severity among `risks` after the
+  response is accepted and before it is persisted, so a cached read cannot
+  serve the contradiction; the model may still raise it further, because "each
+  small, together dangerous" is a judgement worth keeping. Log the raise with
+  both values: a model disagreeing with itself is otherwise invisible.
+  **Two things measured afterwards.** Defining the three levels in the prompt —
+  83 `cl100k_base` tokens — was enough on its own: rebuilding the same pull
+  request returned `high` unprompted and the floor never fired, so the rubric
+  is doing real work and the floor is the guarantee behind it, not a substitute
+  for saying what the words mean. And the contradiction had been sitting in a
+  test fixture since that test was written (`medium` over a `severity: high`
+  risk), green the whole time — a suite asserts the shape it was given, so a
+  field nothing cross-checks is unguarded in the tests exactly as it is in
+  production. (2026-08-24)
+
+- **`BlastResponse` repeats the same endpoint list under every symbol, and a
+  prompt that renders it symbol-by-symbol pays for each copy.** Measured
+  2026-08-24 on a 117-symbol pull request: `totals.endpoints` says **33
+  distinct** endpoints, while summing `symbols[].endpoints` gives **1,845
+  entries** — the same names written out about 56 times — plus 329 importer
+  entries. The whole map serialises to 112,072 characters, ~28,000
+  `cl100k_base` tokens, which was ~80% of the brief's oversized request; the
+  100-path changed-file list next to it costs ~1,100.
+  **Confirmed end to end the same day.** Rendering each endpoint, cron and
+  importer once at map level took the same live build from `usage.prompt_tokens`
+  **35,299 → 11,992** against a 16,000 budget, with the fitter cutting
+  **nothing** where it had previously deleted all 100 changed files and still
+  overshot twofold. Cost halved ($0.0054 → $0.0027) and the brief came back
+  richer, not poorer — 7 risks instead of 6. What is lost is only the
+  association (which symbol reaches which endpoint), which a brief does not
+  need: its `file_refs` are files, and an endpoint is never a valid one.
+  **Do:** the shape is right for the card, which draws a per-symbol tree, and
+  wrong for a prompt. Any feature feeding this map to a model should render
+  each endpoint and importer ONCE at map level. That drops no name — the
+  never-cut rule protects names, not copies — and it is the difference between
+  a budget being unreachable and being comfortable. Check the two numbers
+  against each other (`totals.endpoints` versus the sum over symbols) before
+  assuming a map is inherently large. (2026-08-24)
+
+- **A token-budget fitter verified only by its own counter proves nothing.**
+  `brief/budget.ts` cuts inputs until `count(render(fitted)) <= 8000` with
+  `container.tokenizer` (`cl100k_base`), and the hermetic suite asserts AC-12
+  by asking that same counter. Measured 2026-08-24 on the first live call: the
+  fitter reported a fit under 8,000 and did cut (12 caller tails, three
+  documents), while the provider reported **`usage.prompt_tokens` = 35,255**
+  for that one request — a 4.4× disagreement that no test in the suite can see,
+  because nothing anywhere compares the two numbers.
+  **Cause, measured — and NOT the reprompt loop.** I first blamed
+  `completeStructured` accumulating `tokensIn` across retries
+  (`adapters/llm/openai.ts:120`); that mechanism is real but was not what
+  happened. Logging `attempts` and rebuilding gave **`attempts: 1`** with
+  `tokens_in` 35,299 — one request, not a sum. The real cause is that
+  **`fitToBudget` gives up silently**: its five cuts run, and the function ends
+  in an unconditional `return { fitted, cut }` with no check that the result
+  fits. On that build `inputs_cut` read `changed_files: 100 of 100` — the
+  entire file list deleted — and the request was still 35,299. What remains is
+  the never-cut set of AC-14 (symbol, endpoint and cron NAMES from the blast
+  map), and on a pull request touching 117 symbols that alone exceeds any
+  budget anyone would set.
+  **Do:** a fitter that cannot fit must say so — throw, or return a flag the
+  caller surfaces. Returning best-effort output makes an unachievable budget
+  indistinguishable from a satisfied one, and the criterion reads as met while
+  the request is 2× over. Check `inputs_cut` for a cut that removed 100% of
+  something: that is the fingerprint of the loop having run out of things to
+  drop.
+  **A per-request cap does not survive that same loop.** `openai.ts:134-136`
+  pushes the rejected answer AND the reprompt onto `messages`, so attempt 2 is
+  strictly larger than attempt 1 and attempt 3 larger again. A fitter can only
+  bound the FIRST request; if it fits exactly to the cap, every retry exceeds
+  it. Any criterion worded "every single request stays under N" is therefore
+  violated by construction on any build that retries — either fit to N minus
+  the reprompt's growth, or put only the schema error in the reprompt instead
+  of the whole rejected answer (that one is a shared-adapter change and touches
+  every feature).
+  **Do not infer an attempt count from token arithmetic — log it.** I read
+  35,255 as "three attempts summed" because the numbers divided plausibly, and
+  wrote that down as established. It was one attempt. The model honours strict
+  `json_schema` here: probed directly against `deepseek/deepseek-v4-flash`,
+  both a trivial prompt and a 10,513-token one returned clean first-try JSON
+  with `finish_reason: stop`. `attempts` is what the adapter returns and the
+  only thing that answers this; everything else is a story that fits the
+  digits.
+  **Do:** whenever a budget is a requirement, log both numbers on the first
+  live call and compare them — the fitter's count and the provider's
+  `prompt_tokens`. A fitter that grades its own homework is the same blind spot
+  as the grounding check above, and it surfaces the same way: the product looks
+  compliant and the user sees a number that contradicts the stated budget.
+  (2026-08-24)
+
+- **Changing a feature's `defaultProvider` in `FEATURE_MODELS` silently orphans
+  its `MockLLMProvider` fixture — and `pnpm typecheck` sees none of it.**
+  Fixtures are registered **per provider**, so flipping `risk_brief` from
+  `openai` to `openrouter` routed every call to a mock that held no `PrBrief`
+  fixture. Measured 2026-08-24: typecheck exit 0, unit suite 383/383 green,
+  and **11 integration tests red** across `test/brief.it.test.ts` and
+  `test/settings-models.it.test.ts` — the latter asserting the old default
+  outright. The failures do not name the cause: they read as
+  `expected 500 to be 200` and `expected Error: MockLLMProvider fixture failed
+  sch… to be an instance of ValidationError`, which look like broken product
+  code, not a misplaced fixture.
+  **Do:** treat a one-line `FEATURE_MODELS` edit as a contract change — run
+  `pnpm exec vitest run .it.test` before believing it, exactly as the entry
+  below on `server/test/**` being outside typecheck already demands. And when
+  moving a fixture to the new provider, MOVE it; registering it on both hides
+  the next such break. (2026-08-24)
+
+- **An input-budget trimmer and a "name only what was in the input" grounding
+  check fight each other, and only a WIDE pull request shows it.** Measured
+  2026-08-24, first live `POST /pulls/:id/brief` on a 109-file PR: the model
+  returned a factually correct brief and the check rejected it with 422,
+  naming seven refs — **every one of them a real path in this repository**.
+  Three distinct causes, and the third is the one no test can reach:
+  (1) directories — `mcp/src/tools/`, `.claude/` — the allowed set holds file
+  paths plus their segments, and `a/b/` is neither;
+  (2) a dropped leading dot — the model wrote `dependency-cruiser.cjs` for
+  `server/.dependency-cruiser.cjs`, and the segment in the set carries the dot;
+  (3) **paths the budget fitter had cut.** The changed-file list is trimmed to
+  fit the token cap and, correctly, the cut paths leave the allowed set — but
+  the model still knows from the PR title and the derived intent that the
+  change is about the MCP server, so it names `mcp/src/args.ts` anyway. Trim
+  and grounding are then in direct opposition, and the wider the PR the surer
+  the 422.
+  **Do:** never conclude a grounding check works from hermetic tests. Fixtures
+  are small, nothing gets cut, and every name the model can produce is in the
+  set by construction — the suite confirms only the shapes its author already
+  imagined. One live call against a repository-sized PR is the only evidence,
+  and it is the third time this check has failed *closed* on a correct answer
+  (see the two cases at the top of this file). The symptom is always the same:
+  a button that appears to do nothing. (2026-08-24)
+
+- **A `401 Incorrect API key provided: sk-or-v1***…` naming
+  `platform.openai.com` is NOT a bad key — it is a feature pointed at the
+  wrong provider.** `~/.devdigest/secrets.json` on a local machine can hold an
+  **OpenRouter** key under `OPENAI_API_KEY` (same string as
+  `OPENROUTER_API_KEY`), so any feature whose `FEATURE_MODELS` default is the
+  `openai` provider sends that key to OpenAI's endpoint and gets a 401 whose
+  text blames the key. The `sk-or-v1` prefix in the masked key is the tell:
+  OpenAI keys start `sk-`, OpenRouter's `sk-or-v1-`.
+  **Do:** read the prefix in the error, then check `settings` for that
+  feature's model — an empty `settings` means the built-in default in
+  `vendor/shared/contracts/platform.ts` is in force, and the Settings screen is
+  *showing* that default rather than a saved choice. **Fix it in
+  `FEATURE_MODELS`, not in Settings and not in the adapter**: a per-machine
+  click leaves the next person with the same 401. Four of the six features
+  default to `openrouter`/`deepseek-v4-flash`; `risk_brief` and `conformance`
+  were the two exceptions, both landed in the repository's very first commit
+  (`587c46a`, 2026-06-14) and never executed until now. `risk_brief` was
+  corrected on 2026-08-24; **`conformance` still carries it** and will 401 for
+  whoever runs it first. Hit 2026-08-24 on the first live
+  `POST /pulls/:id/brief`: `risk_brief` defaults to `openai`/`gpt-4.1`, so the
+  whole pipeline ran on real data and died at the provider boundary, which
+  reads at a glance like the new feature being broken. (2026-08-24)
 
 - OpenRouter `404 No endpoints found for deepseek/deepseek-v4-flash` after
   sending `provider: { order: ['DeepSeek'], allow_fallbacks: false }`. That

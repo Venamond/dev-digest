@@ -235,3 +235,34 @@ describe("FileCard — per-line finding markers", () => {
     expect(screen.getByText("N+1 query")).toBeInTheDocument();
   });
 });
+
+describe("FileCard — the ?file= deep-link target (AC-29)", () => {
+  const boilerplate = smallFile({ path: "package-lock.json" });
+
+  it("opens the targeted file even when the seed rules would collapse it", () => {
+    renderWithIntl(
+      <FileCard file={boilerplate} role="boilerplate" targetFile="package-lock.json" />,
+    );
+    expect(screen.getByText("one")).toBeInTheDocument();
+  });
+
+  it("leaves that same file collapsed when nothing targets it", () => {
+    // The negative half: without it this test passes on a card that always opens.
+    renderWithIntl(<FileCard file={boilerplate} role="boilerplate" />);
+    expect(screen.queryByText("one")).not.toBeInTheDocument();
+  });
+
+  it("scrolls the targeted LINE's row into view, not just the card", () => {
+    renderWithIntl(
+      <FileCard file={boilerplate} role="boilerplate" targetFile="package-lock.json" targetLine={2} />,
+    );
+    const scrolled = vi.mocked(Element.prototype.scrollIntoView).mock
+      .instances[0] as unknown as Element;
+    expect(scrolled.textContent).toContain("two");
+  });
+
+  it("does not scroll a card that is not the target", () => {
+    renderWithIntl(<FileCard file={boilerplate} targetFile="src/other.ts" />);
+    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
+  });
+});

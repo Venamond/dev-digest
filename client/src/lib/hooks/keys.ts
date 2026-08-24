@@ -39,6 +39,7 @@ export const queryKeys = {
   reviews: (prId: string | null | undefined) => ["reviews", prId] as const,
   prComments: (prId: string | null | undefined) => ["pr-comments", prId] as const,
   prIntent: (prId: string | null | undefined) => ["pr-intent", prId] as const,
+  brief: (prId: string | null | undefined) => ["brief", prId] as const,
   smartDiff: (prId: string | null | undefined) => ["smart-diff", prId] as const,
   blast: (prId: string | null | undefined) => ["blast", prId] as const,
   blastSummary: (prId: string | null | undefined) => ["blast-summary", prId] as const,

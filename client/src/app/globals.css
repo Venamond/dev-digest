@@ -154,3 +154,14 @@
   color: var(--accent-text) !important;
   text-decoration-line: underline !important;
 }
+
+/* One review-focus entry is a hoverable item: the whole row lifts, not just the
+   link inside it, so the target of the click is unambiguous. Requested on
+   2026-08-24; M1 draws only the resting state, so this is an addition to the
+   design rather than a departure from it.
+   `!important` for the same reason as `.dd-fileref` above — the row's resting
+   background comes from a React `style={}` attribute, and an inline style
+   outranks any class selector. */
+.dd-focus-row:hover {
+  background: var(--bg-hover) !important;
+}

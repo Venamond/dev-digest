@@ -5,6 +5,27 @@
 > Superseded-by: —
 > Revision: 2026-08-23 — folded in the human's answers to all five open clarifications, because each named an element a criterion already required and only its reading was undecided: `risk_level` reuses the three-value severity enum the intent's risk areas already use; the `ⓘ` control reveals which inputs reached the brief and what was cut; a brief-produced risk and an intent-produced one render identically, per the mockup; the banner's three run-derived elements read "no review yet" rather than zeros when no run has finished; and a failed rebuild replaces the cached brief on screen rather than sitting beside it. Added AC-35 … AC-39; AC-1 … AC-34 unchanged.
 > Revision: 2026-08-23 — the human approved the spec, so the status moves from `draft` to `approved`. Nothing else changed: AC-1…AC-39 are untouched and unrenumbered, `## Open questions` still reports nothing outstanding and keeps its four researcher items, and the file carries no unresolved clarification marker.
+> Revision: 2026-08-24 — the first implementation run to reach a live model reversed two decisions, both settled by the human the same day; the status stays `approved`. **AC-15 is inverted**: the allowed set of AC-9 is built from the *complete* inputs, so trimming shrinks the prompt and never the set — a 109-file pull request had produced a factually correct brief that was rejected for naming three real changed files the budget fitter had cut. **AC-12 names the boundary it never stated** — "input" is everything sent in one request, the system prompt plus the structured-output JSON schema plus the assembled user text — bounds *one request* rather than the sum across a build's reprompt attempts, and raises the ceiling from 8,000 to **16,000** `cl100k_base` tokens, because under that boundary one ordinary request already exceeded 8,000. The banner's token figure (AC-25) is clarified under Non-functional requirements as the build's total across its attempts, which is not the figure AC-12 bounds; AC-25 itself is unchanged. AC-1…AC-11, AC-13, AC-14 and AC-16…AC-39 are unchanged and unrenumbered.
+> Revision: 2026-08-24 — a screenshot of the built card checked against the mockups found one divergence, settled by the human the same day; the status stays `approved`. Mockup M1 renders each review-focus row as `src/config.ts:12` — a file *and* a line — while the shipped card renders the file alone, because `review_focus[]` carries only a file reference and a reason, leaving half of AC-29's promise unkeepable. **AC-40 is added**: the entry gains an *optional* line, absent being a normal value, and the system attaches it from a finding of this pull request that names the same file. **This revision also stated that a finding was the *only* possible source; that exclusion was never verified and is wrong — the pull request's own stored diff is a second, head-relative source. The last Revision line below corrects it, and AC-40 as it now stands is the requirement.** The model is neither asked for a line nor told one exists — AC-2 keeps every diff hunk body out of the input, so it never sees a line and could only invent one, which is what AC-9 and AC-10 exist to reject; and the blast map cannot supply one either, its `file:line` values being relative to the indexed commit rather than to the head. `## Contracts` now shows the optional line and says who sets it, `## Edge cases` and `## Inputs and provenance` carry the no-line case, and the determinism note under `## Non-functional requirements` names the line among the decisions made without a model. AC-29 keeps its wording and gains only a pointer to AC-40. AC-1…AC-39 are otherwise unchanged and unrenumbered.
+> Revision: 2026-08-24 — two decisions of the same day, the status staying `approved`. **AC-40 absorbs its tie-break**: where several findings name one review-focus file, the line comes from the highest-severity finding and, among equals, from the lowest line number — severity first because the list exists to lead the reviewer to the worst thing in a file, not the earliest; the criterion is now deterministic on its own, and the Edge-cases bullet that described the ambiguity is rewritten to state the rule. **AC-41 is added**, covering a path AC-12 had left unstated: when every cut of AC-13 has been made and the input still exceeds the ceiling, the system re-measures the fitted input rather than assuming the cuts sufficed, carries the measurement and the missed budget beside the brief on fresh builds and cached reads alike, and the card states in the `ⓘ` panel that the input did not fit and that the brief is incomplete — the build still succeeds, because a brief from an oversized input is worth reading provided it says so about itself, while silence there deceives the reader. AC-12 is not weakened: the ceiling stays a requirement and AC-41 governs only the case where it cannot be met. `## Edge cases`, `## Contracts`, `## Non-functional requirements` and the sequence diagram record the same. AC-1…AC-39 are unchanged and unrenumbered.
+> Revision: 2026-08-24 — **AC-40 is corrected, not reversed.** As written the same day it said the line on a `review_focus[]` entry "shall come **only** from such a finding"; that exclusion was asserted without checking, and it was false. The pull request's per-file diff is already stored at import, and the first changed line it reports is numbered on the new side — relative to the pull request's head, which is the side the Files changed tab renders. The consequence was visible on screen and reported three times: on a pull request with no finished review run, the common case, every review-focus row rendered without a line while mockup M1 shows `src/config.ts:12`. AC-40 now names three sources in order — a finding of the latest finished run first, that file's first changed line from the stored diff otherwise, and no line otherwise, an absent line still being a normal value. What was true stays: the line never comes from the model, which is neither asked for one nor told one exists, and never from the blast map, whose `file:line` is relative to the indexed commit. **AC-2 was never in the way** — it forbids diff hunk *bodies in the model input*, and reading a stored diff on the server puts nothing there; the spec now says so in `## Problem and user`, in AC-40 and in `## Contracts`, because that misreading is what produced the defect. The accepted caveat is recorded in `## Edge cases`: a stored diff reports where a hunk begins, and a hunk begins with the context lines before the first edit, so a diff-derived link can open a few lines above the change. The Edge-cases bullet claiming a pull request with no review run yields no lines at all was false and is rewritten; the bullet for a file with no finding, the `## Contracts` prose and the `## Inputs and provenance` rows now carry the second source. The status stays `approved`. AC-1…AC-39 and AC-41 are unchanged and unrenumbered.
+> Revision: 2026-08-24 — **AC-42 is added**, closing a contradiction no criterion
+forbade: a live brief carried `risk_level: medium` beside a `high` risk of its
+own `risks[]` ("Context interface modification"), so the most prominent field on
+the card was the only one grounded in nothing, while `risks[].file_refs` and
+`review_focus[]` were both checked against the allowed-name set (AC-9, AC-10).
+The level shall now never sit below the most severe entry in `risks[]`: the
+system raises it to that floor after accepting the response and before
+persisting, so a cached read shows the corrected level. Raising is
+one-directional — a level *above* the listed risks is kept, being the judgement
+that small risks compound, and an empty `risks[]` leaves the model's level
+standing. `## Contracts` now says which fields the system completes or corrects
+after acceptance and adds that the three levels are defined to the model in the
+prompt; `## Edge cases` carries the three cases (below the list, above it, no
+risks); the "Determinism outside the call" note names AC-42 beside AC-40. AC-35
+is untouched — it fixes which three values exist, where AC-42 fixes which of them
+may stand. The status stays `approved`. AC-1…AC-41 are unchanged and
+unrenumbered.
 
 ## Problem and user
 
@@ -26,7 +47,9 @@ The brief is deliberately built from facts the product has already computed
 rather than from the diff itself: no diff hunk body ever reaches the model
 (AC-2). That is what keeps one call within a small budget and what makes the
 grounding check of AC-9 possible at all — a claim can only be checked against a
-name set the system itself built.
+name set the system itself built. AC-2 bounds what the model is shown; it does
+not bound what the system may read on the server, which is why the stored diff
+can still supply a line the model never sees (AC-40).
 
 **Design sources.** Referenced below by short label.
 
@@ -58,8 +81,8 @@ the banner whether or not a review run exists (AC-24).
 - List where to read first, in priority order, each entry clickable through to
   that file and line on the Files changed tab.
 - Cost one model call per pull request state, and show what that call cost.
-- Never assert a file, symbol, endpoint or document the assembled input did not
-  contain.
+- Never assert a file, symbol, endpoint or document this pull request's own
+  inputs did not contain.
 
 **Non-goals**, each with the reason it was ruled out:
 
@@ -77,7 +100,8 @@ the banner whether or not a review run exists (AC-24).
   today. Relevance here is the literal-mention rule of AC-3 and nothing more.
 - **Reusing Project Context attachments as the document source.** Rejected:
   those attach to an agent or to a skill, never to a pull request; a brief is not
-  an agent run; and their ceiling is 32,000 tokens against this feature's 8,000.
+  an agent run; and their ceiling is 32,000 tokens against this feature's 16,000
+  per request (AC-12).
 - **Dropping the "relevant specs" input.** Rejected for the same reason as the
   conventions proposal.
 - **Replacing the banner's verdict label with the risk level.** Rejected: every
@@ -103,8 +127,9 @@ the banner whether or not a review run exists (AC-24).
   the links land on the right line (AC-11, AC-29).
 - As a reviewer who does not trust a generated summary, I check a risk against
   the file it names before believing it — which is why a brief may only name
-  files, symbols, endpoints and documents that were actually in its input
-  (AC-9, AC-10).
+  files, symbols, endpoints and documents that genuinely belong to this pull
+  request's inputs, whether or not the budget fitter kept them in the prompt
+  (AC-9, AC-10, AC-15).
 
 ## Acceptance criteria (EARS)
 
@@ -163,12 +188,49 @@ the banner whether or not a review run exists (AC-24).
   of the intent already carries; there is no fourth value and no "unknown".
   *(source: human, 2026-08-23;
   `server/src/vendor/shared/contracts/brief.ts:39`; verify: server-unit)*
+- **AC-40** — WHEN the system attaches a line to a `review_focus[]` entry, it
+  shall take that line from the first of these three sources that yields one:
+  first, WHERE a finding of the pull request's latest finished review run
+  (AC-5) names that entry's file, the line of the highest-severity such
+  finding, and of the lowest line number among those that tie on severity;
+  otherwise, WHERE the pull request's stored diff for that file is present and
+  readable, that file's first changed line as the pull request's head numbers
+  it; otherwise no line, an absent line being a normal value and never an
+  error. A finding wins because it points at the problem itself, where the diff
+  can only point at where the file's edits begin; and among findings severity
+  decides before position, because the review-focus list exists to lead the
+  reviewer to the worst thing in a file, not to the earliest thing in it. The
+  line shall never come from the model, which shall not be asked for a line
+  number nor told that a line exists, and never from the blast map, whose every
+  `file:line` is relative to the indexed commit rather than to the pull
+  request's head. Reading a stored diff to compute a line happens on the server
+  and sends nothing to the model, so AC-2 — which bounds what the model is
+  shown, not what the system may read — does not stand in the way of the second
+  source. *(source: human, 2026-08-24; verify: server-unit)*
+- **AC-42** — IF the `risk_level` of an accepted response is lower than the
+  severity of the most severe entry in that response's `risks[]`, THEN the
+  system shall raise `risk_level` to that severity after accepting the response
+  and before the brief is persisted, so that the stored brief, and every later
+  cached read of it (AC-20), carries the raised level and never the level the
+  model returned. The raising is one-directional. WHERE `risk_level` is already
+  at or above the most severe listed risk the system shall keep it exactly as
+  returned — including a level above every risk listed, which is the model's
+  judgement that risks small one by one are dangerous together, and which this
+  criterion exists to preserve rather than to flatten. WHERE `risks[]` is empty
+  there is no floor and the model's level shall stand. The comparison is made on
+  the single three-value scale `high` > `medium` > `low` that both sides already
+  carry (AC-35), and neither the risks themselves nor any other field is altered
+  by it. *(source: human, 2026-08-24; verify: server-unit)*
 
 ### The token budget
 
-- **AC-12** — The system shall keep the assembled model input at or below 8,000
-  tokens, counted with the `cl100k_base` encoding.
-  *(source: human, 2026-08-23; verify: server-unit)*
+- **AC-12** — The system shall keep every single request it sends to the model
+  at or below 16,000 tokens, counted with the `cl100k_base` encoding, a request
+  being everything sent to the model in that one request taken together — the
+  system prompt, the structured-output JSON schema, and the assembled user text.
+  The budget bounds one request; it shall not be read as bounding the sum across
+  the reprompt attempts one build may make.
+  *(source: human, 2026-08-24; verify: server-unit)*
 - **AC-13** — IF the assembled input exceeds that budget, THEN the system shall
   cut it in this order until it fits: first the caller tails of the blast map,
   keeping at least one caller for every symbol; then the document fragments —
@@ -180,12 +242,28 @@ the banner whether or not a review run exists (AC-24).
   the pull request's metadata and diff stats, the whole of the intent, every
   symbol, endpoint and cron name of the blast map, and the blast summary
   paragraph. *(source: human, 2026-08-23; verify: server-unit)*
-- **AC-15** — WHEN the system cuts anything from the model input, it shall
-  remove what it cut from the allowed set of AC-9, so a name the model never saw
-  can never pass the grounding check.
-  *(source: human, 2026-08-23; verify: server-unit)*
+- **AC-15** — The system shall build the allowed set of AC-9 from the complete
+  inputs — the whole changed-file list, the whole blast map, the path of every
+  selected document, and the file of every finding included under AC-5 —
+  whatever the budget fitter afterwards removed from the model input (AC-13):
+  trimming shrinks the prompt and shall never shrink the set. The set exists so
+  the model cannot invent a file, and a changed file the fitter cut is not
+  invented — it genuinely belongs to this pull request and was merely not shown
+  — while every name outside the pull request's inputs stays rejected exactly as
+  absolutely as before (AC-10).
+  *(source: human, 2026-08-24; verify: server-unit)*
 - **AC-16** — WHERE any part of the input was cut to fit the budget, the card
   shall state what was cut. *(source: human, 2026-08-23; verify: client)*
+- **AC-41** — IF the input still exceeds the budget of AC-12 after every cut of
+  AC-13 has been made, THEN the system shall establish that by measuring the
+  fitted input again rather than by treating the cuts as sufficient, shall carry
+  the measured count together with the budget it missed alongside the brief on a
+  fresh build and on a cached read alike, and the card shall state — below what
+  was cut, in the panel of AC-36 — that the input did not fit, both numbers, and
+  that the brief is to be read as incomplete. The build shall still succeed and
+  the reviewer shall still receive the brief. WHERE the fitted input is within
+  the budget, the card shall say nothing about an overrun.
+  *(source: human, 2026-08-24; verify: server-unit)*
 
 ### Untrusted input
 
@@ -247,7 +325,7 @@ the banner whether or not a review run exists (AC-24).
   *(source: mockups M1, M2, M3; verify: client)*
 - **AC-29** — WHEN the human activates a file reference anywhere in the brief —
   in a risk area, in `risks[]` or in `review_focus[]` — the system shall open the
-  Files changed tab at that file and that line.
+  Files changed tab at that file and that line (AC-40).
   *(source: mockups M1, M4; human, 2026-08-23; verify: client)*
 - **AC-30** — WHERE a file path does not fit its row, the system shall render the
   path's tail and shall keep the whole path in the link's target and in the row's
@@ -299,25 +377,60 @@ the banner whether or not a review run exists (AC-24).
   and no document can be relevant (AC-33). The brief is still requested and the
   card must show something rather than nothing.
 - The pull request changes several hundred files: the changed-file list is part
-  of the allowed set (AC-9) and of the input, and it is not on the never-cut
-  list of AC-14 — so a very wide pull request pushes against the budget through
-  a path AC-13 does not name explicitly.
+  of the input and is not on the never-cut list of AC-14 — so a very wide pull
+  request pushes against the budget through a path AC-13 does not name
+  explicitly. Cutting it no longer narrows what the model may name, because the
+  allowed set keeps the whole list (AC-15). This is the case that failed live on
+  a 109-file pull request while the two rules still opposed each other: a
+  factually correct brief was rejected for naming three real changed files the
+  fitter had removed from the prompt.
+- Every cut of AC-13 is made and the input still does not fit: the ceiling of
+  AC-12 is a requirement that a wide enough pull request can put out of reach —
+  the never-cut names of AC-14 alone can outgrow it. The brief is still built
+  and still shown, and the card says the input did not fit, by how much, and
+  that the brief is incomplete (AC-41). Saying nothing here would be the worse
+  failure of the two: a brief assembled from an input that did not fit looks
+  exactly like one that did. A live build on 2026-08-24 sent 35,299 tokens
+  against the 16,000 budget with every changed file already cut, while the card
+  reported an ordinary brief.
 - A document names a changed file hundreds of times: the three-fragment ceiling
-  (AC-4) decides which mentions reach the model, and the rest are absent from
-  both the input and the allowed set (AC-15).
+  (AC-4) decides which mentions reach the model; the mentions left out change
+  nothing about the allowed set, which carries that document's path and the
+  whole changed-file list regardless (AC-15).
 - A document is empty, or is not valid UTF-8: it cannot contribute a fragment,
   and is treated as no document rather than as an error (AC-33).
 - More than three documents are relevant: at most three are taken (AC-4), and
-  the ones left out are not in the allowed set.
+  the ones left out are not in the allowed set — selection decides what is an
+  input at all, where the budget fitter only decides what is shown of an input
+  already selected (AC-15).
 - The pull request has no finished review run: the findings input is absent
   (AC-5), and the banner's badge, verdict label and ring have no run to report
   while still being rendered (AC-24). They read as "no review yet" rather than
   as zeros (AC-38), because `0 findings · 0 blockers` and a ring reading `0`
   state that a review ran and found nothing — which is false when none ran.
-  `—` asserts nothing.
+  `—` asserts nothing. The review-focus block, however, is **not** empty of
+  lines in this state: with no findings to consult, each entry naming a file the
+  pull request changed still takes its line from that file's stored diff
+  (AC-40), so the rows render as `path:line` exactly as mockup M1 shows. This is
+  the ordinary state of a pull request that has not been reviewed yet — the
+  common case, and the one seen on screen on 2026-08-24, where an earlier
+  reading of AC-40 left every row without a line.
 - The pull request has no derived intent (AC-7), or a stale one: the brief is
   built without it, and the intent's staleness is the Intent card's own existing
   concern, not the brief's.
+- The response's `risk_level` is lower than a risk it listed beside it: the
+  level is raised to that risk's severity before the brief is persisted (AC-42),
+  so the banner's chip (AC-24) and every cached read report the raised level
+  while the risk rows themselves are untouched. This happened live on
+  2026-08-24 — `risk_level: medium` beside a `high` risk, "Context interface
+  modification" — and the card showed `medium`, the one field on it grounded in
+  nothing, next to a list that said otherwise.
+- The response's `risk_level` is higher than every risk it listed — `high`
+  beside two `low` risks: it is kept exactly as returned (AC-42). Risks that are
+  each small and together dangerous are a judgement worth keeping, and a rule
+  that forced the level down to the list would destroy it.
+- The response lists no risks at all: there is no floor to apply and the model's
+  level stands (AC-42), whichever of the three it is.
 
 **Timing and concurrency**
 
@@ -342,6 +455,34 @@ the banner whether or not a review run exists (AC-24).
 - A `review_focus[]` entry names a file the pull request renamed: the entry is
   grounded (the name was in the input) but the link may not resolve on the Files
   changed tab (AC-29).
+- A run finished, but no finding of it names the file a `review_focus[]` entry
+  names: the entry falls to the second source and takes its file's first changed
+  line (AC-40), so its neighbours' finding-derived lines and its own
+  diff-derived line sit in one list, indistinguishable to the reader. That is
+  intended: both are head-relative and both open the Files changed tab in the
+  right place.
+- No line survives only where the entry's file has neither a finding nor a
+  usable stored diff (AC-40) — an entry naming a file the pull request does not
+  change, which AC-9 permits (a blast-map file, a selected document's path), or
+  one whose diff was not stored at all, as happens with a binary or an
+  over-large file. The row then renders its file alone and stays clickable; the
+  link opens the file. One list can therefore mix rows with a line and rows
+  without.
+- Several findings of the run name the file of one `review_focus[]` entry: the
+  highest-severity one gives the line, and the lowest line number breaks a tie
+  on severity (AC-40) — so the reviewer opening that row lands on the worst
+  thing the review found in that file, not on whichever it found first.
+- A diff-derived line opens a few lines above the change itself. A stored diff
+  reports where each of its hunks begins, and a hunk begins with the unchanged
+  lines that precede the first edit, so the line taken under AC-40's second
+  source is the start of that region rather than the first edited line. This is
+  accepted, not a defect: the reviewer lands within a few lines of the change
+  with the surrounding code already on screen.
+- A finding-derived line belongs to the commit its run examined, where a
+  diff-derived line belongs to the head. When the pull request's state has moved
+  past the state the shown brief was built for, the card already says so
+  (AC-22); that signal covers a line grown stale for the same reason it covers
+  the rest of the brief.
 - A very long path in a risk area, in `risks[]` or in `review_focus[]`: rendered
   as its tail, with the whole path in the link and the tooltip (AC-30). Paths in
   this product run past ninety characters with no spaces, which widens a card
@@ -400,10 +541,11 @@ sequenceDiagram
   C--)A: up to 3 docs, 3 fragments each | none
   A->>G: resolve the linked issue
   G--)A: issue | unreachable (build without it)
-  A->>A: fit to 8,000 cl100k_base tokens; cut per AC-13; shrink the name set
+  A->>A: name set from the complete inputs; fit one request to 16,000 cl100k_base; cut per AC-13
+  A->>A: re-measure the fitted input; still over → record the overrun (AC-41)
   A->>M: one structured call
   M--)A: brief | error | timeout | ungrounded name
-  A--)W: brief + cost, tokens, what was cut, what was missing
+  A--)W: brief + cost, tokens, what was cut, what was missing, what still did not fit
   Note over A,G: no boundary failure here fails the brief — each is stated on the card
   Note over A,M: a response naming anything outside the name set is rejected without a second model call
 ```
@@ -416,18 +558,48 @@ definition it is only re-exported by the client's type barrel and named in two
 comments, so replacing its content breaks no reader. No second brief type is
 introduced beside it.
 
-**What the model returns**, and therefore what the brief carries:
+**What the brief carries** — every field of it returned by the model, save where
+the system completes or corrects it after acceptance: the line on a review-focus
+entry, which the model never supplies (AC-40), and `risk_level`, which the system
+raises to the floor its own `risks[]` set (AC-42):
 
 ```
 what          string    required   what this pull request changes
 why           string    required   why it changes it
 risk_level    enum      required   `high` | `medium` | `low`, and nothing
-                                   else (AC-35)
+                                   else (AC-35); raised by the system to the
+                                   severity of the most severe entry in
+                                   `risks[]` when the model returned less,
+                                   before the brief is persisted (AC-42)
 risks[]       list      required   each: title, explanation, severity,
                                    file_refs[] — every entry grounded (AC-9)
-review_focus[] list     required   each: a file reference and the reason to
-                                   read it; in priority order (AC-11)
+review_focus[] list     required   each: a file reference, the reason to read
+                                   it, and — set by the system, never by the
+                                   model — an optional line (AC-40); in
+                                   priority order (AC-11)
 ```
+
+**The line on a review-focus entry is optional, and the system sets it, not the
+model.** The model cannot supply a line and is not asked for one: no diff hunk
+body ever reaches it (AC-2), so it never sees a line number, and asking would
+invite exactly the invention AC-9 and AC-10 exist to reject. Nor can the blast
+map supply one — its `file:line` values are relative to the indexed commit and
+must never be used to build a link into the head's diff
+(`server/src/vendor/shared/contracts/brief.ts:336-350`). Two sound sources
+remain, both head-relative, which is what the Files changed tab renders: a
+finding of this pull request's own review run, and — where no finding names the
+file — the pull request's own stored diff for that file, whose first changed
+line is by construction numbered on the head side. The finding is preferred
+because it points at the problem; the diff can only point at where the file's
+edits begin (AC-40). Where neither is available the entry carries no line and
+its link opens the file alone (AC-29) — an ordinary state, not a degraded one.
+
+**Reading a stored diff is not sending one.** AC-2 forbids putting a diff hunk
+*body into the model input*; deriving a line number from a stored diff on the
+server puts nothing into that input, and the model is not told the line exists.
+The two requirements do not conflict, and this is stated here because reading
+them as if they did is what left the common case — a pull request with no
+finished run — rendering every review-focus row without a line.
 
 `risk_level` reuses the three-value severity enum the shared contracts already
 define and the intent's risk areas already carry, rather than introducing a
@@ -435,12 +607,26 @@ second scale — so the banner's risk chip and a risk row's severity are read on
 one scale, and a reader never has to ask whether two words mean the same thing
 (AC-35).
 
+**The headline level is the model's judgement bounded by the system.** One
+scale (AC-35) makes the level and the risks beside it comparable, and AC-42 makes
+them agree in the one direction that matters: the most prominent field on the
+card may never sit below the worst thing the same response listed. It may sit
+above it, and that case is left alone. The floor is applied on the way to
+storage, so the stored brief is the corrected one and a cached read cannot
+resurrect the model's original — the level a reader sees is the level the
+system stands behind. The three levels are also defined to the model in the
+prompt rather than left to its own reading of the three words; that definition
+is the implementation's, and no criterion here fixes its wording.
+
 **What the card additionally needs beside the brief**, because AC-16, AC-22,
 AC-25, AC-7 and AC-32 all report on how the brief was made rather than on what
 it says: the money cost and the input/output token counts of the call; the state
 the brief was built for, against the pull request's state now; which inputs were
-cut to fit the budget; and which inputs were missing (no intent, no run, no
-issue, no documents, a degraded blast index).
+cut to fit the budget; which inputs were missing (no intent, no run, no issue,
+no documents, a degraded blast index); and, when the cuts were not enough, the
+measured size of the fitted input with the budget it missed (AC-41) — carried
+on a cached read as on a fresh build, so a brief never loses that statement by
+being re-read.
 
 **Error cases at this boundary**: the pull request is unknown; the model call
 failed or timed out; the response was rejected as ungrounded (AC-10) or as the
@@ -449,8 +635,10 @@ not an error: the caller receives that build's result).
 
 **The blast map crossing into the brief** is the deterministic blast response
 already defined for the blast card, taken whole rather than re-derived; the
-allowed-name set of AC-9 is built from it, from the changed-file list, and from
-the paths of the selected documents.
+allowed-name set of AC-9 is built from it, from the changed-file list, from the
+paths of the selected documents and from the file of every finding in the input
+— each of them complete, as AC-15 requires, and never reduced to what survived
+the budget fitter.
 
 **The document fragments crossing from the `context` module** are, per document:
 its repository-relative path, its title, and its selected fragments — never its
@@ -475,11 +663,20 @@ else in this feature reaches a model: document selection, fragment extraction,
 budget fitting and the grounding check are all deterministic. The brief adds no
 second call, and adds no model call to a review run.
 
-**Cost.** One call of at most 8,000 input tokens (AC-12), attributed to the
-brief it produced and shown on the banner (AC-25), so the reviewer sees what
-each regeneration costs before pressing the control again. The cache (AC-19,
-AC-20) is what keeps a re-read of the page free, and the single-flight rule
-(AC-23) is what keeps two tabs from paying twice.
+**Cost.** One call per brief built, each of its requests at most 16,000 tokens
+(AC-12) or else an overrun the card states (AC-41), attributed to the brief it
+produced and shown on the banner (AC-25), so
+the reviewer sees what each regeneration costs before pressing the control
+again. The cache (AC-19, AC-20) is what keeps a re-read of the page free, and
+the single-flight rule (AC-23) is what keeps two tabs from paying twice.
+
+**The banner's token figure and the budget are two different numbers, and must
+never be compared.** The cost and token counts AC-25 requires are the total
+across that build's attempts: they sit beside the money cost and answer "what
+did this build cost". AC-12 bounds one request, so the banner's figure is not
+the figure AC-12 bounds, and a banner reading above 16,000 is not a budget
+breach. The mockup shows exactly one token pair and that stays — no second
+number is added to the banner, and AC-25 is unchanged by this clarification.
 
 **Failure.** No failure here fails anything else: a failed brief leaves the
 Intent card, the Blast Radius card, the findings and the diff exactly as they
@@ -487,15 +684,41 @@ were. Every other block on the Overview tab is produced without a model call, so
 the main path of the page does not depend on this one.
 
 **Determinism outside the call.** Which documents are relevant (AC-3), which
-fragments are taken (AC-4), what is cut (AC-13) and what is accepted (AC-9,
-AC-10) must all be decidable without a model, so that the same pull request
-state yields the same input and the same verdict on the same response.
+fragments are taken (AC-4), what is cut (AC-13), what is accepted (AC-9, AC-10),
+which line a review-focus entry carries (AC-40) and whether the accepted
+`risk_level` must be raised to the floor its own `risks[]` set (AC-42) must all
+be decidable without a model, so that the same pull request state yields the
+same input and the same verdict on the same response. The last of these is a
+comparison of three ordered words and asks nothing of a model to make: the
+headline level is therefore the model's judgement in every case except the one
+where it contradicts the model's own list.
 
-**The token unit is named on purpose.** 8,000 tokens counted with `cl100k_base`
-(AC-12) — not characters, not a divide-by-four estimate. A character heuristic
-already exists in this product for logging prompt sizes and never truncates
-anything; a budget that decides what to cut needs a count that does not drift by
-input language or by code density.
+**The token unit and the boundary are both named on purpose.** 16,000 tokens
+counted with `cl100k_base` (AC-12) — not characters, not a divide-by-four
+estimate. A character heuristic already exists in this product for logging
+prompt sizes and never truncates anything; a budget that decides what to cut
+needs a count that does not drift by input language or by code density. The
+boundary is stated for the same reason the unit is: naming only "the input" left
+two honest readings 4.4× apart, and measuring the assembled user text alone
+leaves the system prompt and the structured-output JSON schema — present in
+every request — uncounted. One measured live request came to roughly 10–12k
+while the fitter reported the user text as under 8,000, which is why the ceiling
+moved to 16,000: under the boundary AC-12 now states, an ordinary request
+already exceeded the old number. The sum across a build's reprompt attempts is a
+third figure again — the same live call reported 35,255 prompt tokens across its
+attempts — and AC-12 does not bound it.
+
+**The ceiling is a requirement that can go unmet, and silence there would
+deceive.** AC-12 is not weakened by AC-41: every request is still required to
+sit at or below 16,000 tokens, and the five cuts of AC-13 exist to get it
+there. What AC-41 adds is what happens when they cannot — when the input that
+survives every allowed cut is still larger than the cap, which a wide enough
+pull request makes unavoidable. The choice then is between failing the build
+and building a brief from an oversized input; the second is chosen, because
+such a brief is still worth reading, and it is only worth reading if it says so
+about itself. The unmet ceiling is therefore reported as a measurement — the
+size that was sent and the budget it missed — never inferred by the reader from
+the banner's token figure, which counts a different quantity again (see above).
 
 **`reviewer-core` stays free of I/O.** This feature adds nothing to it.
 
@@ -515,8 +738,10 @@ that was chosen over a second, brief-only format.
 | Blast map and its one-paragraph summary | computed locally from the code index; the paragraph from a model call that is not this feature's | API → model | yes |
 | Linked issue title and body | GitHub, resolved live at assembly time and not stored | GitHub → API → model | yes |
 | Repository documents | markdown files in the reviewed repository's copy on this machine, authored by whoever can merge there | disk → API → model | yes, as fragments only |
-| Findings of the last review run | produced by this product | DB → API → model | yes, when a finished run exists |
+| Findings of the last review run | produced by this product | DB → API → model, and DB → API → Studio for the line of AC-40 | yes, when a finished run exists |
+| The stored per-file diff of the pull request | GitHub, at import; stored | DB → API → Studio, as a derived line only | no — never placed in the model input (AC-2), read only to compute a line (AC-40) |
 | The brief, its cost and tokens | this feature's model call | API → Studio | — |
+| The line on a review-focus entry | a finding of this pull request's own review run, or else that file's first changed line taken from the stored diff; attached by the system after the response is accepted | DB → API → Studio | no — it is never sent to the model and never comes back from it (AC-40) |
 
 The linked issue is resolved over the network every time the input is assembled
 and is not persisted, so a brief built now and one built later can differ by the
@@ -524,6 +749,14 @@ issue alone even at the same head commit. The documents are read from the
 repository's copy on this machine at whatever commit that copy sits on, which is
 not necessarily the pull request's head commit — the same limit the blast map
 already carries, and the reason AC-32 exists.
+
+The findings leave this feature in two directions: as text into the model call,
+and as the line a review-focus entry carries out to the Studio (AC-40). The
+stored diff travels only in the second direction — it never enters the model
+input (AC-2) and reaches the Studio as a line number and nothing more. Those two
+are the product's only line numbers measured against the pull request's head:
+the blast map's lines belong to the indexed commit, and the model, which never
+receives a hunk body, has no line to give.
 
 ## Untrusted inputs
 
@@ -573,7 +806,7 @@ non-goals read as they do.
 |---|---|
 | **Feed the deterministic blast map alongside the summary paragraph.** Feeding one model's paragraph to another model leaves the grounding check with nothing to check against; the allowed-name set can only be built from the map. | Accepted → AC-1, AC-9 |
 | **Cut the input gradually rather than dropping whole sections.** Equally deterministic, and it loses less: caller tails before fragments, fragments before the issue body, the issue body before high-severity findings. | Accepted → AC-13, AC-14 |
-| **Whatever is cut also leaves the allowed-name set.** Without it the model could name a file it never saw and the "real files only" check would pass it. | Accepted → AC-15 |
+| **Whatever is cut also leaves the allowed-name set.** The worry it answered: the model could name a file it never saw and the "real files only" check would pass it. | Accepted 2026-08-23 → **reversed 2026-08-24** by the human, on the first live call: trimming and grounding were in direct opposition, and the wider the pull request the surer the false rejection. AC-15 now builds the set from the complete inputs; a cut changed file is not an invented one. |
 | **Define relevance as a literal mention of a changed file, with no second "edited by this PR" rule.** A document the pull request edits but that names no changed file has neither a proven relation nor an anchor to excerpt around; the mockup's own driving row comes from a document the pull request does not edit. | Accepted → AC-3 |
 | **Give the `ⓘ` control on the banner a job: reveal which inputs actually reached this brief and what was cut.** The mockup shows the control without saying what it does, and AC-16 required the card to state what was cut without naming where — one answer settles both, and keeps the control from being decorative. | Accepted → AC-36 |
 | Six further proposals were **rejected** and are recorded under Non-goals with their reasons: repository conventions as the document input; embedding retrieval for relevance; Project Context attachments as the document source; dropping the document input; replacing the verdict label with the risk level; rendering the ring and the findings badge only when a review run exists. A seventh, restricting `review_focus[]` to changed files, was withdrawn by the human. | — |

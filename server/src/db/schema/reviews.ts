@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { pgTable, uuid, text, integer, jsonb, timestamp, doublePrecision } from 'drizzle-orm/pg-core';
-import type { IntentMissingContext, IntentRiskArea } from '@devdigest/shared';
+import type { IntentMissingContext, IntentRiskArea, PrBrief } from '@devdigest/shared';
 import { now } from './_shared';
 import { workspaces } from './core';
 import { pullRequests } from './pulls';
@@ -62,9 +62,39 @@ export const prIntent = pgTable('pr_intent', {
   classifiedAt: timestamp('classified_at', { withTimezone: true }),
 });
 
+/**
+ * The cached PR Why + Risk Brief, one row per pull request.
+ *
+ * `json` holds the model's own output (`PrBrief`); everything else is
+ * provenance the server knows and the model never returns.
+ *
+ * The four key components are stored separately from the joined `state_key`
+ * on purpose: when a cached brief goes stale, the row says WHICH input moved,
+ * and a wrong key is debuggable by eye against `pr_intent.head_sha` above.
+ *
+ * All the provenance columns are nullable — they were added by
+ * `0018_pr_brief_cache` and any row written before it has none of them.
+ */
 export const prBrief = pgTable('pr_brief', {
   prId: uuid('pr_id')
     .primaryKey()
     .references(() => pullRequests.id, { onDelete: 'cascade' }),
-  json: jsonb('json').notNull(),
+  json: jsonb('json').$type<PrBrief>().notNull(),
+  /** PR head at build time — one of the four cache-key components. */
+  headSha: text('head_sha'),
+  /** `pr_intent.head_sha` at build time, or 'none' when no intent exists. */
+  intentKey: text('intent_key'),
+  /** `repo_index_state` sha/status/updated_at, or 'none' when unindexed. */
+  blastKey: text('blast_key'),
+  /** The last finished review run this brief saw, or 'none'. */
+  runKey: text('run_key'),
+  /** The four above, joined. A cache hit is `state_key` equality. */
+  stateKey: text('state_key'),
+  model: text('model'),
+  costUsd: doublePrecision('cost_usd'),
+  tokensIn: integer('tokens_in'),
+  tokensOut: integer('tokens_out'),
+  builtAt: timestamp('built_at', { withTimezone: true }),
+  /** `{ included, cut, missing }` — what went into this brief. */
+  inputs: jsonb('inputs'),
 });

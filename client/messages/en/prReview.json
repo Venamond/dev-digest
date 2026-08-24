@@ -72,6 +72,50 @@
   "overview": {
     "description": "Description"
   },
+  "brief": {
+    "label": "PR Brief",
+    "notReviewed": "Not reviewed",
+    "noReviewRun": "No review run",
+    "scoreEmpty": "—",
+    "regenerate": "Regenerate brief",
+    "build": "Build brief",
+    "retry": "Try again",
+    "empty": "No brief has been built for this pull request yet.",
+    "building": "Building the brief…",
+    "error": "The brief could not be built.",
+    "stale": "This brief was built for an earlier state of the pull request.",
+    "risk": {
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "focus": {
+      "title": "Review focus — read these first"
+    },
+    "inputs": {
+      "title": "Brief inputs",
+      "included": "Went in",
+      "cut": "Cut to fit the budget",
+      "overBudget": "Everything above was cut and the input still did not fit: {measured} tokens against a budget of {budget}. Read this brief as incomplete.",
+      "missing": "Built without",
+      "none": "Nothing"
+    },
+    "input": {
+      "pr_meta": "Pull request metadata",
+      "intent": "Intent",
+      "blast_map": "Blast map",
+      "blast_summary": "Blast summary",
+      "issue": "Linked issue",
+      "documents": "Repository documents",
+      "findings": "Findings",
+      "changed_files": "Changed files"
+    },
+    "blast": {
+      "partial": "The blast index is partial, so the map behind this brief is incomplete.",
+      "degraded": "The blast index is degraded, so the map behind this brief is incomplete.",
+      "none": "No blast map was available, so this brief was built without it."
+    }
+  },
   "intent": {
     "title": "Intent",
     "inScope": "In scope",

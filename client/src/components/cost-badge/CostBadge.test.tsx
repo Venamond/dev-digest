@@ -20,3 +20,23 @@ describe("CostBadge", () => {
     expect(screen.getByText("$8.70")).toBeInTheDocument();
   });
 });
+
+/* Reported 2026-08-24: a PR brief costing $0.000145 rendered as `$0.000`,
+   which reads as free. It surfaced only after the blast map was deduplicated —
+   the optimisation pushed real costs under the badge's own precision. */
+describe("costs below the third decimal", () => {
+  it("says less-than rather than claiming zero", () => {
+    render(<CostBadge usd={0.000145} />);
+    expect(screen.getByText("< $0.001")).toBeInTheDocument();
+  });
+
+  it("still prints an exact zero as zero — nothing was spent", () => {
+    render(<CostBadge usd={0} />);
+    expect(screen.getByText("$0.000")).toBeInTheDocument();
+  });
+
+  it("leaves a cost at or above the third decimal alone", () => {
+    render(<CostBadge usd={0.001} />);
+    expect(screen.getByText("$0.001")).toBeInTheDocument();
+  });
+});

@@ -11,6 +11,46 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## What Doesn't Work
 
+- **A formatter's precision is a promise about the range of values it will be
+  given, and changing the system's scale can silently break it.** `CostBadge`
+  had rounded to three decimals since it was written, which was right while a
+  run cost cents. On 2026-08-24 the brief's blast map was deduplicated, its
+  input fell roughly threefold, and real costs of `$0.000145` began rendering
+  as **`$0.000`** — a paid call reading as free, on four screens at once. The
+  optimisation was the trigger; nothing about the badge changed.
+  **Do:** when a change makes a measured quantity smaller or larger by an order
+  of magnitude, look at every place that formats it before believing the screen.
+  A rounding rule cannot say "too small to show" on its own — `< $0.001` can,
+  and an exact zero must stay `$0.000`, because "nothing was spent" and "less
+  than a tenth of a cent" are different claims.
+
+- **Two model-returned strings rendered side by side need a deterministic join,
+  not a space.** `{brief.what} {brief.why}` produced "Add external webhook
+  sharing for reviews To allow sharing reviews to an external webhook" — a
+  run-on with a capital in the middle, because a model does not punctuate the
+  end of a field it was never told is the end of a sentence, and the schema
+  cannot make it. Reported 2026-08-24 on the PR brief banner.
+  **Do:** join in a pure helper that supplies the terminator when the first
+  half lacks one and adds none when it has one (`joinWhatWhy` in
+  `BriefBanner/helpers.ts`), and keep it testable — asking the prompt for
+  "complete sentences" is a request, while the helper is a guarantee. This
+  applies to any two adjacent fields of one structured answer, not just these.
+
+- **Do not gate a control on a response's STATE when the server guards on its
+  CONTENT.** `BlastCard` offered `Explain` whenever `state` was `ok` or
+  `partial`, while `BlastService.summarize` refuses any map with
+  `symbols.length === 0` (`empty_map`). `ok` with zero symbols is a real,
+  correct state — a pull request touching only paths the indexer excludes
+  (`vendor` is in `EXCLUDED_DIRS`, `server/src/modules/repo-intel/
+  constants.ts:24`) indexes to nothing at all. The button was therefore offered
+  in the one case where its only possible outcome was an error, and the card
+  already had the number on screen: `0 symbols`. Reported 2026-08-24 on a pull
+  request whose two changed files were both under `src/vendor/shared/`.
+  **Do:** when a route can refuse, find its guard and mirror the same predicate
+  in whatever enables the control. A state enum answers "did this succeed",
+  never "is there anything here" — and a user should not spend a click to learn
+  what the screen is already showing.
+
 - Do not put `sessionStorage` (or any client-only value) into sidebar `href`s
   during render to "skip" `/skills` → `/skills/:id` hops. SSR emits `/skills`,
   the client first paint emits `/skills/{uuid}` → React hydration mismatch.
@@ -92,6 +132,13 @@ ground truth — wrap-ups can mischaracterize a session.
   and `flexShrink: 0` on that element — `flexWrap: "wrap"` on the row itself
   drops the whole right-hand element onto its own line, which reads as "the
   button moved" and sends you looking in the wrong file.
+  **Equal WIDTHS inside a column have the mirror trap: the cross axis of a
+  column flex is the width, so `align-items: flex-start` sizes every row to its
+  own content and no `flexGrow` inside a row can widen it.** The row itself is
+  already narrow; growing a child of a narrow row changes nothing. Both levels
+  are needed — `alignItems: "stretch"` on the column, `flexGrow: 1` on the box
+  inside each row. Cost one round on `IntentCard`'s risk list, 2026-08-24,
+  where the fix looked applied and the rows stayed ragged.
   **Equal heights need three levels, not one.** Each card component renders
   `<section>` around its card `<div>`, so the SECTION is the grid item.
   `align-items: stretch` on the grid stretches the section and nothing else —
@@ -500,6 +547,28 @@ ground truth — wrap-ups can mischaracterize a session.
   the document body never loading (the view derived `docs[0]` for display but
   still fetched by the unset `selectedPath`), and the selected row not
   highlighted for the same reason. Three screenshot rounds fixed all of them.
+  **Size the window to the PAGE, not to a laptop — or you will report a block
+  as missing when it is merely below the fold.** The PR Overview tab on a real
+  pull request runs about **7,000px** tall, because `BlastCard` renders every
+  changed symbol and a repository-sized PR has 117 of them. At
+  `--window-size=1440,2400` the capture ends inside the blast list, and the
+  `REVIEW FOCUS` block and the description below it are simply absent from the
+  image — measured 2026-08-24, where that is exactly the wrong conclusion I
+  drew for a minute. Shoot `--window-size=1500,7000`, then crop with
+  **`sips`** (`sips -c <height> <width> --cropOffset <top> <left> in.png --out
+  out.png`) — Python's PIL is not installed on this machine, and a 7,000px
+  image read whole is downscaled past legibility.
+  **Check a row's LONGEST real string, not that the block exists.** A screenshot
+  read for structure — is the block present, in the right order, with its
+  count — passes while the rows inside it render nothing like the design.
+  Measured 2026-08-24 on `ReviewFocusCard`: the block was confirmed present and
+  correctly placed, and every row was in fact wrapping its reason onto a second
+  line, because the mockup's demo reasons are short and this repository's are
+  not. Same family as the path rule above: judge any row-rendering design
+  against the longest string real data produces. `flexWrap: "nowrap"` plus
+  `minWidth: 0` and `textOverflow: "ellipsis"` is the one-line shape — without
+  `minWidth: 0` a flex item never shrinks below its content and the ellipsis
+  never fires.
   **Its one real limit: you cannot carry app state between two runs.**
   `--virtual-time-budget` exits Chrome the moment the budget is spent, before
   `localStorage` is flushed to the profile, so the usual trick — warm one URL

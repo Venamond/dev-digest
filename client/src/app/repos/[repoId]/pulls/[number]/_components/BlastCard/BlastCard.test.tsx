@@ -23,9 +23,18 @@ vi.mock("@/lib/hooks/reviews", () => ({
     isPending: h.derivePending,
     isError: h.deriveError,
   }),
-  // OverviewTab renders IntentCard beside BlastCard, from the same module.
+  // OverviewTab renders IntentCard and BriefBanner beside BlastCard, from the
+  // same module. A hook left out here reaches the real implementation and the
+  // whole tree fails with "No QueryClient set" — extend this list whenever
+  // OverviewTab's subtree gains one (client/INSIGHTS.md:341-358).
   usePrIntent: () => ({ data: null, isLoading: false }),
   useDeriveIntent: () => ({ mutate: vi.fn(), isPending: false }),
+  usePrReviews: () => ({ data: [] }),
+}));
+
+vi.mock("@/lib/hooks/brief", () => ({
+  usePrBrief: () => ({ data: null, isLoading: false }),
+  useBuildBrief: () => ({ mutate: vi.fn(), isPending: false, isError: false }),
 }));
 
 vi.mock("@/lib/hooks/repo-intel", () => ({
@@ -445,6 +454,25 @@ describe("BlastCard", () => {
     expect(
       screen.getByTitle("Imports this file; no call site was resolved"),
     ).toBeInTheDocument();
+  });
+
+  /* An `ok` map with no symbols is a real state, not an error: a pull request
+     touching only paths the indexer excludes — `vendor/` is in EXCLUDED_DIRS
+     (server/src/modules/repo-intel/constants.ts:24) — indexes to nothing.
+     `BlastService.summarize` refuses such a map with `empty_map` rather than
+     paying for a paragraph about nothing, so offering the button here spends a
+     click to reach an error the card already has the data to predict.
+     Reported on PR #7, whose two changed files are both under `vendor/`. */
+  it("offers no Explain button when the map is ok but holds no symbols", () => {
+    h.data = makeBlast({
+      state: "ok",
+      symbols: [],
+      totals: { symbols: 0, callers: 0, callers_found: 0, endpoints: 0, crons: 0 },
+    });
+
+    renderCard();
+
+    expect(screen.queryByRole("button", { name: "Explain" })).not.toBeInTheDocument();
   });
 
   it("triggers the summary once and then renders the cached paragraph", () => {

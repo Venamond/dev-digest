@@ -52,7 +52,18 @@ module.exports = {
         // "0 violations" it prints when nothing is wrong. `walk`/`resolve`/
         // `facade` were added with `modules/context` for exactly that reason —
         // extend this in the same commit that creates such a file.
-        path: '^src/modules/[^/]+/(service|helpers|walk|resolve|facade|run-executor|diff-loader|feature-models)\\.ts$|^src/modules/repo-intel/pipeline/|^src/modules/reviews/intent/|^src/modules/smart-diff/pure/|^src/modules/blast/(constants|shape|summary)\\.ts$',
+        // `_shared/` and `brief/` are whole-directory alternatives rather than
+        // basenames: `_shared` is ring 0 (pure helpers, no I/O at all) and
+        // `modules/brief` splits its application layer across
+        // deps/gather/documents/budget/prompt, none of which is a listed
+        // basename. A directory alternative also covers whatever that module
+        // grows next, which a basename list does not.
+        path: '^src/modules/[^/]+/(service|helpers|walk|resolve|facade|run-executor|diff-loader|feature-models)\\.ts$|^src/modules/repo-intel/pipeline/|^src/modules/reviews/intent/|^src/modules/smart-diff/pure/|^src/modules/blast/(constants|shape|summary)\\.ts$|^src/modules/_shared/|^src/modules/brief/',
+        // A module's own repository IS the data layer and is supposed to
+        // import db/schema — the basename alternatives never named one, but a
+        // directory alternative would sweep it in. Excluding it here keeps
+        // that true for every module, present and future.
+        pathNot: '^src/modules/[^/]+/repository(\\.ts|/)',
       },
       to: {
         path: '^(node_modules/\\.pnpm/[^/]+/node_modules/drizzle-orm|node_modules/drizzle-orm|src/db/schema)',

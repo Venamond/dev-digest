@@ -2,7 +2,7 @@
 
 - **Date:** 2026-08-23
 - **Author:** implementation-planner
-- **Status:** draft — the human flips this to `approved` before implementation
+- **Status:** approved — the human approved this plan on 2026-08-24 and asked me to record it here. Noted for the record: the run executed it while this line still read `draft`, because `scripts/run-plan-state.sh` matched `*approved*` against the explanatory tail this line used to carry and reported the plan as approved. That parser is fixed; the sequence is recorded in `docs/reports/2026-08-24-run-plan-pr-why-risk-brief.md`.
 
 ## 0. Requirements & scope
 

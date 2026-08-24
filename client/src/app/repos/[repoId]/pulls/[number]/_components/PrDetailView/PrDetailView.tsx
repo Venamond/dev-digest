@@ -65,6 +65,10 @@ function PrDetailViewInner() {
   const tab = search.get("tab") ?? "overview";
   const traceRunId = search.get("trace");
   const targetFindingId = search.get("finding");
+  // A file/line deep link out of the PR brief (AC-29). Both are cleared when
+  // the human switches tab by hand, so a stale target cannot re-fire.
+  const targetFile = search.get("file");
+  const targetLine = search.get("line");
   // `scroll` defaults to Next's own behaviour (scroll to top). Pass false when
   // the destination does its own scrolling: App Router's default is
   // ScrollBehavior.Default on every push/replace, which lands the viewport at
@@ -80,7 +84,7 @@ function PrDetailViewInner() {
   const { rootRef, remember } = useTabScroll(tab, { skipRestore: !!targetFindingId });
   const setTab = (t: string) => {
     remember(tab);
-    setParams({ tab: t, finding: null });
+    setParams({ tab: t, finding: null, file: null, line: null });
   };
 
   const runs = reviews ?? [];
@@ -202,6 +206,8 @@ function PrDetailViewInner() {
             // user always lands on the first Review runs block instead.
             onOpenFinding={(id) => setParams(openFindingPatch(id), { scroll: false })}
             runs={prRuns}
+            targetFile={targetFile}
+            targetLine={targetLine != null ? Number(targetLine) : null}
           />
         )}
       </div>
