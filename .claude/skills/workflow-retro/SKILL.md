@@ -1,6 +1,6 @@
 ---
 name: workflow-retro
-description: "Retrospective on a multi-agent workflow that just finished — what it cost, where the waste was, and what to change so the next run is cheaper. Use it AFTER a run that dispatched several agents (a spec interview, /run-plan, a review fan-out, any session with more than two or three subagents), whenever the human asks how a run went, what it cost, how many tokens or agents it took, why it took so long, or whether the agents duplicated each other's work. Also use it when the human wants to know whether a change they made after the last retro actually helped. It reads the transcripts the harness already wrote, reports metrics, findings and concrete proposals, and appends a row to docs/retro/ledger.md. Trigger terms: retro, retrospective, how did that run go, what did that cost, workflow cost, token spend, why so many agents, ретро, ретроспектива, скільки коштувало."
+description: "Retrospective on a session's work — what it cost, where the waste was, and what to change so the next run is cheaper. Use it AFTER a run that dispatched agents (a spec interview, /run-plan, a review fan-out, any session with subagents), and equally after a session that dispatched none at all, where the conversation itself is the whole run and its cost is the only cost there is. Use it whenever the human asks how a run went, what it cost, how many tokens or agents it took, why it took so long, whether the agents duplicated each other's work, or where a long inline session spent its time. Also use it when the human wants to know whether a change they made after the last retro actually helped. It reads the transcripts the harness already wrote, reports metrics, findings and concrete proposals, and appends a row to docs/retro/ledger.md. Trigger terms: retro, retrospective, how did that run go, what did that cost, workflow cost, token spend, why so many agents, ретро, ретроспектива, скільки коштувало."
 metadata:
   tags: process, retrospective, cost, agents, ledger
 ---
@@ -46,7 +46,9 @@ python3 .claude/skills/workflow-retro/scripts/metrics.py <SESSION-ID>
 ```
 
 For an older run, pass its id or full path from the list the script prints.
-`--idle-gap N` changes what counts as an agent sitting idle (default 120s).
+`--idle-gap N` changes what counts as an agent sitting idle (default 300s,
+matching `idle_gap` in the script — keep the two in step, a wrong default
+here sends the reader off to explain a gap figure they never actually ran).
 
 The script **refuses to run with no argument** (exit 2) and prints the
 candidates instead. That refusal is deliberate. It used to fall back to "newest
@@ -73,9 +75,26 @@ marked row is the run the human meant — `9×implementer` and
 UUID is not. If it is the wrong one, re-run with the right id rather than
 reporting numbers from a run nobody asked about.
 
+**After any edit to `metrics.py`, run its golden test** —
+`python3 .claude/skills/workflow-retro/scripts/test_metrics.py`. It pins the
+figures of one recorded run against the numbers already written into the
+ledger, and checks that a session with no agents prints the short report rather
+than an empty agents table. An instrument that starts lying quietly gives no
+other warning: the numbers stay internally consistent and only the conclusion
+is wrong.
+
 **If the script errors, read it before working around it.** It is short, and a
 wrong path is a five-second fix; re-deriving its arithmetic inline costs more
 than the retro is worth.
+
+**A session that dispatched no agents is measured too, not refused.** It prints
+a shorter report — the conversation, its round-trips, its totals and the files
+it re-read — and no agents table, because an empty table beside a `0.0×`
+parallelism figure reads as a finding when it is an absence. Say plainly in the
+report that the fan-out half measured nothing; the conversation's cost is still
+the run's cost, and it is the only half that exists. This used to be exit 1,
+which pushed the caller into re-deriving the arithmetic by hand — the one thing
+the script exists to prevent.
 
 ### What each column means, and the three that are easy to misread
 
@@ -123,7 +142,7 @@ as general observations.
 
 | Look for | The signal |
 |---|---|
-| **Rework — split it in two, always** | how many agents revised a previous agent's output. Report it as two numbers, never one. **Designed iteration** is a cycle the workflow is built around: `/run-plan`'s fix → re-review → verify rounds are not waste, they are the method. **Accidental redo** is work that existed only because something ran in the wrong order or a briefing was wrong. Only the second is avoidable, and only it belongs in a proposal. Measured runs so far: the project-context spec was 78%, almost all accidental; the mcp-server run-plan was ~30%, all of it designed. Quoting those two side by side as one metric compares nothing. |
+| **Rework — split it in two, always** | `### Revision candidates` lists every agent whose description reads as a revision, with why, and gives the raw percentage. That list is the input, not the answer: split it yourself and report it as two numbers, never one. It under-counts by design — an agent whose description names the change rather than the act ("Line from the patch as fallback") is invisible to it, so read the agents table beside it. **Designed iteration** is a cycle the workflow is built around: `/run-plan`'s fix → re-review → verify rounds are not waste, they are the method. **Accidental redo** is work that existed only because something ran in the wrong order or a briefing was wrong. Only the second is avoidable, and only it belongs in a proposal. Measured runs so far: the project-context spec was 78%, almost all accidental; the mcp-server run-plan was ~30%, all of it designed. Quoting those two side by side as one metric compares nothing. |
 | **Order inversion** | whose output would have changed the briefing of an agent that ran *earlier*. Almost always the biggest single saving, and the hardest to see from inside. |
 | **Outliers, within a type** | each agent is compared only against others of its own type, and the baseline is printed per type with where it came from. This matters: a `plan-verifier` median is 40 tool uses where an `implementer` median is 6, so a whole-session median makes a verifier look anomalous every time it does its job correctly — and a flag that accuses correct work teaches the reader to ignore flags. When a type ran only once or twice here, the baseline is borrowed from that type's history across the project's other sessions and marked `(history)`; a spec workflow legitimately dispatches exactly one researcher, and that is precisely the agent worth judging. Read the marker: `(this run)` compares an agent with the peers it actually ran beside, `(history)` with how that type usually behaves. Only when neither yields three runs does it print `not judged`. |
 | **Duplicated context** | `files touched` counts Read+Edit+Write; `re-read within one agent` counts **Read only**, because an implementer editing one file six times is doing its job, and counting those as re-reads once made this skill contradict a previous retro that had it right. One file opened by many agents. Partly unavoidable (a reviser must read what it revises); a file read three or more times inside *one* agent is the interesting case — its briefing did not stick. |
@@ -197,8 +216,11 @@ separate step they ask for.
 3. **The tables, pasted from the script verbatim.** It emits markdown —
    `### Agents`, `### The conversation itself`, `### Human round-trips`,
    `### Totals`, `### Launch order`, `### Critical path`,
-   `### Duplicated context`, `### Baselines and outliers`, `### Not counted` —
-   seven of them tables, so they render as such. Paste them; do not retype a number into prose and do not
+   `### Revision candidates`, `### Duplicated context`,
+   `### Baselines and outliers`, `### Not counted` — most of them tables, so
+   they render as such. A session that dispatched no agents prints a shorter
+   set: the conversation, its round-trips, its totals, `### Re-read within the
+   conversation`, and `### Not counted`. Paste them; do not retype a number into prose and do not
    rebuild a table by hand. Retyping is where the errors enter. Drop a whole
    section only when it is empty or carries no finding.
 4. **The totals table**, including cost and the conversation's own half of it.
@@ -283,12 +305,17 @@ is exact where inference would not be.
 - **Its own cost is reported, and so is what it cannot see.** An instrument
   that measures spending and hides its own is not trustworthy — and one that
   reports a total while silently omitting a whole category is worse, because
-  the number looks complete. Two categories are missing from the metrics and
-  the script says so on every run: work done by `claude -p` subprocesses (the
-  description optimiser is the one that bites — real tokens, no transcript),
-  and the main session's own turns. Counting either would mean matching
-  session directories by time window, which is a guess; naming the gap is
-  honest where a guess would not be.
+  the number looks complete. One category is missing and the script says so on
+  every run: work done by `claude -p` subprocesses (the description optimiser
+  is the one that bites — real tokens, no transcript). Counting it would mean
+  matching session directories by time window, which is a guess; naming the gap
+  is honest where a guess would not be.
+
+  The main session's own turns used to be the second gap and are **not** one
+  any more — `### The conversation itself` counts them, and they are inside
+  `cost of the run`. This paragraph claimed otherwise for longer than it was
+  true, which is the worst place in the skill for a stale sentence: a reader
+  who checks it and finds it wrong stops trusting the figures too.
 
 ## Known about the transcripts
 

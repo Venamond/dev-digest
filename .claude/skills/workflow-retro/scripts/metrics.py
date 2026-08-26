@@ -44,6 +44,17 @@ PRICES = {  # model-id prefix -> (input, output) $/MTok
 }
 FALLBACK_PRICE = (5.0, 25.0)  # opus-tier; the harness's default here
 
+# An agent description that reads as a revision of somebody's earlier output.
+# Deliberately loose — this feeds a candidate list a human then splits, so a
+# false positive costs one glance while a miss costs a finding. "round 1" is
+# NOT a revision (it is the first pass); "round 2" and later are.
+REVISION_VERB = re.compile(
+    r"\b(re-?fix|fix(?:es|ing|ed)?|revis(?:e|es|ing|ed)|correct(?:s|ing|ed)?"
+    r"|repair(?:s|ing|ed)?|redo|re-?review|re-?run|re-?work|amend(?:s|ing|ed)?)\b",
+    re.I,
+)
+LATER_ROUND = re.compile(r"\bround\s*([2-9]|[1-9][0-9])\b", re.I)
+
 
 def price_for(model):
     if model:
@@ -332,6 +343,130 @@ def resolve_session(arg):
 
 
 # ------------------------------------------------------------------ report ---
+def solo_report(session, main_path, idle_gap):
+    """A session that dispatched no subagents.
+
+    The fan-out half of this instrument measures nothing here, and printing an
+    empty agents table beside a 0.0x parallelism figure is worse than saying
+    so: a zero reads as a finding when it is an absence. So this path prints
+    only what exists — the conversation — and names what it cannot show.
+
+    Refusing outright was the old behaviour. It sent the caller off to
+    re-derive the arithmetic by hand, which is the one thing this script exists
+    to prevent, and it hid a figure the script already computes correctly.
+    """
+    if not main_path.is_file():
+        print(
+            f"workflow-retro: no agent transcripts, and no conversation at {main_path}",
+            file=sys.stderr,
+        )
+        return 1
+
+    r = Run("main", main_path)
+    cost, known = r.cost
+
+    print(f"session: {session}")
+    print("run    : 0 agents — nothing was dispatched; this is the conversation alone")
+    if r.start:
+        print(
+            f"window : {r.start.astimezone():%Y-%m-%d %H:%M} -> "
+            f"{r.end.astimezone():%H:%M}  (wall {dur(r.wall)})"
+        )
+    print()
+
+    print("### The conversation itself")
+    print()
+    print("| scope | turns | in (tok) | out (tok) | cache read (tok) | hit | tools | cost |")
+    print("|---|--:|--:|--:|--:|--:|--:|--:|")
+    print(
+        f"| whole session | {r.turns} | {human(r.tin)} | {human(r.tout)} | "
+        f"{human(r.cread)} | {r.hit * 100:.0f}% | {r.tools} | ${cost:.2f} |"
+    )
+    print()
+    print(
+        "**in** is UNCACHED input only, and on a cached session it is near zero — a "
+        "couple of tokens per turn. Everything a person typed is billed once under the "
+        "cache WRITE and then re-read every turn under **cache read**, so `in` is never "
+        "the measure of how much was said; `cache read` is where the input cost lives."
+    )
+    print()
+
+    humans = human_messages(main_path, r.start, r.end) if r.start else []
+    print("### Human round-trips")
+    print()
+    if humans:
+        print("| time | what was said |")
+        print("|---|---|")
+        for ts, text in humans:
+            print(f"| {ts.astimezone():%H:%M} | {text[:90].replace('|', '/')} |")
+    else:
+        print("None recorded.")
+    print()
+
+    stamps = sorted(r.stamps)
+    pauses = [
+        (b - a).total_seconds()
+        for a, b in zip(stamps, stamps[1:])
+        if (b - a).total_seconds() > idle_gap
+    ]
+    act = r.active(idle_gap)
+    idle = r.wall - act
+
+    print("### Totals")
+    print()
+    print("| metric | value | unit | what it says |")
+    print("|---|--:|---|---|")
+    print("| agents | 0 | count | nothing was dispatched — there is no fan-out to judge |")
+    print(f"| output | {human(r.tout)} | tokens | the conversation IS the run |")
+    print(f"| cache read | {human(r.cread)} | tokens | billed at 10% of the input rate |")
+    print(
+        f"| cache hit | {r.hit * 100:.0f} | % | the cheapest lever, and whether it is "
+        f"already spent |"
+    )
+    print(f"| tool uses | {r.tools} | calls | every one of them inline |")
+    print(f"| wall | {dur(r.wall)} | elapsed | first turn to last, one subtraction |")
+    print(f"| active | {dur(act)} | elapsed | wall minus every pause over {idle_gap}s |")
+    print(
+        f"| gaps | {dur(idle)} | elapsed | {idle / r.wall * 100 if r.wall else 0:.0f}% of the "
+        f"wall waiting on the human, in {len(pauses)} pauses |"
+    )
+    print(f"| human round-trips | {len(humans)} | turns | harness notifications excluded |")
+    print(
+        f"| **cost of the run** | **{cost:.2f}** | USD | the conversation alone — there is no "
+        f"agent half to add; Anthropic list price, a subscription is not billed this way |"
+    )
+    print()
+
+    here = os.getcwd().rstrip("/") + "/"
+    rel = lambda f: f[len(here) :] if f.startswith(here) else f
+    rereads = sorted(((n, f) for f, n in r.reads.items() if n > 2), reverse=True)[:12]
+
+    print("### Re-read within the conversation")
+    print()
+    if rereads:
+        print("| re-reads | file |")
+        print("|--:|---|")
+        for n, f in rereads:
+            print(f"| {n}x | `{rel(f)}` |")
+        print()
+        print(
+            "Read only — an Edit or a Write to the same file is work, not a re-read. Three "
+            "or more reads of one file inside a single context usually means an earlier "
+            "read was not kept."
+        )
+    else:
+        print("No file was read more than twice.")
+
+    print()
+    print("### Not counted")
+    print()
+    print("- `claude -p` subprocesses: they spend real tokens and write no transcript here.")
+    if not known:
+        print("- the model was not recorded on some turns — those are priced at opus rates.")
+    print("- cost is Anthropic list price, not what a Max subscription was charged.")
+    return 0
+
+
 def main(argv):
     idle_gap = 300
     args = []
@@ -354,13 +489,17 @@ def main(argv):
 
     session = resolve_session(args[0])
     sub = session / "subagents"
-    if not sub.is_dir():
-        print(f"workflow-retro: no transcripts at {sub}\n", file=sys.stderr)
-        list_sessions(stream=sys.stderr)
-        return 1
+    # The conversation's own transcript lives NEXT TO the session directory as
+    # <session-id>.jsonl, not inside it. Missing that file is why this script
+    # spent its first day reporting subagent cost as the run's cost and being
+    # wrong by a factor of four.
+    main_path = Path(str(session).rstrip("/") + ".jsonl")
 
     list_sessions(chosen=session)
     print()
+
+    if not sub.is_dir():
+        return solo_report(session, main_path, idle_gap)
 
     # -- load ---------------------------------------------------------------
     runs = []
@@ -371,14 +510,8 @@ def main(argv):
         meta = json.loads(meta_path.read_text())
         runs.append(Run(jsonl.name[len("agent-") : -len(".jsonl")], jsonl, meta))
     if not runs:
-        print(f"workflow-retro: no agent transcripts in {sub}", file=sys.stderr)
-        return 1
+        return solo_report(session, main_path, idle_gap)
 
-    # The conversation's own transcript lives NEXT TO the session directory as
-    # <session-id>.jsonl, not inside it. Missing that file is why this script
-    # spent its first day reporting subagent cost as the run's cost and being
-    # wrong by a factor of four.
-    main_path = Path(str(session).rstrip("/") + ".jsonl")
     main_run = Run("main", main_path) if main_path.is_file() else None
 
     # -- tree: who spawned whom --------------------------------------------
@@ -658,6 +791,50 @@ def main(argv):
         f"Idle = gaps over {idle_gap}s inside one transcript. An agent's wait for a human "
         "resume is not recorded there — see the `gaps` row for that."
     )
+
+    # -- revision candidates ------------------------------------------------
+    # The rework figure went into four ledger rows by hand, re-read off 9 to 24
+    # agent descriptions each time. The descriptions are structured enough to
+    # enumerate the candidates mechanically ("Fix round 1", "Revise AC-12",
+    # "Architecture review round 2"), which turns a counting task into a
+    # checking one.
+    #
+    # It stops at candidates deliberately. Designed iteration — /run-plan's
+    # fix -> re-review -> verify cycle — is the method working, not waste, and
+    # nothing in a description distinguishes it from a redo caused by a wrong
+    # briefing. Printing a single "rework %" here would give that judgement the
+    # authority of a measurement it has not earned.
+    print()
+    print("### Revision candidates")
+    print()
+    cands = []
+    for r in runs:
+        d = r.desc or ""
+        why = []
+        vm = REVISION_VERB.search(d)
+        rm = LATER_ROUND.search(d)
+        if vm:
+            why.append(f"verb `{vm.group(0).lower()}`")
+        if rm:
+            why.append(f"round {rm.group(1)}")
+        if why:
+            cands.append((r, ", ".join(why)))
+    if cands:
+        print("| agent | role | task | why it looks like a revision |")
+        print("|---|---|---|---|")
+        for r, why in cands:
+            print(f"| `{r.key[:8]}` | {r.role} | {r.desc.replace('|', '/')} | {why} |")
+        print()
+        print(
+            f"**{len(cands)} of {len(runs)} agents ({len(cands) / len(runs) * 100:.0f}%)** revised "
+            f"something. That is the candidate list, NOT the rework figure: split it yourself "
+            f"into designed iteration — a fix -> re-review -> verify cycle the workflow is built "
+            f"around — and accidental redo, which existed only because something ran in the wrong "
+            f"order or a briefing was wrong. Only the second belongs in a proposal, and no "
+            f"description can tell you which is which."
+        )
+    else:
+        print("No agent description reads as a revision — every agent did first-pass work.")
 
     # -- duplication --------------------------------------------------------
     here = os.getcwd().rstrip("/") + "/"

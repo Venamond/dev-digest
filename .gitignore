@@ -43,6 +43,12 @@ test-results/
 # plan-verifier report until 2026-08-26.
 docs/reports/
 
+# Python bytecode. The only Python here is the retro's metrics script and its
+# golden test, and the test imports the script to syntax-check it — which mints
+# a __pycache__ next to a skill that is otherwise all markdown.
+__pycache__/
+*.pyc
+
 # Per-track plan extracts written by /run-plan — generated verbatim from the
 # plan at dispatch time, never edited by hand, never a source of truth.
 docs/plans/.extract/
