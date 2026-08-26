@@ -34,9 +34,13 @@ test-results/
 # local brainstorm companion sessions
 .superpowers/
 
-# Agent run reports (implementer / test-writer). Working artifacts, not docs:
-# they exist so a truncated chat message costs a Read instead of a re-run.
-# Plans in docs/plans/ are the durable record and stay committed.
+# Agent run reports (implementer, test-writer, architecture-reviewer). Working
+# artifacts, not docs: they exist so a truncated chat message costs a Read
+# instead of a re-run. Plans in docs/plans/ are the durable record and stay
+# committed — and so are plan-verifier's verdicts, which is why they live in
+# docs/verification/ and NOT here. If you give an agent a new Write path, run
+# `git check-ignore -v <path>` once: docs/reports/ silently swallowed every
+# plan-verifier report until 2026-08-26.
 docs/reports/
 
 # Per-track plan extracts written by /run-plan — generated verbatim from the

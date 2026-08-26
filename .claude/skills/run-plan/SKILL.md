@@ -93,7 +93,7 @@ write; what you get is a final message that stops mid-sentence.
 
 **Then check the disk. A completion notification is not evidence.** Before
 advancing a phase, re-run `./scripts/run-plan-state.sh <slug>` (or `ls
-docs/reports/`) and confirm the artifacts exist. An agent can finish, report
+docs/reports/ docs/verification/`) and confirm the artifacts exist. An agent can finish, report
 `completed`, and have written nothing — resume it with `SendMessage` rather
 than dispatching a fresh one, so its context is not paid for twice.
 
@@ -121,6 +121,12 @@ is yours, in this session, with the command in the plan's `## 5`.
 **Round 1 dispatches both** `architecture-reviewer` and `plan-verifier`, in
 parallel in one message. They answer different questions over the whole change
 set, and both are read-only towards the code.
+
+Their artifacts land in different directories, and the difference is not
+cosmetic: `architecture-reviewer` writes to the gitignored `docs/reports/`,
+while `plan-verifier` writes its verdict to `docs/verification/`, which is
+committed and travels with the PR as the evidence that the plan was executed.
+Confirm the verdict file exists before you call the run finished.
 
 Give both: the resolved list of changed files (so neither spends a turn
 re-deriving it), the plan path, the slug, and the round number.

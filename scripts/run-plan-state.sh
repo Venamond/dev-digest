@@ -2,7 +2,8 @@
 # Deterministic phase resolver for /run-plan.
 #
 # Prints where a plan's execution stands, derived only from files on disk:
-# the plan itself and the reports in docs/reports/. There is no state file —
+# the plan itself, the run reports in docs/reports/ and the committed
+# plan-verifier verdicts in docs/verification/. There is no state file —
 # the artifacts are the state.
 #
 # Usage: ./scripts/run-plan-state.sh <slug | path-to-plan>
@@ -72,9 +73,13 @@ if [ "$invalid" -eq 1 ]; then
 fi
 
 # --- reports on disk ---------------------------------------------------------
-rounds() {  # highest round number among docs/reports/*-<1>-<slug>-r<N>.md
-  ls docs/reports/ 2>/dev/null \
-    | sed -nE "s/^.*-$1-$slug-r([0-9]+)\.md$/\1/p" | sort -n | tail -1
+# Highest round number among <dir>/*-<kind>-<slug>-r<N>.md. Two directories,
+# because plan-verifier's verdict is a committed artifact under
+# docs/verification/ while the run logs stay in the gitignored docs/reports/.
+rounds() {  # <kind> [dir...]
+  local kind="$1"; shift
+  ls "$@" 2>/dev/null \
+    | sed -nE "s/^.*-$kind-$slug-r([0-9]+)\.md$/\1/p" | sort -n | tail -1
 }
 have_step() { ls docs/reports/ 2>/dev/null | grep -qE -- "-implementer-$slug-$1\.md$"; }
 full_run=$(ls docs/reports/ 2>/dev/null | grep -cE -- "-implementer-$slug\.md$" || true)
@@ -89,7 +94,8 @@ for id in $step_ids; do
   fi
 done
 
-arch=$(rounds arch-review); verify=$(rounds plan-verify); fix=$(rounds "implementer-$slug" )
+arch=$(rounds arch-review docs/reports/)
+verify=$(rounds plan-verify docs/verification/ docs/reports/)
 fix=$(ls docs/reports/ 2>/dev/null | sed -nE "s/^.*-implementer-$slug-fix-r([0-9]+)\.md$/\1/p" | sort -n | tail -1)
 
 # --- phase -------------------------------------------------------------------
@@ -110,5 +116,5 @@ fi
 printf 'plan     %s   %s   %s   tracks %s\n' "$plan" "$status" "$mode" "$tracks"
 printf 'steps    %s  %s/%s reports\n' "$done_marks" "$done_n" "$step_count"
 printf 'review   arch %s · verify %s · fix %s\n' \
-  "${arch:+r$arch}${arch:-—}" "${verify:+r$verify}${verify:-—}" "${fix:+r$fix}${fix:-—}"
+  "${arch:+r}${arch:-—}" "${verify:+r}${verify:-—}" "${fix:+r}${fix:-—}"
 printf '→ phase: %s\n' "$phase"

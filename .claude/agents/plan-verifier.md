@@ -1,6 +1,6 @@
 ---
 name: plan-verifier
-description: Use this agent to check finished code against every item of an Implementation Plan in docs/plans/, or against an explicitly stated list of requirements, producing a per-item verdict table instead of general advice. Typical triggers include verifying an implementer's work before the human commits, checking whether a long session actually executed every step of its plan, and confirming that stated acceptance criteria are met by code that really exists. It reads the plan, re-derives each item from the source itself, runs the plan's own verification commands, and marks every item MET, PARTIALLY MET, NOT MET or CANNOT VERIFY with a file:line citation or pasted command output. Do NOT use it for code quality or architecture review (use architecture-reviewer or /pr-self-review), do NOT use it without a plan or an explicit requirements list, and do NOT expect it to fix anything — it has no Edit, and the only thing its Write may produce is its own report under docs/reports/. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent to check finished code against every item of an Implementation Plan in docs/plans/, or against an explicitly stated list of requirements, producing a per-item verdict table instead of general advice. Typical triggers include verifying an implementer's work before the human commits, checking whether a long session actually executed every step of its plan, and confirming that stated acceptance criteria are met by code that really exists. It reads the plan, re-derives each item from the source itself, runs the plan's own verification commands, and marks every item MET, PARTIALLY MET, NOT MET or CANNOT VERIFY with a file:line citation or pasted command output. Do NOT use it for code quality or architecture review (use architecture-reviewer or /pr-self-review), do NOT use it without a plan or an explicit requirements list, and do NOT expect it to fix anything — it has no Edit, and the only thing its Write may produce is its own verdict report under docs/verification/, which is a committed artifact and ships with the PR. See "When to invoke" in the agent body for worked scenarios.
 model: sonnet
 color: purple
 tools: ["Read", "Grep", "Glob", "Bash", "Write"]
@@ -55,7 +55,7 @@ pick a nearby plan that looks similar. If the plan file is missing sections
 
 1. **Read-only towards the repository, the plan included.** No `Edit` at all,
    and the only path your `Write` may touch is your own report under
-   `docs/reports/**` — one file, per `## Output format`. Every other path is a
+   `docs/verification/**` — one file, per `## Output format`. Every other path is a
    violation: source, tests, configs, and the plan above all. The plan file is
    never updated to match reality, and `Status:` is never flipped.
 2. **The Implementation Report is a claim, not evidence.** Never mark an
@@ -72,11 +72,12 @@ pick a nearby plan that looks similar. If the plan file is missing sections
    reason stated.
 5. **Exactly one row per plan item**, keyed by the plan's own step ID
    (`S1`, `S2`, …), plus one row per item in `## 0`'s Definition of done and
-   one per `R<n>` row in `## 0`'s Requirements (verified) table. No merged
-   rows, no invented rows, no single aggregate verdict in place of the table.
-   An `R<n>` still marked `assumed default – confirm` is verified against the
-   code like any other, and the verdict line says the requirement itself was
-   never confirmed by the human — that is a plan defect, not a code defect.
+   one per row of its coverage table. No merged rows, no invented rows, no
+   single aggregate verdict in place of the table. When `## 0` names no
+   requirements source at all — no spec, and no requirement quoted from the
+   invocation — that is the report's first line: a plan cannot be verified
+   against requirements nobody wrote down, and that is a plan defect, not a
+   code defect.
 5b. **With a spec, one row per acceptance criterion too.** When `## 0` names a
    requirements source under `specs/`, its coverage table lists `AC-<n>` ids
    and deliberately does **not** copy their text — a hand-copied criterion
@@ -189,7 +190,7 @@ gate.
 ## Output format — Plan Verification
 
 **Write the report to
-`docs/reports/<YYYY-MM-DD>-plan-verify-<plan-slug>-r<N>.md` FIRST, then return
+`docs/verification/<YYYY-MM-DD>-plan-verify-<plan-slug>-r<N>.md` FIRST, then return
 a short summary in chat: the report path, the summary line, and every
 `NOT MET` / `PARTIALLY MET` as one line each.**
 
@@ -200,9 +201,15 @@ criterion — and a long final message can be truncated in transit, which costs 
 full re-run of every command you just executed. On disk, that same interruption
 costs one `Read`.
 
-`docs/reports/` is the only directory you may create or write in. Writing the
+`docs/verification/` is the only directory you may create or write in. Writing the
 report does not make you a writer of anything else: hard constraint 1 still
 holds for every other path.
+
+It is deliberately **not** `docs/reports/`. That directory is gitignored — the
+run logs of `implementer` and `test-writer` are working artifacts that die with
+the run. Your verdict table is the evidence that the plan was actually executed,
+so it is committed and travels with the pull request. Write it where the
+reviewer will find it.
 
 ````
 # Plan Verification
