@@ -39,6 +39,7 @@ Ring 1 may import it. Ring 0 may not.
 - Talks to Postgres, GitHub, git, an LLM, the filesystem → **ring 2** (`adapters/*` or a module's `repository.ts`)
 - Parses/validates an HTTP request, calls a service, maps errors → **ring 3** (a module's `routes.ts`)
 - Wires a concrete class to an interface → **composition root** (`platform/container.ts`)
+- Needs data another module owns → **through the container or a deps bag**, never a relative import of its `service.ts`/`repository.ts` (`rules/module-boundaries.md`)
 
 ## Check it
 
@@ -55,6 +56,8 @@ code. See `enforcement.md` for how the check works and the baseline policy.
 | File | Read when |
 | --- | --- |
 | [rules/layers.md](rules/layers.md) | full detail on each ring, the composition-root exemption, and the `db/rows.ts` seam |
+| [rules/module-boundaries.md](rules/module-boundaries.md) | adding a module, or reviewing an import that crosses from one module into another |
+| [rules/indirection.md](rules/indirection.md) | a diff passes `arch:check` but the layering still looks wrong — violations split across two legal edges, or in files no rule's `from` matcher covers |
 | [rules/fastify-routes.md](rules/fastify-routes.md) | writing or reviewing a `routes.ts` file |
 | [rules/drizzle-repositories.md](rules/drizzle-repositories.md) | writing or reviewing a `repository.ts` file, or any Drizzle query |
 | [rules/zod-contracts.md](rules/zod-contracts.md) | adding or changing a shared contract, or deciding where to `parse` |
