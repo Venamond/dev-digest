@@ -1,0 +1,257 @@
+{
+  "skill": "onion-architecture",
+  "schema_version": 1,
+  "notes": "Every planted violation here is one that `pnpm arch:check` CANNOT catch — no import edge expresses it. Iteration 1 showed the control arm re-derives import rules by reading .dependency-cruiser.cjs, so import-graph violations do not discriminate. Every identifier is verified against the live repo. Assertions 6-7 (band placement, factual accuracy) were added after a v2-vs-v1 comparison scored 15/15 for both versions: identification-only assertions cannot separate two versions of one skill.",
+  "cases": {
+    "d-parse-and-rowshape": {
+      "fixture": "fixtures/case-d-parse-and-rowshape",
+      "prompt": "I'm about to open a PR adding a `digest` module to the DevDigest server — a new shared contract, routes, service, repository and a GitHub fetch adapter. The files are in FIXTURE_DIR, laid out under the repo paths they will land at (see CHANGED_FILES.txt). Review this change set for architecture problems before I push it. Write your review to OUTPUT_DIR/review.md — for each problem give the file, the offending line, what rule it breaks, and the fix.",
+      "planted_violations": [
+        {
+          "id": "V1",
+          "where": "server/src/modules/digest/service.ts",
+          "rule": "parse once at the boundary (rules/zod-contracts.md) — NOT caught by arch:check",
+          "summary": "`build()` calls `CreateDigest.parse(body)` on a value the route already validated: routes.ts declares `schema: { body: CreateDigest }` through fastify-type-provider-zod, so req.body is already a valid domain value. A second parse deeper in the call stack is double boundary-parsing."
+        },
+        {
+          "id": "V2",
+          "where": "server/src/modules/digest/repository.ts + server/src/modules/digest/routes.ts",
+          "rule": "ring-2 row shape must not leak past the repository boundary (review-checklist.md) — NOT caught by arch:check",
+          "summary": "`repository.ts` exports `type DigestRow = typeof t.reviews.$inferSelect`, and `routes.ts` imports it and uses it as the declared return type of GET /digest/latest. A Drizzle-derived row shape is therefore the module's public HTTP contract instead of a vendor/shared contract type."
+        },
+        {
+          "id": "V3",
+          "where": "server/src/vendor/shared/contracts/digest.ts",
+          "rule": ".nullable() vs .nullish() on a shared contract (review-checklist.md) — NOT caught by arch:check",
+          "summary": "`last_run_at: z.string().nullable()` makes the field REQUIRED at the TypeScript level (it only unions in null). `DigestService.build()` returns a Digest object with no `last_run_at` key at all, so this will not typecheck. The field should be `.nullish()` if it is also omittable."
+        }
+      ],
+      "legal_distractors": [
+        {
+          "id": "D1",
+          "where": "server/src/modules/digest/routes.ts",
+          "why_legal": "POST /digest validating req.body once via `schema: { body: CreateDigest }` is the correct single boundary parse — this is the sanctioned pattern, not a defect."
+        },
+        {
+          "id": "D2",
+          "where": "server/src/adapters/github/digest-fetch.ts",
+          "why_legal": "`PullSummaryList.parse(await res.json())` is a second parse but at a DIFFERENT boundary — an adapter validating an untrusted external API response. rules/zod-contracts.md explicitly sanctions this as the anti-corruption layer."
+        },
+        {
+          "id": "D3",
+          "where": "server/src/modules/digest/service.ts",
+          "why_legal": "`constructor(private repo: DigestRepository)` takes the explicit dependency rather than Container — this is exactly what rules/ports-adapters-di.md asks for."
+        }
+      ],
+      "assertions": [
+        "Identifies V1: the service re-parsing a body the route already validated (double boundary parse)",
+        "Identifies V2: the Drizzle $inferSelect row type exported from the repository and used as the route's response type",
+        "Identifies V3: last_run_at declared .nullable() when it should be .nullish(), against a service that omits the field",
+        "Precision: every finding in the review's highest severity band is a planted violation or an independently verifiable defect — no fabricated top-severity finding",
+        "No false positive on the legal distractors D1-D3: the route's single boundary parse, the adapter's external-response parse, and the explicit repository constructor injection are not reported as violations",
+        "Band placement: all three planted violations are placed in the review's HIGHEST severity band (a planted violation demoted below the top band fails this, even when it was identified)",
+        "Factual accuracy: no supporting claim in the review is refuted by the live repo — every identifier, line reference, count and 'X does not exist' claim the review leans on holds when checked"
+      ]
+    },
+    "e-ports-and-secrets": {
+      "fixture": "fixtures/case-e-ports-and-secrets",
+      "prompt": "I'm adding a Notifier port to the DevDigest server — the interface, a webhook implementation, a module service that uses it, and the container wiring. The files are in FIXTURE_DIR, laid out under the repo paths they will land at (see CHANGED_FILES.txt). Review this change set for architecture problems before I push it. Write your review to OUTPUT_DIR/review.md — for each problem give the file, the offending line, what rule it breaks, and the fix.",
+      "planted_violations": [
+        {
+          "id": "V1",
+          "where": "server/src/adapters/notify/webhook.ts",
+          "rule": "secrets go through SecretsProvider, never process.env outside the secrets adapter (rules/ports-adapters-di.md; root AGENTS.md) — NOT caught by arch:check",
+          "summary": "The `endpoint` getter reads `process.env.DIGEST_WEBHOOK_URL` directly. Secrets live in ~/.devdigest/secrets.json behind the SecretsProvider port; process.env is only a fallback and is never read directly outside that adapter."
+        },
+        {
+          "id": "V2",
+          "where": "server/src/modules/notify/service.ts",
+          "rule": "a service takes explicit ports, not Container (rules/ports-adapters-di.md) — NOT caught by arch:check",
+          "summary": "`NotifyService` takes `constructor(private container: Container)`. The Container-in-constructor service-locator pattern is grandfathered for existing services and the rule says explicitly not to copy it into a new one; this service should take the Notifier port."
+        },
+        {
+          "id": "V3",
+          "where": "server/src/platform/container.ts (and the absent server/src/adapters/mocks.ts change)",
+          "rule": "the port sequence steps 4-5: ContainerOverrides field + mock in adapters/mocks.ts (rules/ports-adapters-di.md) — NOT caught by arch:check",
+          "summary": "A new port was added but the DI sequence is left incomplete: `ContainerOverrides` gains no `notifier?: Notifier` field, so tests cannot inject a double, and no mock implementation was added to server/src/adapters/mocks.ts (it is not in CHANGED_FILES.txt at all)."
+        }
+      ],
+      "legal_distractors": [
+        {
+          "id": "D1",
+          "where": "server/src/vendor/shared/adapters.ts and client/src/vendor/shared/adapters.ts",
+          "why_legal": "The port interface is defined in ring 0 and mirrored byte-identically into the client copy — steps 1 of the sequence, done correctly, and the mirroring satisfies the vendor/shared do-not-touch rule."
+        },
+        {
+          "id": "D2",
+          "where": "server/src/platform/container.ts",
+          "why_legal": "The lazy `get notifier(): Notifier` getter constructing and caching the concrete WebhookNotifier while returning the interface type is step 3 done right; the composition root is exempt from the ring rules by design."
+        },
+        {
+          "id": "D3",
+          "where": "server/src/adapters/notify/webhook.ts",
+          "why_legal": "The adapter importing only ring 0 (vendor/shared/adapters.js, @devdigest/shared) plus platform/errors.js is correct for ring 2 — an adapter implementing a ring-0 interface imports ring 0."
+        }
+      ],
+      "assertions": [
+        "Identifies V1: the adapter reading process.env directly instead of resolving the webhook through SecretsProvider",
+        "Identifies V2: NotifyService taking Container in its constructor instead of the Notifier port",
+        "Identifies V3: the incomplete port sequence — no ContainerOverrides entry and no mock in adapters/mocks.ts",
+        "Precision: every finding in the review's highest severity band is a planted violation or an independently verifiable defect — no fabricated top-severity finding",
+        "No false positive on the legal distractors D1-D3: the ring-0 port placement with its mirrored client copy, the container's lazy getter, and the adapter's ring-0-only imports are not reported as violations",
+        "Band placement: all three planted violations are placed in the review's HIGHEST severity band (a planted violation demoted below the top band fails this, even when it was identified)",
+        "Factual accuracy: no supporting claim in the review is refuted by the live repo — every identifier, line reference, count and 'X does not exist' claim the review leans on holds when checked"
+      ]
+    },
+    "f-drift-and-handler": {
+      "fixture": "fixtures/case-f-drift-and-handler",
+      "prompt": "I'm adding a `weekly` report module to DevDigest — a new shared contract, a route, and a shared math helper. The files are in FIXTURE_DIR, laid out under the repo paths they will land at (see CHANGED_FILES.txt). Review this change set for architecture problems before I push it. Write your review to OUTPUT_DIR/review.md — for each problem give the file, the offending line, what rule it breaks, and the fix.",
+      "planted_violations": [
+        {
+          "id": "V1",
+          "where": "server/src/vendor/shared/contracts/weekly.ts vs client/src/vendor/shared/contracts/weekly.ts",
+          "rule": "server and client vendor/shared must stay byte-identical (root AGENTS.md do-not-touch; ./scripts/check-shared-sync.sh) — NOT caught by arch:check",
+          "summary": "The server copy of WeeklyReport declares `model_mix: z.record(z.string(), z.number().int()).nullish()`; the client copy does not have that field. The two vendored copies have drifted, which check-shared-sync.sh fails on."
+        },
+        {
+          "id": "V2",
+          "where": "server/src/modules/weekly/routes.ts",
+          "rule": "no business logic in a route handler (rules/fastify-routes.md) — NOT caught by arch:check",
+          "summary": "The GET /weekly handler does the severity rollup loop, the cost arithmetic against local PRICE_PER_M_IN/PRICE_PER_M_OUT constants, and the model-mix tally inline. Severity rollups and cost math belong in a service or a ring-0 helper; a route validates, delegates and maps errors."
+        },
+        {
+          "id": "V3",
+          "where": "server/src/vendor/shared/weekly-math.ts",
+          "rule": "do not thread a transaction handle into ring 0 (rules/drizzle-repositories.md) — NOT caught by arch:check",
+          "summary": "This ring-0 file declares a `TxLike` interface and `persistWeeklyRollup(tx, table, rows)` performs a write through it. Ring 0 is pure: a transaction boundary must be something ring 1 calls through a port, not a handle passed into the domain. The structural typing hides it from no-domain-io, which only matches imports."
+        }
+      ],
+      "legal_distractors": [
+        {
+          "id": "D1",
+          "where": "server/src/vendor/shared/weekly-math.ts",
+          "why_legal": "`totalFindings` and `severityShare` are pure arithmetic over plain inputs with no I/O — exactly what belongs in ring 0. Only the tx-taking function is the defect."
+        },
+        {
+          "id": "D2",
+          "where": "server/src/modules/weekly/routes.ts",
+          "why_legal": "Throwing `NotFoundError` from platform/errors.js for the empty case is correct ring-3 error mapping."
+        },
+        {
+          "id": "D3",
+          "where": "server/src/vendor/shared/contracts/weekly.ts",
+          "why_legal": "`cost_usd: z.number().nullish()` is the correct choice for a field that may be both null and omitted — the opposite mistake from the .nullable() trap."
+        }
+      ],
+      "assertions": [
+        "Identifies V1: the server and client vendored copies of the weekly contract have drifted (model_mix present in one, absent in the other)",
+        "Identifies V2: the severity rollup and cost arithmetic done inline in the route handler",
+        "Identifies V3: the transaction handle threaded into the ring-0 weekly-math helper, which writes through it",
+        "Precision: every finding in the review's highest severity band is a planted violation or an independently verifiable defect — no fabricated top-severity finding",
+        "No false positive on the legal distractors D1-D3: the pure arithmetic helpers, the NotFoundError mapping, and the correct .nullish() field are not reported as violations",
+        "Band placement: all three planted violations are placed in the review's HIGHEST severity band (a planted violation demoted below the top band fails this, even when it was identified)",
+        "Factual accuracy: no supporting claim in the review is refuted by the live repo — every identifier, line reference, count and 'X does not exist' claim the review leans on holds when checked"
+      ]
+    },
+    "g-module-boundaries": {
+      "fixture": "fixtures/case-g-module-boundaries",
+      "prompt": "I'm about to open a PR that adds an `insights` module to the DevDigest server — routes, a deps bag, a service, a repository and helpers. The files are in FIXTURE_DIR, laid out under the repo paths they will land at (see CHANGED_FILES.txt). Review this change set for architecture problems before I push it. Write your review to OUTPUT_DIR/review.md — for each problem give the file, the offending line, what rule it breaks, and the fix.",
+      "planted_violations": [
+        {
+          "id": "V1",
+          "where": "server/src/modules/insights/service.ts",
+          "rule": "module boundary — behaviour crossing modules (rules/module-boundaries.md); NOT caught by arch:check",
+          "summary": "The service imports the FUNCTION `toAgentDto` from `../agents/helpers.js` and calls it. `no-cross-module-internals` matches only `(service|repository)` targets, so a cross-module `helpers.ts` import passes `arch:check` silently. A DTO shaper belongs to the module that owns the DTO: `insights` should ask `agents` through the container or its deps bag, not import its shaper."
+        },
+        {
+          "id": "V2",
+          "where": "server/src/modules/index.ts (absent from the change set)",
+          "rule": "static module registry (rules/module-boundaries.md); NOT caught by arch:check",
+          "summary": "`insights/routes.ts` exports a default Fastify plugin but the module is never added to `server/src/modules/index.ts` — that file is not in CHANGED_FILES.txt. The registry is a static map, so the module type-checks, lints, passes arch:check, and its endpoints do not exist at runtime."
+        },
+        {
+          "id": "V3",
+          "where": "server/src/modules/insights/repository.ts",
+          "rule": "table ownership (rules/module-boundaries.md); NOT caught by arch:check",
+          "summary": "`markDismissed` writes `t.findings` (`dismissedAt`) and `countDismissed` reads it. The `findings` table is owned by the `reviews` module, whose repository already exposes exactly this operation — `ReviewRepository.setFindingDismissed(findingId, at)` at server/src/modules/reviews/repository.ts:135. Every repository imports `db/schema` legitimately, so two writers on one table produce an identical import graph and no rule fires. Insights should call the owning repository through the container."
+        }
+      ],
+      "legal_distractors": [
+        {
+          "id": "D1",
+          "where": "server/src/modules/insights/service.ts",
+          "why_legal": "`import { BFS_DEPTH } from '../repo-intel/constants.js'` is a leaf constant crossing modules — no behaviour, no ownership. The live `blast/service.ts:10` does exactly this."
+        },
+        {
+          "id": "D2",
+          "where": "server/src/modules/insights/deps.ts",
+          "why_legal": "The narrow deps bag declares its repository slice STRUCTURALLY (`InsightsReviewRepo.reviewsForPull`, matching the real `ReviewRepository.reviewsForPull` at reviews/repository.ts:68) rather than importing `ReviewRepository`, and routes.ts builds it from `app.container.reviewRepo`. This is the sanctioned seam and mirrors the live `modules/brief/deps.ts`."
+        },
+        {
+          "id": "D3",
+          "where": "server/src/modules/insights/routes.ts",
+          "why_legal": "Importing `getContext` and `IdParams` from `../_shared/` is correct: `_shared` is explicitly exempt as a source in the rule's `pathNot`, and every module uses it."
+        }
+      ],
+      "assertions": [
+        "Identifies V1: the cross-module import of the toAgentDto function from another module's helpers.ts",
+        "Identifies V2: the new module is never registered in server/src/modules/index.ts, so its endpoints do not exist at runtime",
+        "Identifies V3: the insights repository writing the findings table, which the reviews module owns",
+        "Precision: every finding in the review's highest severity band is a planted violation or an independently verifiable defect — no fabricated top-severity finding",
+        "No false positive on the legal distractors D1-D3: the leaf constant import, the structurally-declared deps bag, and the _shared imports are not reported as violations",
+        "Band placement: all three planted violations are placed in the review's HIGHEST severity band (a planted violation demoted below the top band fails this, even when it was identified)",
+        "Factual accuracy: no supporting claim in the review is refuted by the live repo — every identifier, line reference, count and 'X does not exist' claim the review leans on holds when checked"
+      ]
+    },
+    "h-indirection": {
+      "fixture": "fixtures/case-h-indirection",
+      "prompt": "I'm about to open a PR that adds a `reports` module to the DevDigest server — a shared contract mirrored to the client, a shared repository re-export, routes, a service, an aggregation file, a repository, helpers, constants, a deps bag and a schedule helper. The files are in FIXTURE_DIR, laid out under the repo paths they will land at (see CHANGED_FILES.txt). Review this change set for architecture problems before I push it. Write your review to OUTPUT_DIR/review.md — for each problem give the file, the offending line, what rule it breaks, and the fix.",
+      "planted_violations": [
+        {
+          "id": "V1",
+          "where": "server/src/modules/reports/aggregate.ts (fed by service.ts)",
+          "rule": "no-app-to-schema matches a BASENAME list — `aggregate.ts` is not in it, so arch:check prints 0 violations (rules/indirection.md §1)",
+          "summary": "`aggregate.ts` is application-layer code that imports `drizzle-orm` and `* as t from '../../db/schema.js'` and runs `.select().from(t.reviews)`. The rule's `from` path is `^src/modules/[^/]+/(service|helpers|walk|resolve|facade|run-executor|diff-loader|feature-models)\\.ts$` plus whole-directory alternatives for repo-intel/pipeline, reviews/intent, smart-diff/pure, three blast files, _shared and brief — `modules/reports/aggregate.ts` matches none of them. NOTE: `ReportsService` holding `private db: Db` and passing it to these functions is the same violation, not a fourth one; count a review that reports both as having found V1."
+        },
+        {
+          "id": "V2",
+          "where": "server/src/vendor/shared/contracts/reports.ts (and its client mirror)",
+          "rule": "ring 0 must not depend outward — no-domain-io's `to` lists npm packages and `src/db/`, not `src/modules/` (rules/indirection.md §4)",
+          "summary": "The contract imports `REPORT_WINDOWS` from `../../modules/reports/constants.js`. Ring 0 depending on a module inverts the diagram and nothing fires. It also breaks the vendored copy: `client/src/vendor/shared` must stay byte-identical and the client tree has no `src/modules/`, so the mirrored file cannot resolve its own import."
+        },
+        {
+          "id": "V3",
+          "where": "server/src/modules/_shared/repos.ts together with server/src/modules/reports/service.ts",
+          "rule": "re-export laundering through an exempt directory — both edges pass no-cross-module-internals, the composite does not (rules/indirection.md §3)",
+          "summary": "`_shared/repos.ts` re-exports `ReviewRepository` from `../reviews/repository.js`; `_shared/` is excluded from the rule's `from` via `pathNot`, so that edge is legal. `reports/service.ts` then imports `ReviewRepository` from `../_shared/repos.js` and constructs it — the target is `_shared/repos.ts`, not a `(service|repository)` path, so that edge is legal too. The composite is `reports` reaching into the `reviews` module's data layer, which is exactly what the rule exists to stop."
+        }
+      ],
+      "legal_distractors": [
+        {
+          "id": "D1",
+          "where": "server/src/modules/reports/deps.ts",
+          "why_legal": "The deps bag holds only thunks returning a service or a port (`blast: () => BlastService`, `github: () => Promise<GitHubClient>`, `llm: (id) => Promise<LLMProvider>`). This mirrors the live `modules/brief/deps.ts` and is the sanctioned pattern — what would be wrong is a field yielding a `Db`, a `tx` or a query builder."
+        },
+        {
+          "id": "D2",
+          "where": "server/src/modules/reports/repository.ts",
+          "why_legal": "A module's own `repository.ts` importing `drizzle-orm` and `db/schema` and deriving `typeof t.reviews.$inferSelect` as its internal working type is ring 2 doing exactly its job."
+        },
+        {
+          "id": "D3",
+          "where": "server/src/modules/reports/helpers.ts and schedule.ts",
+          "why_legal": "Both are pure ring-1 files with no I/O — shapers and timestamp arithmetic over values the caller already fetched. `helpers.ts` is additionally a protected basename and imports nothing persistent."
+        }
+      ],
+      "assertions": [
+        "Identifies V1: aggregate.ts does persistence from the application layer and is outside no-app-to-schema's basename list, so arch:check stays green",
+        "Identifies V2: the shared contract in vendor/shared imports a module's constants, inverting ring 0 and breaking the client mirror",
+        "Identifies V3: reports reaches the reviews repository through the _shared re-export, with both import edges individually legal",
+        "Precision: every finding in the review's highest severity band is a planted violation or an independently verifiable defect — no fabricated top-severity finding",
+        "No false positive on the legal distractors D1-D3: the service/port thunks in deps.ts, the module's own repository using Drizzle, and the pure helpers/schedule files are not reported as violations",
+        "Band placement: all three planted violations are placed in the review's HIGHEST severity band (a planted violation demoted below the top band fails this, even when it was identified)",
+        "Factual accuracy: no supporting claim in the review is refuted by the live repo — every identifier, line reference, count and 'X does not exist' claim the review leans on holds when checked"
+      ]
+    }
+  }
+}

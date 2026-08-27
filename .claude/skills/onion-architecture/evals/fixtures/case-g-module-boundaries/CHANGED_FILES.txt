@@ -1,0 +1,5 @@
+server/src/modules/insights/routes.ts
+server/src/modules/insights/deps.ts
+server/src/modules/insights/service.ts
+server/src/modules/insights/repository.ts
+server/src/modules/insights/helpers.ts

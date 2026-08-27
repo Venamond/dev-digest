@@ -1,0 +1,5 @@
+server/src/vendor/shared/contracts/weekly.ts
+client/src/vendor/shared/contracts/weekly.ts
+server/src/modules/weekly/routes.ts
+server/src/vendor/shared/weekly-math.ts
+client/src/vendor/shared/weekly-math.ts

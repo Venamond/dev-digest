@@ -1,0 +1,5 @@
+server/src/vendor/shared/adapters.ts
+client/src/vendor/shared/adapters.ts
+server/src/adapters/notify/webhook.ts
+server/src/modules/notify/service.ts
+server/src/platform/container.ts

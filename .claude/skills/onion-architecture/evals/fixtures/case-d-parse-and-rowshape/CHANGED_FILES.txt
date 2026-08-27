@@ -1,0 +1,6 @@
+server/src/vendor/shared/contracts/digest.ts
+server/src/modules/digest/routes.ts
+server/src/modules/digest/service.ts
+server/src/modules/digest/repository.ts
+server/src/adapters/github/digest-fetch.ts
+server/src/modules/digest/helpers.ts
