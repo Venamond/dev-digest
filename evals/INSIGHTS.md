@@ -276,6 +276,19 @@ still fail the case.
 
 ## Codebase Patterns
 
+**`origin/main` does not have `evals/` at all — any branch/PR built for evals
+work must be based on `upstream/l06-evals`, not `main`.** Verified 2026-08-28:
+`git cat-file -e origin/main:evals/scripts/ci-detect.mjs` → "MISSING on main";
+the same check against `upstream/l06-evals` succeeds, and it already carries
+the whole package (`README.md`'s own "Install" section documents this same
+merge: `git fetch upstream && git merge upstream/l06-evals`). A branch cut
+from `main` for evals-related work (e.g. to open a focused CI-wiring PR) would
+reference `evals/package.json`, `pnpm-lock.yaml`, `proxy/`, and the case files
+that don't exist there — broken from the first run, not just incomplete.
+**Do:** `git fetch upstream` first, then branch from `upstream/l06-evals` (or
+from a branch that already merged it, like `06_evals_plan_verified_export`)
+for anything under `evals/` or `.github/workflows/` that depends on it.
+
 **Nested module docs are opened with the `Read` tool, so they ARE assertable.**
 Settled by the 2026-08-27 run: `client/AGENTS.md` appears in `filesRead` on both
 attempts of the client case, `server/AGENTS.md` on the server case. They are not
