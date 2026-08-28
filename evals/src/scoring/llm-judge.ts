@@ -38,7 +38,18 @@ export async function llmJudge(output: string, practices: string[], model = EVAL
   const prompt = `${JUDGE_RUBRIC}\n\n## PRACTICES\n${listed}\n\n## OUTPUT\n${output}\n\nReturn the JSON now.`;
   const res = await runContent(prompt, { allowedTools: [], maxTurns: 1, model });
   const results = parseVerdict(res.text);
-  const total = results.length || 1;
+  // A judge that drops items must not silently shrink the denominator to match — `total` was
+  // `results.length`, so a judge that answers 1 of 3 practices scored 100% instead of a visible
+  // failure. Observed 2026-08-28 (deepseek/deepseek-chat, 3/3 identical attempts at temperature 0):
+  // given 3 practices, the judge's JSON consistently contained only 1 result. Fail loud instead.
+  if (results.length !== practices.length) {
+    throw new Error(
+      `judge answered ${results.length}/${practices.length} practices — dropped items would otherwise ` +
+        `silently inflate the score (denominator must be practices.length, not results.length). ` +
+        `Raw: ${res.text.slice(0, 500)}`,
+    );
+  }
+  const total = practices.length;
   const passed = results.filter((r) => r.passed).length;
   return { results, passed, total, score: passed / total };
 }

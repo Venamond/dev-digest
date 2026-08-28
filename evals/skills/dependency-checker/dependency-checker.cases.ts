@@ -64,9 +64,26 @@ export const cases: SkillCase[] = [
     kind: "quality",
     prompt: `This repo isn't a monorepo — server, client, reviewer-core, and e2e share code via TypeScript path aliases, not workspace:* packages. Analyze our dependencies, including how these packages depend on each other internally.\n\n${REPO_DATA}`,
     practices: [
-      "the answer explicitly distinguishes internal cross-package dependencies (the @shared/review-types alias and the direct relative import into reviewer-core/src/pipeline.js) from external npm package dependencies, rather than treating them as the same kind of dependency",
+      // Loosened 2026-08-28: originally required the exact string "@shared/review-types". The
+      // judge's own rubric requires verbatim evidence for a PASS, so any correct paraphrase of the
+      // SAME alias relationship (e.g. a "shared-types" diagram node) failed on a technicality —
+      // confirmed against deepseek/deepseek-chat's real CI output, which correctly separated
+      // internal (path-alias) from external (npm) dependencies via distinct diagram sections but
+      // labeled the node "shared-types" rather than quoting the alias verbatim. The structural
+      // distinction is what matters; the exact string was never the point.
+      "the answer explicitly distinguishes internal cross-package dependencies (a shared-types path alias between server/client, and the direct relative import into reviewer-core/src/pipeline.js) from external npm package dependencies, rather than treating them as the same kind of dependency",
       "the answer flags server/src/services/review-service.ts importing reviewer-core/src/pipeline.js by relative path instead of through reviewer-core's public entry point as a P0-tier or otherwise explicitly called-out issue",
-      "the answer does not claim these packages are linked via workspace:* or pnpm workspaces, since the project explicitly is not a monorepo",
+      // Replaced 2026-08-28: the old wording ("does not claim workspace:*...") is a negative
+      // phrased as an OMISSION, not an explicit denial. The judge rubric requires a verbatim quote
+      // as evidence for every PASS, and there is no quotable text for "the model never brought this
+      // up" — this failed on 100% of runs regardless of answer quality (confirmed by isolating
+      // llmJudge() against a real, correct answer and watching it FAIL with evidence:""). Two other
+      // negative practices in architecture-reviewer.cases.ts DO work under this same rubric because
+      // the agent's own text explicitly asserts the absence ("no violations found") — there the
+      // judge has something to quote. Reworded here to ask for the same explicit assertion instead
+      // of silence, which the prompt already sets up (REPO_DATA's prompt states "not workspace:*
+      // packages" up front, so a competent answer can straightforwardly echo that framing).
+      "the answer explicitly characterizes the internal package relationships as TypeScript path aliases (not npm/pnpm workspace packages), rather than staying silent on how the packages are actually linked",
     ],
     threshold: 0.6,
     maxTurns: 10,
