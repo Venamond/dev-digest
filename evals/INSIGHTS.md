@@ -393,8 +393,32 @@ same conclusion (reliability, not just fairness).
 **Do:** don't chase judge flakiness by rewording `practices` further once the
 wording is already grounded and unambiguous (verified here: rewording alone
 did not stabilize the verdict). Set `EVAL_JUDGE_MODEL` to a distinct, stronger
-model than `EVAL_MODEL` — not yet done in `.github/workflows/evals.yml` as of
-2026-08-28, both still point at the same cheap model.
+model than `EVAL_MODEL`.
+*(Applied 2026-08-28, `e783ed2`: `eval-agents`/`eval-workflow` moved both
+`EVAL_MODEL` and `EVAL_JUDGE_MODEL` to `anthropic/claude-haiku-4.5`;
+`eval-skills` kept its cheap actor but moved `EVAL_JUDGE_MODEL` alone to the
+same. Confirmed on the next live PR #11 run: the same case that had swung
+between 1/3, 0/3, and a false 1/1 across identical DeepSeek-judge calls now
+returns consistent, detailed, non-empty evidence on every attempt — including
+for FAIL verdicts. The fix worked.)*
+
+**A stronger judge — or a stronger actor, which came bundled in this
+session's fix — can make a `shouldActivate`-style NEGATIVE case fail where a
+weaker model passed it, and that is not a regression.** `architecture-reviewer`'s
+"does not fabricate an architecture finding for the out-of-scope security-shaped
+change" scored 100% under `deepseek/deepseek-chat` and then FAILED once the
+actor became `anthropic/claude-haiku-4.5` (`e783ed2`): Haiku additionally
+flagged the `reply?: FastifyReply` parameter itself as a structural leak,
+which the practice's wording counts as fabrication ("beyond the import issue
+itself"). DeepSeek never noticed the parameter was worth a second look at
+all, so the negative passed by omission, not by correct restraint.
+**Do:** when a fabrication-prevention or other negative case starts failing
+right after a model upgrade, check whether the model got *more* thorough
+before assuming it got worse — the fix may belong in the practice's
+scope (is the extra finding actually wrong, or just something the old model
+was too weak to notice?), not in reverting the model choice. Left open in
+`architecture-reviewer.cases.ts` as of 2026-08-28 — not resolved, the human's
+call.
 
 ## Open Questions
 
