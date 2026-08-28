@@ -132,6 +132,14 @@ wrap-up case produced no tool calls whatsoever on all four of its attempts,
 replying "готовий запустити `/pr-self-review`, коли скажеш". The one trace that
 ever showed a `Skill` call belonged to a dispatched subagent, not the session
 under test. Replicated, not a fluctuation.
+
+`activated()` has a second path besides the `Skill` tool call — crediting a
+direct `Read` of the skill's `SKILL.md`. Checked across all 12 records from
+both runs for the three skill-carrying cases (client/authoring/wrap-up): that
+path never fired either, zero `skills/*/SKILL.md` reads. So `expectSkills` was
+not merely flaky here, it was dead via both of its evidence paths on every
+single attempt — the decision to drop it (`e3dfdc8`) discarded a signal that
+had produced zero passes across 12 sessions, not a working-but-unreliable one.
 **Do:** treat `expectSkills` as indicative on every backend, not just OpenRouter,
 until a prompt phrasing is found that reliably forces the `Skill` tool.
 
