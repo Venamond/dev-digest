@@ -36,10 +36,33 @@ skills on; you do not need to add `'Skill'` to `allowedTools`"
 explain the zero skill activations recorded below: the same doc says omitting it
 means "no SDK auto-configuration. The CLI's own defaults still apply, so this is
 **not** 'skills off'".
-**Do:** before concluding anything about skill activation, settle it with one
-session — set `skills: 'all'` and re-run the wrap-up case. If the `Skill` tool
-starts firing, the activation entry below is wrong and those failures were a
-harness misconfiguration, not model behaviour.
+*(Settled 2026-08-28 by a throwaway probe, three sessions on `claude-haiku-4-5`:
+omitting `skills` — the state of every real case today — suppresses the `Skill`
+tool almost entirely, contrary to the SDK doc's claim. `skills: 'all'` lets it
+fire, but not reliably: three runs of the same wrap-up prompt gave three
+different behaviours, one of which invoked `pr-self-review` via `Skill`. So the
+three `expectSkills` failures recorded below were at least partly a harness
+default, not pure model behaviour — but `skills: 'all'` does not turn into a
+clean fix; see the next entry.)*
+
+**A skill's own activation may carry tool grants that escape the session's
+`tools` restriction — the same escalation path subagents already have, now
+suspected for skills too.** In the probe above, the one run where `pr-self-review`
+activated via `Skill` also showed `Bash` in `toolsUsed`, even though
+`WORKFLOW_ALLOWED_TOOLS` has no `Bash` and the previous entry's `tools`
+restriction was independently confirmed to work: a follow-up probe with plain
+`tools: ["Read"]` (no skills involved) got the model to state outright "I don't
+have a Bash tool available" rather than attempt the call. So the restriction
+holds with skills off, and something let `Bash` through specifically when a
+skill engaged. Not fully proven — the triggering run could not be reproduced a
+second time (the very next attempt, same prompt, made no tool call at all), so
+there is no `tool_result` trace confirming Bash actually EXECUTED rather than
+being attempted and silently allowed through the assistant message.
+**Do:** do not flip `skills: 'all'` (or any explicit skill list) into
+`workflowTask` as a fix for the `expectSkills` failures above without first
+resolving this. If skills are ever enabled here, re-verify the `tools`
+restriction holds with a forced-Bash prompt under `skills: 'all'`, the way the
+plain-tools case was verified above.
 
 **`maxTurns` is a safety margin on a positive case but part of the measurement
 on a negative one — set it generously on negatives, never tightly.** A
