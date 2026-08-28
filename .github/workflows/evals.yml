@@ -37,9 +37,13 @@ concurrency:
   group: evals-${{ github.ref }}
   cancel-in-progress: true
 
+# OPENROUTER_BASE_URL is deliberately NOT set here at workflow level: eval-skills talks to
+# OpenRouter DIRECTLY (run-openrouter.ts's default https://openrouter.ai/api/v1) and never starts
+# the LiteLLM proxy, so pointing it at localhost:4000 globally broke eval-skills with a generic
+# "Connection error." — nothing was listening there in that job. Only eval-agents/eval-workflow
+# (which DO run the proxy) set it, at job level.
 env:
   EVAL_BACKEND: openrouter
-  OPENROUTER_BASE_URL: http://localhost:4000
   OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
 
 jobs:
@@ -119,6 +123,9 @@ jobs:
     env:
       EVAL_MODEL: ${{ vars.EVAL_MODEL || 'deepseek/deepseek-chat' }}
       EVAL_JUDGE_MODEL: ${{ vars.EVAL_JUDGE_MODEL || 'deepseek/deepseek-chat' }}
+      # Job-level, not workflow-level: only jobs that run the proxy point here — see the
+      # top-of-file comment on why this must never be a global env var.
+      OPENROUTER_BASE_URL: http://localhost:4000
     steps:
       - uses: actions/checkout@v4
 
@@ -156,6 +163,9 @@ jobs:
     env:
       EVAL_MODEL: ${{ vars.EVAL_WORKFLOW_MODEL || 'google/gemini-2.5-flash' }}
       EVAL_JUDGE_MODEL: ${{ vars.EVAL_WORKFLOW_MODEL || 'google/gemini-2.5-flash' }}
+      # Job-level, not workflow-level: only jobs that run the proxy point here — see the
+      # top-of-file comment on why this must never be a global env var.
+      OPENROUTER_BASE_URL: http://localhost:4000
     steps:
       - uses: actions/checkout@v4
 
