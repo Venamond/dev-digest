@@ -7,17 +7,30 @@
 # summary, instead of either failing or silently running nothing.
 #
 # Backend: OpenRouter, not the Claude Code subscription (CI has no interactive login) — see
-# evals/README.md "Runners: Claude Code vs OpenRouter". Two models, chosen per tier:
-#   - eval-skills / eval-agents: a cheap model (default deepseek/deepseek-chat). Neither tier
-#     dispatches a subagent, so DeepSeek's documented dispatch failure (evals/README.md's model
-#     table: "❌ does the work inline instead of dispatching") does not apply here.
-#   - eval-workflow: google/gemini-2.5-flash — the one model evals/README.md's table marks
-#     reliable for BOTH content and subagent dispatch, which this tier depends on
-#     (architecture-reviewer dispatch, skill activation). Still `continue-on-error: true`: even on
-#     Gemini this tier has documented flakiness beyond dispatch alone (activation instability, doc
-#     routing that sometimes lands on a sibling file — see evals/INSIGHTS.md), so it stays
-#     informational, never a merge gate.
-# Override either model without touching this file: repo Settings → Actions → Variables →
+# evals/README.md "Runners: Claude Code vs OpenRouter". Models, chosen per tier:
+#   - eval-skills: actor stays cheap (default deepseek/deepseek-chat) — the content tier never
+#     dispatches a subagent, so DeepSeek's documented dispatch weakness doesn't apply, and its
+#     content on this tier was independently verified correct (evals/INSIGHTS.md, 2026-08-28).
+#     The JUDGE is `anthropic/claude-haiku-4.5`, not the same cheap model — a same-model judge was
+#     found non-deterministic on identical input, sometimes dropping items outright (see
+#     evals/INSIGHTS.md's Recurring Errors entry); evals/README.md's own design principle already
+#     calls for a stronger judge family, for the same reason.
+#   - eval-agents / eval-workflow: BOTH actor and judge are `anthropic/claude-haiku-4.5`.
+#     `EVAL_MODEL` defaults to exactly this model everywhere else this package runs (see
+#     evals/src/config.ts) — CI was the one place still overriding it to a cheaper, dispatch-weak
+#     model. These two tiers need reliable subagent dispatch and precise multi-step
+#     instruction-following (e.g. citing an exact rule identifier per finding), which is what this
+#     default was calibrated for.
+#   - Because these are `anthropic/*` OpenRouter slugs, they're served natively by OpenRouter's own
+#     Anthropic-wire "Skin" — no LiteLLM translating proxy needed (that was only required for
+#     non-Anthropic slugs; see evals/README.md "Running tool tiers on cheap models"). Dropping the
+#     proxy from these two jobs also removes its startup/health-check surface, including an
+#     unexplained stray `claude-sonnet-5` request logged there once (evals/INSIGHTS.md, Open
+#     Questions) — that entire code path is gone now.
+#   - eval-workflow keeps `continue-on-error: true`: even the intended model still has documented,
+#     non-deterministic flakiness on some cases (doc routing landing on a sibling file — see
+#     evals/INSIGHTS.md), so it stays informational, never a merge gate, regardless of model.
+# Override any model without touching this file: repo Settings → Actions → Variables →
 # EVAL_MODEL / EVAL_JUDGE_MODEL / EVAL_WORKFLOW_MODEL. The API key is a Secret, not a Variable.
 name: harness evals
 
@@ -37,11 +50,11 @@ concurrency:
   group: evals-${{ github.ref }}
   cancel-in-progress: true
 
-# OPENROUTER_BASE_URL is deliberately NOT set here at workflow level: eval-skills talks to
-# OpenRouter DIRECTLY (run-openrouter.ts's default https://openrouter.ai/api/v1) and never starts
-# the LiteLLM proxy, so pointing it at localhost:4000 globally broke eval-skills with a generic
-# "Connection error." — nothing was listening there in that job. Only eval-agents/eval-workflow
-# (which DO run the proxy) set it, at job level.
+# OPENROUTER_BASE_URL is deliberately never set at workflow level, and no job below points it at a
+# local proxy anymore: every model in this file is an anthropic/* slug, served natively by
+# OpenRouter's own Anthropic Skin (tool tiers) or its direct OpenAI-format endpoint (content tier)
+# at OpenRouter's real base URL. A prior version of eval-skills broke this way once already by
+# inheriting a proxy URL meant for a different tier — see the fix commit and evals/INSIGHTS.md.
 env:
   EVAL_BACKEND: openrouter
   OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -88,7 +101,7 @@ jobs:
         working-directory: evals
     env:
       EVAL_MODEL: ${{ vars.EVAL_MODEL || 'deepseek/deepseek-chat' }}
-      EVAL_JUDGE_MODEL: ${{ vars.EVAL_JUDGE_MODEL || 'deepseek/deepseek-chat' }}
+      EVAL_JUDGE_MODEL: ${{ vars.EVAL_JUDGE_MODEL || 'anthropic/claude-haiku-4.5' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -105,7 +118,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       # Content tier (skillTask): a direct OpenAI-format call, no Claude Agent SDK involved — no
-      # proxy needed even on a non-Anthropic model. See evals/README.md "Runners" table.
+      # proxy needed for any model, Anthropic or not. See evals/README.md "Runners" table.
       - run: pnpm vitest run "skills/${{ matrix.skill }}"
 
   # ---------------------------------------------------------------------------------------------
@@ -121,11 +134,8 @@ jobs:
       run:
         working-directory: evals
     env:
-      EVAL_MODEL: ${{ vars.EVAL_MODEL || 'deepseek/deepseek-chat' }}
-      EVAL_JUDGE_MODEL: ${{ vars.EVAL_JUDGE_MODEL || 'deepseek/deepseek-chat' }}
-      # Job-level, not workflow-level: only jobs that run the proxy point here — see the
-      # top-of-file comment on why this must never be a global env var.
-      OPENROUTER_BASE_URL: http://localhost:4000
+      EVAL_MODEL: ${{ vars.EVAL_MODEL || 'anthropic/claude-haiku-4.5' }}
+      EVAL_JUDGE_MODEL: ${{ vars.EVAL_JUDGE_MODEL || 'anthropic/claude-haiku-4.5' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -141,14 +151,11 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # Tool tier (agentTask → Claude Agent SDK): needs the LiteLLM proxy to speak the Anthropic
-      # wire protocol to a non-anthropic/* OpenRouter slug. See evals/README.md "Running tool
-      # tiers on cheap models".
-      - run: pnpm proxy:up
-      - run: pnpm proxy:wait
+      # Tool tier (agentTask → Claude Agent SDK) on an anthropic/* slug: OpenRouter's Anthropic
+      # Skin serves this natively — no LiteLLM proxy step needed (contrast the old DeepSeek/Gemini
+      # config, which did). See evals/README.md "Runners" table's "an Anthropic model via the Skin"
+      # example.
       - run: pnpm vitest run "agents/${{ matrix.agent }}"
-      - if: always()
-        run: pnpm proxy:down
 
   # ---------------------------------------------------------------------------------------------
   eval-workflow:
@@ -161,11 +168,8 @@ jobs:
       run:
         working-directory: evals
     env:
-      EVAL_MODEL: ${{ vars.EVAL_WORKFLOW_MODEL || 'google/gemini-2.5-flash' }}
-      EVAL_JUDGE_MODEL: ${{ vars.EVAL_WORKFLOW_MODEL || 'google/gemini-2.5-flash' }}
-      # Job-level, not workflow-level: only jobs that run the proxy point here — see the
-      # top-of-file comment on why this must never be a global env var.
-      OPENROUTER_BASE_URL: http://localhost:4000
+      EVAL_MODEL: ${{ vars.EVAL_WORKFLOW_MODEL || 'anthropic/claude-haiku-4.5' }}
+      EVAL_JUDGE_MODEL: ${{ vars.EVAL_WORKFLOW_MODEL || 'anthropic/claude-haiku-4.5' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -181,10 +185,5 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm proxy:up
-      - run: pnpm proxy:wait
+      # Same as eval-agents: an anthropic/* slug needs no LiteLLM proxy.
       - run: pnpm eval:workflow
-      - if: failure()
-        run: docker compose -f proxy/docker-compose.yml logs --tail 100
-      - if: always()
-        run: pnpm proxy:down

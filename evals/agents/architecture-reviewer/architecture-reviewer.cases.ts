@@ -10,11 +10,9 @@ ${fx("checkout-service.diff")}`;
 // A second real diff whose fs-import violation maps onto a DevDigest-SPECIFIC rule name
 // (`core-no-node-builtins`, from architecture-reviewer.md's own rule table — verified against
 // .claude/agents/architecture-reviewer.md:175, not invented) that a competent model will describe
-// in prose but will not spontaneously name unless the agent forces a citation. This is the
-// discriminating case for the strict-vs-lite A/B: both variants should FIND both problems, but
-// only the strict variant (which keeps the "cite the exact documented rule per finding" hard
-// rule) should reliably emit the identifier. The checkout diff's textbook violations don't
-// discriminate — the model volunteers `inward-only-dependencies`/`di-discipline` either way.
+// in prose but will not spontaneously name unless the agent forces a citation. The checkout diff's
+// textbook violations don't discriminate this on their own — the model volunteers
+// `inward-only-dependencies`/`di-discipline` either way.
 //
 // The second violation (skipping the mandatory `groundFindings()` gate) does NOT get its own
 // citation requirement below: unlike the fs-import rule, no documented identifier exists for it
@@ -36,9 +34,11 @@ const BENIGN_PROMPT = `Audit this diff against DevDigest's documented structural
 
 ${fx("benign-refactor.diff")}`;
 
-// Shared across the strict (architecture-reviewer) and relaxed (architecture-reviewer-lite)
-// variants so the two agents are graded on the exact same task — the only thing that should
-// move between the two runs is whether "cites the specific documented rule" keeps passing.
+// architecture-reviewer-lite (a "relaxed" variant meant to A/B against this one) had evals under
+// evals/agents/architecture-reviewer-lite/ but no corresponding .claude/agents/architecture-reviewer-lite.md
+// ever existed in this repo — every case there failed with "agent not found", unconditionally,
+// regardless of what changed. Deleted 2026-08-28 rather than fixed forward; see evals/INSIGHTS.md.
+// If a lite variant is written later, this file's cases are still the right ones to share against it.
 export const cases: AgentCase[] = [
   {
     name: "flags both violations in the checkout diff with severity and a citable rule",
