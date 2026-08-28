@@ -64,6 +64,10 @@ const runWorkflow = changed.some(
   (f) =>
     f === "CLAUDE.md" ||
     f === ".claude/CLAUDE.md" ||
+    // Every module ships CLAUDE.md as a symlink to AGENTS.md (edit AGENTS.md, never the symlink —
+    // see root AGENTS.md do-not-touch), and the workflow tier asserts on module-level routing
+    // through these files (e.g. client/AGENTS.md → e2e/README.md). Any depth, not just top-level.
+    /(^|\/)AGENTS\.md$/.test(f) ||
     /^\.claude\/agents\/.+\.md$/.test(f) ||
     /^evals\/workflow\//.test(f) ||
     /^evals\/src\//.test(f),
