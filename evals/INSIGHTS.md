@@ -7,6 +7,27 @@ file as a **draft to spot-check**, not ground truth.
 
 ## Tool & Library Notes
 
+**A vitest test-level timeout does not stop the underlying session, and a late
+`finally` can still record a pass for a test vitest already reported as
+FAILED.** `assertAndRecord`'s `finally` runs `record()` whenever the wrapped
+async function eventually settles — but vitest's `testTimeout` (240_000ms) is
+a race against the test callback, not a cancellation of it: when the timer
+wins, vitest reports "Test timed out" and marks the test failed, while the
+`runClaude` call keeps running in the background. If it later resolves
+successfully, `record()` still fires. Observed 2026-08-28: the
+`engineering-insights` near-miss negative dispatched a `researcher` subagent
+(28 tool calls) instead of answering directly, took `durationMs: 243729` —
+over the 240_000ms ceiling — and vitest reported it FAILED via timeout on
+both retry attempts, yet its record shows `outcome: true`. The `passed`
+precedence fix (`f11e786`) does not cover this: it protects a failed
+*assertion* from being recorded as a pass, but a vitest-level timeout never
+reaches the assertion at all.
+**Do:** do not trust an `outcome: true` row at face value without also
+checking `metrics.durationMs` against `testTimeout` (240_000 in
+`vitest.config.ts`) — a row near or over that ceiling may belong to a test
+vitest itself marked failed. Cross-check against the vitest summary, the same
+discipline the `retry` entry below already asks for.
+
 **`allowedTools` does not restrict anything — it is an auto-approve list, and
 the workflow tier's "read-only sandbox" does not exist.** In
 `@anthropic-ai/claude-agent-sdk` 0.3.198, `Options.allowedTools` is documented
@@ -108,6 +129,12 @@ fact. (Corrected 2026-08-28: the original evidence for this was `Bash` appearing
 in the trace "outside the allow-list". That reasoning was wrong —
 `allowedTools` does not restrict anything, so the parent could call `Bash`
 itself. The volume gap is the surviving evidence, and it is weaker.)
+Also observed on a case with no `expectSubagents` at all: 2026-08-28's
+`engineering-insights` near-miss negative unpredictably dispatched `researcher`
+(28 tool calls) instead of just answering, on a prompt that only asks the model
+to *explain* a concept — nothing about `activation` cases governs whether a
+subagent fires, and this is what drove that case over the vitest timeout (see
+the entry above).
 **Do:** treat `expectFilesRead` / `expectSkills` as unreliable on any case that
 also dispatches a subagent; assert the dispatch alone, or order the prompt so
 the reads happen before the dispatch and keep `stopWhen` tight.
