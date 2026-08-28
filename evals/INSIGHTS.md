@@ -361,6 +361,41 @@ agent's own `.md` file, the actual `.dependency-cruiser.cjs`). If the string
 isn't there, the eval is wrong, not the model — fix the case, don't reach for
 a pricier model to paper over it.
 
+**A `practices` entry phrased as an OMISSION ("does not claim X") can never
+honestly PASS under `llm-judge.ts`'s current rubric — it requires a verbatim
+quote as evidence for every PASS, and there is no quotable text for "the
+model never brought this up".** Confirmed by isolating `llmJudge()` against a
+verified-correct answer and watching a legitimate PASS come back FAIL with
+`evidence: ""`. This is different from an EXPLICIT denial ("no violations
+found", which two `architecture-reviewer.cases.ts` negatives rely on and
+which works fine — there the judge has a real sentence to quote).
+**Do:** when writing a negative practice, phrase it to require an explicit
+positive assertion of the absence (e.g. "states these are TypeScript path
+aliases, not workspace packages") rather than "does not mention X" — the
+latter is unjudgeable by design, regardless of model quality, and will read
+as a permanent, misleading red case.
+
+**The judge is not deterministic on identical (output, practices) input, even
+at `temperature: 0` — repeat calls diverge, sometimes badly.** Same exact
+input to `llmJudge()`, called back to back: one run's JSON contained only 1
+of 3 requested results (silently caught by the new `results.length !==
+practices.length` guard, see the fix commit), a later run returned all 3 but
+scored every one FAIL — including a practice that had PASSED with correct
+verbatim evidence in an earlier, identical call. `EVAL_JUDGE_MODEL` currently
+defaults to the same cheap model as `EVAL_MODEL` in CI (`deepseek/deepseek-chat`
+for both, set this session for cost) — this is very likely why: judging is a
+harder, more precision-demanding task than answering, and a model cheap
+enough for the actor role is not necessarily stable enough for the judge
+role. `README.md`'s own design principle already says the judge should
+default to a *stronger* family than the task, specifically to soften
+self-preference — this observation is a second, independent reason for the
+same conclusion (reliability, not just fairness).
+**Do:** don't chase judge flakiness by rewording `practices` further once the
+wording is already grounded and unambiguous (verified here: rewording alone
+did not stabilize the verdict). Set `EVAL_JUDGE_MODEL` to a distinct, stronger
+model than `EVAL_MODEL` — not yet done in `.github/workflows/evals.yml` as of
+2026-08-28, both still point at the same cheap model.
+
 ## Open Questions
 
 **An `eval-workflow` CI run logged a LiteLLM request for `openrouter/claude-sonnet-5`
