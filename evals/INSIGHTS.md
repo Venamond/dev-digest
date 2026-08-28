@@ -417,8 +417,27 @@ right after a model upgrade, check whether the model got *more* thorough
 before assuming it got worse — the fix may belong in the practice's
 scope (is the extra finding actually wrong, or just something the old model
 was too weak to notice?), not in reverting the model choice. Left open in
-`architecture-reviewer.cases.ts` as of 2026-08-28 — not resolved, the human's
-call.
+`architecture-reviewer.cases.ts` as of 2026-08-28 — not resolved as a case
+change, though the same case passed cleanly on the very next PR #11 run
+against the same model, so this specific finding is itself intermittent, not
+a fixed 100%-fail regression.
+
+**`threshold: 1.0` on a multi-item `practices` list is close to an
+automatic-fail gate against real model output, independent of whether the
+answer is actually correct.** Confirmed live, PR #11, `anthropic/claude-haiku-4.5`:
+a genuinely correct answer — every real rule identifier right, full
+formatting — scored 0.83 on a 6-item list and 0.8 on a 5-item one, missing
+exactly one item each time (a citation format, a firm verdict phrase). At
+`threshold: 1.0` that scores identically to a wrong or empty answer (also
+observed the same run, 0/6) — the gate can't tell "almost right" from "not
+even trying".
+**Do:** reserve `threshold: 1.0` for short, binary-in-nature checks
+(fabrication/scope-violation practices, 2-3 items, where a "miss" means
+tolerating a real defect, not a formatting slip). For a longer checklist
+practices list, calibrate the threshold to the item count instead of
+defaulting to 1.0 — `0.8` on a 5-6 item list still requires 4-5 to hold, which
+still fails a genuinely wrong or empty answer, but stops conflating one
+missed formatting detail with total failure.
 
 ## Open Questions
 
