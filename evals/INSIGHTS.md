@@ -1,0 +1,147 @@
+# `evals` — insights
+
+Append-only. Every entry must pass the cold test: an agent with zero session
+context reads it and knows exactly what to do — no "be careful with X", only
+"X breaks under Y, do Z instead", with a file/command when relevant. Treat this
+file as a **draft to spot-check**, not ground truth.
+
+## Tool & Library Notes
+
+**`maxTurns` is a safety margin on a positive case but part of the measurement
+on a negative one — set it generously on negatives, never tightly.** A
+`shouldActivate: false` case asserts that a skill did NOT engage. If the session
+dies on the turn ceiling, the skill did not engage because the session ran out
+of room, and the case passes having measured nothing. Observed 2026-08-27: the
+`engineering-insights` near-miss ran 5 turns against `maxTurns: 4`, recorded
+`isError` — and still passed. On a positive case the same ceiling only produces
+a visible false failure, which is why the instinct to keep negatives cheap is
+backwards.
+**Do:** give a negative at least as many turns as the positive it mirrors — the
+two in `review-workflow.cases.ts` now sit at 8. *(Half enforced: `kind:
+"activation"` asserts `isError === false` before the activation check in
+`src/dsl/case.ts`, so an errored negative now fails loudly instead of passing
+empty. Choosing a sane ceiling is still on the case author.)*
+
+**`outcome` in `records.jsonl` does not mean "the case passed" for a workflow
+case — it means "the session did not error".** `record()` computes
+`outcome = !result.isError` whenever there is no grounding gate and no judge
+verdict, which is every `trace` / `activation` / `dispatch` case, and it fires
+from a `finally` that runs before the assertion's throw is visible to it.
+Measured on the 2026-08-27 run: three cases that failed their assertions were
+all persisted as `outcome: true`, and the one negative that genuinely passed was
+persisted as `outcome: false` because its session hit `maxTurns`. Every pass
+rate the statistics layer derives for this tier is therefore wrong, including
+`eval:repeat` and `eval:benchmark`.
+*(Now enforced by `deriveOutcome()` + `src/records/record.test.ts`: every
+workflow branch goes through `assertAndRecord()`, which sets `passed` only when
+the assertions return, and the unit test fails if that precedence is removed —
+verified by disabling the line and watching it go red.)*
+The 20 pre-fix rows were deleted on 2026-08-28 rather than carried forward, so
+`records.jsonl` now starts clean. `history.jsonl` was kept: the trend reporter
+writes it from vitest's own pass/fail, so it was never affected by this bug —
+which also makes it the honest fallback whenever `records.jsonl` is in doubt.
+
+**The parent trace absorbs a dispatched subagent's tool calls, so an assertion
+can be satisfied by the subagent instead of the session under test.** Same run,
+case 1 attempt 1: the trace lists `Bash` — which is not in
+`WORKFLOW_ALLOWED_TOOLS` and the parent therefore cannot call — along with 49
+tool calls, `skills: onion-architecture, spec-creator`, and reads across the
+whole repo, all after an `Agent` call dispatching `researcher`. `Result` carries
+no depth or session id, so parent and child work cannot be separated after the
+fact.
+**Do:** treat `expectFilesRead` / `expectSkills` as unreliable on any case that
+also dispatches a subagent; assert the dispatch alone, or order the prompt so
+the reads happen before the dispatch and keep `stopWhen` tight.
+
+**Metrics under-report a dispatching case by an order of magnitude.** The same
+attempt recorded `durationMs: 15625` while its vitest case took 243832ms — the
+SDK's `duration_ms` excludes the nested subagent's run, and subagent tokens are
+absent from `inputTokens`/`outputTokens` entirely. Early-stopped runs also record
+`inputTokens: 0`, because the stop happens before the result message.
+**Do:** never quote a workflow run's cost from `records.jsonl` without saying it
+excludes subagent time and tokens.
+
+**On the Anthropic subscription path the model still answers *about* a skill
+instead of invoking it — the package README's claim to the contrary is wrong.**
+`README.md` says activation cases are only shaky on non-Anthropic models and
+that "on the Anthropic path the model invokes the Skill tool, so it passes". On
+`claude-haiku-4-5` over the subscription, the `Skill` tool fired in the main
+session **zero times across two full runs — 20 sessions** (2026-08-27 and
+2026-08-28), failing every `expectSkills` assertion in all three cases that
+carry one (`frontend-architecture`, `spec-creator`, `pr-self-review`). The
+wrap-up case produced no tool calls whatsoever on all four of its attempts,
+replying "готовий запустити `/pr-self-review`, коли скажеш". The one trace that
+ever showed a `Skill` call belonged to a dispatched subagent, not the session
+under test. Replicated, not a fluctuation.
+**Do:** treat `expectSkills` as indicative on every backend, not just OpenRouter,
+until a prompt phrasing is found that reliably forces the `Skill` tool.
+
+**A vitest `retry` silently corrupts two things in this package, because
+`record()` fires per ATTEMPT, not per case.** `src/records/record.ts` appends a
+row unconditionally from the test body's `finally`, so a retried case writes two
+rows under one `nodeid`; `series()` in `src/records/stats.ts` counts both, which
+means a case that failed once and passed on the retry reads as 50%, and
+`eval:repeat -n 5` can return more than 5 samples. Worse, the output filename is
+slugified from the case label alone with no attempt suffix, so the retry's
+`writeFileSync` **overwrites the failing attempt's text** in
+`results/outputs/<runId>/` — the copy you actually wanted for debugging.
+**Do:** when reading stats after a run with `retry` on, group by `nodeid` and
+check for duplicates before believing a pass rate. The promotion out of this
+entry is an attempt suffix on the output slug plus a `attempt` field on the row.
+`retry: 1` is set in `vitest.config.ts` (2 attempts max) — it bounds the token
+cost of a flaky case, it does not reduce it.
+
+**`expectFilesRead` is a bare substring match, and this repo contains a full
+copy of itself — so a doc-routing assert can pass on a file the harness never
+routed to.** `src/dsl/case.ts` asserts with
+`result.filesRead.some((f) => f.includes(file))`, and `server/clones/<owner>/<repo>/`
+is a gitignored clone the app writes on PR import (`.gitignore:20`; 26 markdown
+files under it today). Every workflow target has a twin there — verified for
+`TESTING.md`, `server/INSIGHTS.md`, `client/INSIGHTS.md`, `e2e/README.md` and
+`docs/agent-prompts/`. `specs/README.md` is worse: it matches 8 paths, because
+each package carries its own `specs/README.md` as well.
+*(Now enforced by `readMatches()` in `src/dsl/case.ts`: both sides resolve
+against `REPO_ROOT`, matching a file exactly or a directory by prefix, so a read
+from the clone no longer counts. Two deliberate exceptions remain on substring
+matching — `activated()`'s SKILL.md probe, because skills live under
+`.claude/skills` and plugin skills outside the repo entirely, and the `contrast`
+control run, which has its own cwd.)*
+
+**Never assert a trace read against `<module>/AGENTS.md`.** Every module ships
+`CLAUDE.md` as a symlink to `AGENTS.md` (`ls -la server/CLAUDE.md` →
+`AGENTS.md`; same in `client`, `reviewer-core`, `e2e`, `mcp`), and the `Read`
+tool reports the path it was *given*, not the resolved one. A model that opens
+`server/CLAUDE.md` satisfies the rule while an assert on `server/AGENTS.md`
+fails, and `expectFilesRead` has no OR.
+**Do:** assert on a path with no symlink twin — `INSIGHTS.md`, `README.md`,
+`TESTING.md`.
+
+**Only the `Read` tool feeds `filesRead`.** `run-claude.ts` collects
+`file_path` from `Read` blocks alone; `Grep` and `Glob` contribute nothing.
+A model that finds a convention by grepping has behaved correctly and will
+still fail the case.
+**Do:** phrase the prompt so the document is *read* ("прочитай саме ці
+документи"), not merely located.
+
+## Codebase Patterns
+
+**Nested module docs are opened with the `Read` tool, so they ARE assertable.**
+Settled by the 2026-08-27 run: `client/AGENTS.md` appears in `filesRead` on both
+attempts of the client case, `server/AGENTS.md` on the server case. They are not
+silently injected, and `expectFilesRead` can name them directly — subject to the
+symlink caveat above (the model opened `AGENTS.md`, but `CLAUDE.md` would have
+been just as valid a path for it to choose).
+
+## Open Questions
+
+**A nested doc's rows are followed intermittently, not reliably.** Corrected on
+2026-08-28 — the first run's conclusion that `client/AGENTS.md`'s row routing
+browser coverage to `../e2e/README.md` simply does not fire was drawn from a
+single run and was wrong. Across four attempts: run 1 opened neither `e2e` file,
+run 2 opened `e2e/README.md` on one attempt and `e2e/AGENTS.md` on the other. So
+the row does reach the model, and the destination varies. Do not draw a routing
+conclusion from one run — this tier needs the same repeat discipline the quality
+tier already has.
+
+Run-to-run variance is still unmeasured for this tier: every case above is one
+or two samples, so no threshold here is safe as a blocking CI gate yet.

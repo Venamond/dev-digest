@@ -7,7 +7,7 @@
 
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve, sep } from "node:path";
 import { test, expect } from "vitest";
 import { DEFAULT_THRESHOLD } from "../config.js";
 import { skillTask, agentTask, workflowTask } from "../tasks.js";
@@ -16,6 +16,7 @@ import { patternMatch } from "../scoring/pattern-match.js";
 import { llmJudge, type Verdict } from "../scoring/llm-judge.js";
 import { logTrace, logVerdict } from "../logging/log.js";
 import { record } from "../records/record.js";
+import { REPO_ROOT } from "../artifacts/paths.js";
 
 // --- Case shapes ------------------------------------------------------------
 
@@ -115,6 +116,39 @@ function runQualityCases(artifact: string, cases: QualityCase[], task: Task): vo
 export const runSkillCases = (skill: string, cases: SkillCase[]) => runQualityCases(skill, cases, skillTask);
 export const runAgentCases = (agent: string, cases: AgentCase[]) => runQualityCases(agent, cases, agentTask);
 
+/**
+ * Does a recorded read satisfy an expected repo-relative path? Both sides are resolved against
+ * REPO_ROOT (the session's cwd), so a bare substring can no longer match the wrong file. That
+ * matters concretely here: this repo contains a full clone of ITSELF under
+ * server/clones/<owner>/<repo>/, so `TESTING.md` as a substring also matched the clone's copy,
+ * and `specs/README.md` matched eight paths. A directory expectation (`docs/agent-prompts`)
+ * still matches everything beneath it.
+ *
+ * Note this deliberately does NOT govern `activated()`'s SKILL.md probe: skills live under
+ * .claude/skills (and plugin skills outside the repo entirely), so that one stays a substring.
+ */
+function readMatches(readPath: string, expected: string): boolean {
+  const want = resolve(REPO_ROOT, expected);
+  const got = resolve(REPO_ROOT, readPath);
+  return got === want || got.startsWith(want + sep);
+}
+
+/**
+ * Run one workflow case's assertions and persist the REAL verdict. `passed` flips to true only
+ * when `assert` returns without throwing, so a failed expectation can never be recorded as a
+ * pass — which is exactly what record()'s `!result.isError` fallback used to do for this tier
+ * (measured 2026-08-27: three failing cases persisted as `outcome: true`).
+ */
+function assertAndRecord(label: string, result: Result, assert: () => void): void {
+  let passed = false;
+  try {
+    assert();
+    passed = true;
+  } finally {
+    record(label, { result, passed });
+  }
+}
+
 export function runWorkflowCases(cases: WorkflowCase[]): void {
   for (const c of cases) {
     test(c.name, async () => {
@@ -126,22 +160,25 @@ export function runWorkflowCases(cases: WorkflowCase[]): void {
           stopWhen: (p) => p.subagents.includes(expect1),
         });
         logTrace(c.name, result);
-        try {
+        assertAndRecord(c.name, result, () => {
           expect(result.subagents, `subagents: ${result.subagents.join(", ")}`).toContain(c.expectSubagent);
-        } finally {
-          record(c.name, { result });
-        }
+        });
       } else if (c.kind === "activation") {
         const result = await workflowTask(c.prompt, { maxTurns: c.maxTurns });
         logTrace(c.name, result);
-        try {
+        assertAndRecord(c.name, result, () => {
+          // A session that died on the turn ceiling proves nothing about activation: the skill
+          // did not engage because there was no room left. That is a void result, not a pass —
+          // and it silently made a near-miss negative green before this check existed.
+          expect(
+            result.isError,
+            `session errored after ${result.numTurns} turns (maxTurns ${c.maxTurns ?? "default"}) — verdict is void`,
+          ).toBe(false);
           expect(
             activated(result, c.skill),
             `skills: ${result.skillsInvoked.join(", ")} | reads: ${result.filesRead.join(", ")}`,
           ).toBe(c.shouldActivate);
-        } finally {
-          record(c.name, { result });
-        }
+        });
       } else if (c.kind === "trace") {
         // One session, many asserts — every provided expectation is checked against the same trace.
         // Stop as soon as ALL expectations are satisfied (e.g. doc read + subagent launched), so a
@@ -157,10 +194,10 @@ export function runWorkflowCases(cases: WorkflowCase[]): void {
           stopWhen: (p) =>
             subs.every((s) => p.subagents.includes(s)) &&
             skls.every((s) => skillEngaged(p, s)) &&
-            files.every((f) => p.filesRead.some((r) => r.includes(f))),
+            files.every((f) => p.filesRead.some((r) => readMatches(r, f))),
         });
         logTrace(c.name, result);
-        try {
+        assertAndRecord(c.name, result, () => {
           for (const sub of c.expectSubagents ?? []) {
             expect(result.subagents, `subagents: ${result.subagents.join(", ")}`).toContain(sub);
           }
@@ -172,14 +209,12 @@ export function runWorkflowCases(cases: WorkflowCase[]): void {
           }
           for (const file of c.expectFilesRead ?? []) {
             expect(
-              result.filesRead.some((f) => f.includes(file)),
+              result.filesRead.some((f) => readMatches(f, file)),
               `${file} not read | reads: ${result.filesRead.join(", ")}`,
             ).toBe(true);
           }
           expect(result.isError).toBe(false);
-        } finally {
-          record(c.name, { result });
-        }
+        });
       } else {
         // contrast: treatment (real harness) vs control (empty tmpdir, no on-disk config).
         const tools = c.tools ?? ["Read", "Grep", "Glob"];
@@ -193,14 +228,16 @@ export function runWorkflowCases(cases: WorkflowCase[]): void {
         });
         logTrace(`${c.name} [treatment]`, treatment);
         logTrace(`${c.name} [control]`, control);
+        // The control run has its own cwd, so anchor its reads there rather than at REPO_ROOT.
+        const treatmentRead = treatment.filesRead.some((f) => readMatches(f, c.expectFileRead));
+        const controlRead = control.filesRead.some((f) => f.includes(c.expectFileRead));
         try {
-          const treatmentRead = treatment.filesRead.some((f) => f.includes(c.expectFileRead));
-          const controlRead = control.filesRead.some((f) => f.includes(c.expectFileRead));
           expect(treatmentRead, `treatment reads: ${treatment.filesRead.join(", ")}`).toBe(true);
           expect(controlRead, `control reads: ${control.filesRead.join(", ")}`).toBe(false);
         } finally {
-          record(`${c.name} [treatment]`, { result: treatment });
-          record(`${c.name} [control]`, { result: control });
+          // Two runs, two verdicts — a shared flag would hide which side broke.
+          record(`${c.name} [treatment]`, { result: treatment, passed: treatmentRead });
+          record(`${c.name} [control]`, { result: control, passed: !controlRead });
         }
       }
     });

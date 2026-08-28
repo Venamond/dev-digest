@@ -31,6 +31,13 @@ export interface RecordData {
   verdict?: Verdict;
   grounded?: number;
   threshold?: number;
+  /**
+   * Explicit pass/fail for a tier whose verdict is an ASSERTION rather than a score. Overrides
+   * the derived outcome below, and workflow cases MUST supply it: `record()` is called from a
+   * `finally`, so it cannot observe a thrown expectation, and without this field every failed
+   * workflow assertion is persisted as a pass via the `!result.isError` fallback.
+   */
+  passed?: boolean;
   extra?: Record<string, unknown>;
 }
 
@@ -39,19 +46,28 @@ export interface RecordData {
  * the assertions that follow it throw — that is what keeps a failing configuration's series
  * from being silently empty.
  */
+/**
+ * The persisted verdict for one record, in precedence order: an explicit assertion verdict wins;
+ * else a grounding-gate failure short-circuits to false; else the judge threshold; else "did the
+ * run itself succeed". That last fallback is only correct for a case that has no assertions of
+ * its own — which is why a workflow case must always supply `passed`.
+ *
+ * Exported and pure so the precedence can be unit-tested with no model call and no file I/O.
+ */
+export function deriveOutcome(data: Omit<RecordData, "extra">): boolean {
+  const { result, verdict, grounded, threshold, passed } = data;
+  if (passed !== undefined) return passed;
+  if (grounded !== undefined && grounded < 1) return false;
+  if (verdict && threshold !== undefined) return verdict.score >= threshold;
+  return !result.isError;
+}
+
 export function record(label: string, data: RecordData): void {
   const { result, verdict, grounded, threshold, extra } = data;
   const state = expect.getState();
   const nodeid = `${state.testPath ?? "?"} > ${state.currentTestName ?? label}`;
 
-  // outcome: grounding gate failure short-circuits to false; else the judge threshold; else
-  // "did the run itself succeed" (workflow tests have neither grounding nor a judge verdict).
-  const outcome =
-    grounded !== undefined && grounded < 1
-      ? false
-      : verdict && threshold !== undefined
-        ? verdict.score >= threshold
-        : !result.isError;
+  const outcome = deriveOutcome(data);
 
   const outDir = join(OUTPUTS, RUN_ID);
   mkdirSync(outDir, { recursive: true });
