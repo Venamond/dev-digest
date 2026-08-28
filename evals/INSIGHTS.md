@@ -338,6 +338,25 @@ been just as valid a path for it to choose).
 
 ## Open Questions
 
+**An `eval-workflow` CI run logged a LiteLLM request for `openrouter/claude-sonnet-5`
+— a model this job never configures.** PR #11, run `33199396766`, job
+`98944890846`: the proxy container's log shows
+`litellm.exceptions.BadRequestError: ... "openrouter/claude-sonnet-5 is not a
+valid model ID"`, sandwiched between successful `POST /v1/messages` calls.
+`claude-sonnet-5` is `config.ts`'s hardcoded DEFAULT for `EVAL_JUDGE_MODEL`
+(unrelated env var, unset → this literal) — but `grep -rn EVAL_JUDGE_MODEL
+src/` shows it is read only by `llmJudge()` and `benchmark.ts`, neither of
+which the workflow tier calls (`runWorkflowCases` has no verdict/judge path).
+Also not a hardcoded healthcheck — `litellm.config.yaml` has no
+`claude-sonnet` string anywhere. Did not block the run: the actual test
+failures in that job were legitimate `e2e/README.md`-routing assertion
+misses, not proxy errors.
+**Do:** before spending time on this, check whether it reproduces on a rerun,
+and whether it correlates with a specific test case's turn count (it may be
+stale/interleaved log output from something outside this job's own vitest
+process, e.g. a LiteLLM internal call unrelated to `EVAL_MODEL`/`EVAL_JUDGE_MODEL`
+at all). Unresolved as of 2026-08-28.
+
 **A nested doc's rows are followed intermittently, not reliably.** Corrected on
 2026-08-28 — the first run's conclusion that `client/AGENTS.md`'s row routing
 browser coverage to `../e2e/README.md` simply does not fire was drawn from a
