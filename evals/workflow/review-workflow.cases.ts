@@ -6,8 +6,8 @@ import type { WorkflowCase } from "../src/index.js";
  * rule: one believable developer task per session, asserting every routing rule that task
  * legitimately triggers. That is what keeps the session count low.
  *
- * Budget: 6 Claude sessions total.
- *   - 4 × trace      → 1 session each                      = 4
+ * Budget: 5 Claude sessions total.
+ *   - 3 × trace      → 1 session each                      = 3
  *   - 2 × activation (near-miss negatives, cannot be merged) = 2
  *
  * Merging rules:
@@ -18,6 +18,11 @@ import type { WorkflowCase } from "../src/index.js";
  *     first, `stopWhen` is not yet satisfied and the nested subagent runs to completion.
  *   - Asserts fire in order and the first failure throws, so a merged case reports one broken
  *     rule, not all of them. Split a case once it starts failing for mixed reasons.
+ *   - A rule whose ONLY possible evidence is a skill activation cannot be merged as a `trace`
+ *     right now — see the removed wrap-up case below. `expectSkills` is unreliable (the Skill
+ *     tool is suppressed by default in this harness; INSIGHTS.md), and a `trace` with no other
+ *     expectation to fall back on degrades to an always-true assertion once it's dropped. Only
+ *     `activation`'s explicit true/false check is trustworthy for a skill-only rule today.
  *
  * Path-matching caveat: expectFilesRead uses substring matching (case.ts), and this repo contains
  * a full clone of ITSELF under server/clones/<owner>/<repo>/ (gitignored). Every target below has
@@ -55,7 +60,12 @@ export const cases: WorkflowCase[] = [
       "справжнє браузерне покриття, а не лише компонентний тест. За настановами цього репо — що " +
       "прочитати перед роботою тут, і де має жити це покриття? Прочитай ці документи.",
     expectFilesRead: ["client/INSIGHTS.md", "e2e/README.md"],
-    expectSkills: ["frontend-architecture"],
+    // expectSkills: ["frontend-architecture"] removed 2026-08-28 — the Skill tool is suppressed
+    // by default in this harness (runClaude never sets the SDK's `skills` option), confirmed by a
+    // throwaway probe: Skill fired zero times across 20 sessions with skills omitted. See
+    // INSIGHTS.md "A skill's own activation may carry tool grants...". `skills: 'all'` makes it
+    // fire, but unreliably, and one run showed it escaping the tools restriction (Bash appeared
+    // in the trace) — not safe to flip on here until that is resolved.
     maxTurns: 10,
   },
 
@@ -72,25 +82,19 @@ export const cases: WorkflowCase[] = [
       "промпт. За настановами цього репо — у якому форматі пишеться спека і де лежать системні промпти " +
       "вбудованих агентів? Прочитай відповідні документи.",
     expectFilesRead: ["specs/README.md", "docs/agent-prompts/"],
-    expectSkills: ["spec-creator"],
+    // expectSkills: ["spec-creator"] removed 2026-08-28 — see the removal note on trace 2 above.
+    // expectFilesRead alone still exercises both routing rows, so this case stays meaningful.
     maxTurns: 10,
   },
 
-  // --- trace 4 (1 session): wrap-up scenario ---------------------------------------------------
-  // Merges CLAUDE.md:101-104 (on finishing work → engineering-insights) with :106-108
-  // (before `gh pr create` → pr-self-review). Both rules fire on one honest end-of-work prompt.
-  // If engineering-insights proves flaky on a wrap-up phrasing, split it back out and use the
-  // discovery-shaped prompt (the one in the negative below) as its positive.
-  {
-    kind: "trace",
-    name: "wrap-up: pr-self-review before gh pr create + engineering-insights on finishing",
-    prompt:
-      "Закінчив роботу над фічею в server і збираюся створити пулреквест через `gh pr create`. " +
-      "Що за настановами цього репо треба зробити перед цим?",
-    expectSkills: ["pr-self-review", "engineering-insights"],
-    maxTurns: 8,
-  },
-
+  // --- trace 4 (wrap-up: pr-self-review + engineering-insights) removed 2026-08-28 -------------
+  // This case's ONLY assertion was expectSkills — no expectFilesRead/expectSubagents to fall back
+  // on, because CLAUDE.md:101-108 states both rules purely as skill-activation instructions, with
+  // no document to read as corroboration. Deleting expectSkills (see trace 2's note) would leave
+  // an assertion of `isError === false` alone, which passes on any coherent reply and asserts
+  // nothing about the rule — worse than no coverage, because it LOOKS like coverage. Reinstate
+  // this case once Skill-tool activation is measurable again (see INSIGHTS.md).
+  //
   // --- activation (1 session): the one thing that CANNOT be merged -----------------------------
   // A negative needs its own prompt by construction — it asserts the ABSENCE of an activation on
   // a near-miss, which no positive session can carry.
@@ -110,10 +114,10 @@ export const cases: WorkflowCase[] = [
   },
 
   // --- activation (1 session): the second negative ---------------------------------------------
-  // Guards trace 4 from the opposite side. Without it, a `pr-self-review` that activates on ANY
-  // PR-adjacent sentence would still pass trace 4 — the positive alone cannot tell "routed
-  // correctly" from "fires on everything". Near-miss: same vocabulary (`gh pr create`), but a
-  // question ABOUT the command, with no local change set to review.
+  // No positive counterpart since trace 4 was removed (see above) — this is now the ONLY case
+  // touching pr-self-review's CLAUDE.md:106-108 rule at all, and only from the negative side.
+  // Near-miss: same vocabulary (`gh pr create`), but a question ABOUT the command, with no local
+  // change set to review.
   {
     kind: "activation",
     name: "near-miss negative — a question about gh pr create must NOT trigger pr-self-review",
