@@ -289,6 +289,25 @@ that don't exist there — broken from the first run, not just incomplete.
 from a branch that already merged it, like `06_evals_plan_verified_export`)
 for anything under `evals/` or `.github/workflows/` that depends on it.
 
+**That same `l06-evals` branch cannot be a PR *target* in this repo — it only
+exists on `upstream` (a different GitHub repository, the course template),
+not on `origin` (the student's fork).** `git checkout -b X upstream/l06-evals`
+works fine (it's a local ref, any remote's branches are fetchable), but
+`gh pr create --repo <origin>/<repo> --base l06-evals` fails with "Base ref
+must be a branch" — GitHub resolves `--base` against the repo you're opening
+the PR *in*, not against arbitrary remotes you happen to have configured
+locally. Confirmed 2026-08-28: `git remote -v` showed `origin` =
+`Venamond/dev-digest`, `upstream` = `ai-agentic-engineering-neo/dev-digest`;
+`l06-evals` is real on the latter only.
+**Do:** for a same-repo PR that needs a small, evals-relevant diff, there is
+no clean existing target — `main` lacks `evals/` entirely (735+ file diff
+either way once this repo has accumulated course work past the lesson
+template), and no branch on `origin` sits between the lesson template and the
+current work. The only way to get a small diff is to construct a fresh branch
+locally from `upstream/l06-evals` and cherry-pick just the relevant commits
+onto it — accept the size, or build that branch deliberately, there is no
+third option.
+
 **Nested module docs are opened with the `Read` tool, so they ARE assertable.**
 Settled by the 2026-08-27 run: `client/AGENTS.md` appears in `filesRead` on both
 attempts of the client case, `server/AGENTS.md` on the server case. They are not
