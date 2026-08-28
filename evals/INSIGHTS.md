@@ -468,6 +468,13 @@ run 2 opened `e2e/README.md` on one attempt and `e2e/AGENTS.md` on the other. So
 the row does reach the model, and the destination varies. Do not draw a routing
 conclusion from one run — this tier needs the same repeat discipline the quality
 tier already has.
+*(Reinforced 2026-08-28 across three separate model families on PR #11 —
+`deepseek/deepseek-chat`, `google/gemini-2.5-flash`, `anthropic/claude-haiku-4.5`
+— the same case flipped between passing and failing on every one of them.
+This rules out "the model is too weak" as the explanation: the row's
+destination is unreliable regardless of which model reads it, which points at
+`client/AGENTS.md`'s own wording, not at model choice. Not yet acted on — no
+change made to the doc.)*
 
 Run-to-run variance is still unmeasured for this tier: every case above is one
 or two samples, so no threshold here is safe as a blocking CI gate yet.
