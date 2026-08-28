@@ -86,6 +86,34 @@ format requirements, not appeals to care — care is what fails.
 
 
 
+## Evals
+
+Self-check for the Claude Code harness itself — skills, subagents, and CLAUDE.md-level
+routing. Lives in `evals/` (own package.json, npm — see Package managers), full detail in
+[evals/README.md](evals/README.md).
+
+```sh
+cd evals && pnpm eval:quality         # static SKILL.md gate — no model, blocking
+cd evals && pnpm eval:skills          # LLM-judged skill content
+cd evals && pnpm eval:agents          # LLM-judged subagent behavior (tool tier)
+cd evals && pnpm eval:workflow        # traced dispatch through the real harness (informational)
+cd evals && pnpm eval:repeat <pattern> -n 5 --label baseline   # before a change
+cd evals && pnpm eval:delta baseline candidate                 # after — the recalibration diff
+```
+
+CI (`.github/workflows/evals.yml`) runs these change-scoped, per PR:
+
+| Change | Minimal check |
+|---|---|
+| `.claude/skills/**` | `eval:quality` (blocking, all skills) • that skill's `evals/skills/<name>` eval |
+| `.claude/agents/**` | that agent's `evals/agents/<name>` eval • the workflow tier (informational) |
+| `CLAUDE.md` / any `AGENTS.md` / routing rules | the workflow tier (`eval:workflow`) |
+| An eval case or grader (`*.cases.ts`, `evals/src/scoring/**`) | recalibrate locally: `eval:repeat --label baseline` before the edit, `--label candidate` after, then `eval:delta` |
+
+Only `eval:quality` and the skills/agents tiers block a merge — the workflow tier is
+informational (`continue-on-error`) because its run-to-run variance is still unmeasured
+(`evals/INSIGHTS.md`).
+
 ## Read when
 
 | Doc | Read when |

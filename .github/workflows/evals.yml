@@ -63,6 +63,7 @@ jobs:
   # ---------------------------------------------------------------------------------------------
   detect:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       skills: ${{ steps.d.outputs.skills }}
       agents: ${{ steps.d.outputs.agents }}
@@ -88,14 +89,49 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   # ---------------------------------------------------------------------------------------------
+  # Static gate, no model, no network: SKILL.md structure/frontmatter/links (evals/src/skill-quality.ts).
+  # Runs unconditionally rather than being scoped by `detect` — it's sub-second, so it checks every
+  # skill regardless of which one this PR touched (catches drift in an untouched skill too). This
+  # is the one tier with zero model variance, so it's the one that actually blocks a merge on its
+  # own judgment rather than a threshold. See evals/README.md "Three tiers".
+  eval-quality:
+    # No `needs: detect` — it doesn't read any of detect's outputs and runs unconditionally
+    # (see the comment above), so there's nothing to gate on; it runs in parallel with detect.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: evals
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: evals/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm eval:quality
+
+  # ---------------------------------------------------------------------------------------------
   eval-skills:
     needs: detect
     if: needs.detect.outputs.skills != '[]'
     strategy:
       fail-fast: false
+      max-parallel: 4 # cap simultaneous model calls against the actor/judge API — a concurrency
+      # limit distinct from the workflow-level cancel-in-progress group above, which only bounds
+      # in-flight *runs* of this whole workflow, not in-flight matrix entries within one run.
       matrix:
         skill: ${{ fromJson(needs.detect.outputs.skills) }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: evals
@@ -121,15 +157,25 @@ jobs:
       # proxy needed for any model, Anthropic or not. See evals/README.md "Runners" table.
       - run: pnpm vitest run "skills/${{ matrix.skill }}"
 
+      # Report (this run only, no cross-run baseline — see the script's header) + the token half
+      # of the CI budget; the time half is this job's timeout-minutes above.
+      - if: always()
+        run: node scripts/ci-report.mjs
+        env:
+          CI_REPORT_LABEL: eval-skills / ${{ matrix.skill }}
+          EVAL_TOKEN_BUDGET: ${{ vars.EVAL_TOKEN_BUDGET_SKILLS || 200000 }}
+
   # ---------------------------------------------------------------------------------------------
   eval-agents:
     needs: detect
     if: needs.detect.outputs.agents != '[]'
     strategy:
       fail-fast: false
+      max-parallel: 4 # see eval-skills — same reasoning, own cap per job
       matrix:
         agent: ${{ fromJson(needs.detect.outputs.agents) }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: evals
@@ -157,6 +203,12 @@ jobs:
       # example.
       - run: pnpm vitest run "agents/${{ matrix.agent }}"
 
+      - if: always()
+        run: node scripts/ci-report.mjs
+        env:
+          CI_REPORT_LABEL: eval-agents / ${{ matrix.agent }}
+          EVAL_TOKEN_BUDGET: ${{ vars.EVAL_TOKEN_BUDGET_AGENTS || 400000 }}
+
   # ---------------------------------------------------------------------------------------------
   eval-workflow:
     needs: detect
@@ -164,6 +216,7 @@ jobs:
     # Informational only — see the header comment. A red check here must never block a merge.
     continue-on-error: true
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: evals
@@ -187,3 +240,11 @@ jobs:
 
       # Same as eval-agents: an anthropic/* slug needs no LiteLLM proxy.
       - run: pnpm eval:workflow
+
+      # continue-on-error above already keeps this job from blocking a merge, so a budget breach
+      # here is a visible warning in the summary, never a gate.
+      - if: always()
+        run: node scripts/ci-report.mjs
+        env:
+          CI_REPORT_LABEL: eval-workflow
+          EVAL_TOKEN_BUDGET: ${{ vars.EVAL_TOKEN_BUDGET_WORKFLOW || 800000 }}
