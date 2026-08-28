@@ -7,13 +7,22 @@ const REVIEW_PROMPT = `Audit this diff against DevDigest's documented structural
 
 ${fx("checkout-service.diff")}`;
 
-// A second real diff whose violations map onto DevDigest-SPECIFIC rule names
-// (`reviewer-core-zero-io`, `reviewer-core-ground-findings-gate`) that a competent model will
-// describe in prose but will not spontaneously name unless the agent forces a citation. This is
-// the discriminating case for the strict-vs-lite A/B: both variants should FIND both problems,
-// but only the strict variant (which keeps the "cite the exact documented rule per finding" hard
+// A second real diff whose fs-import violation maps onto a DevDigest-SPECIFIC rule name
+// (`core-no-node-builtins`, from architecture-reviewer.md's own rule table — verified against
+// .claude/agents/architecture-reviewer.md:175, not invented) that a competent model will describe
+// in prose but will not spontaneously name unless the agent forces a citation. This is the
+// discriminating case for the strict-vs-lite A/B: both variants should FIND both problems, but
+// only the strict variant (which keeps the "cite the exact documented rule per finding" hard
 // rule) should reliably emit the identifier. The checkout diff's textbook violations don't
 // discriminate — the model volunteers `inward-only-dependencies`/`di-discipline` either way.
+//
+// The second violation (skipping the mandatory `groundFindings()` gate) does NOT get its own
+// citation requirement below: unlike the fs-import rule, no documented identifier exists for it
+// anywhere in this repo — dependency-cruiser checks import graphs, not "was this function called",
+// so there is nothing for even the strict agent to cite. A prior version of this case required an
+// invented `reviewer-core-ground-findings-gate` identifier that appears nowhere in
+// architecture-reviewer.md or any .dependency-cruiser.cjs; every model failed it honestly, on both
+// variants, which discriminates nothing. Corrected 2026-08-28 — see evals/INSIGHTS.md.
 const REVIEWER_CORE_PROMPT = `Audit this diff against DevDigest's documented structural contracts.
 
 ${fx("reviewer-core-gate.diff")}`;
@@ -64,8 +73,7 @@ export const cases: AgentCase[] = [
     practices: [
       "flags the `import { readFileSync } from 'node:fs'` added to reviewer-core/src/pipeline/run.ts as a violation (reviewer-core must do no I/O except the injected LLMProvider)",
       "flags that runPipeline now returns `deduped` directly, skipping the mandatory `groundFindings()` gate before emitting findings",
-      "names the exact documented rule identifier `reviewer-core-zero-io` for the fs-import finding rather than only describing it in prose",
-      "names the exact documented rule identifier `reviewer-core-ground-findings-gate` for the skipped-gate finding rather than only describing it in prose",
+      "names the exact documented rule identifier `core-no-node-builtins` for the fs-import finding rather than only describing it in prose",
       "quotes the offending line verbatim as evidence for each finding, not a paraphrase",
       "ends with an explicit PASS/FAIL gate verdict based on whether any critical or high findings exist",
     ],
