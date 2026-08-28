@@ -1,0 +1,82 @@
+[
+  {
+    "query": "у нас node_modules розрісся до 1.3 гіга і CI тягне його по 4 хвилини. розберись що там стільки важить і що з цим робити",
+    "should_trigger": true
+  },
+  {
+    "query": "mermaid у client виглядає найважчим що ми тягнемо. скільки він реально займає і що звільниться якщо ми його викинемо на користь статичних svg",
+    "should_trigger": true
+  },
+  {
+    "query": "треба діаграма залежностей між нашими шістьма пакетами для онбордингу нового бекендера — хто на кого посилається",
+    "should_trigger": true
+  },
+  {
+    "query": "npm audit виплюнув під 60 адвайзорі і я не розумію на що з цього дивитись першим. які з них реально доїжджають до прода",
+    "should_trigger": true
+  },
+  {
+    "query": "що в нас застаріло на два і більше мажори, і що з цього справді треба оновити цього спринту",
+    "should_trigger": true
+  },
+  {
+    "query": "здається zod у нас у двох версіях по різних пакетах, і typescript теж розʼїхався. перевір і покажи де саме",
+    "should_trigger": true
+  },
+  {
+    "query": "які залежності ми оголосили в package.json але ніде не імпортуємо — хочу почистити перед релізом",
+    "should_trigger": true
+  },
+  {
+    "query": "зроби мені звіт по залежностях для тимліда: що важить, що дірявe, що застаріле, з пріоритетами",
+    "should_trigger": true
+  },
+  {
+    "query": "how much disk would we actually get back if we dropped drizzle-kit from server? it's dev-only but it looks huge",
+    "should_trigger": true
+  },
+  {
+    "query": "before the release i want a picture of what we ship to prod — which packages are prod deps, how many, and how heavy",
+    "should_trigger": true
+  },
+  {
+    "query": "напиши dependency injection для NotifyService — щоб він приймав порти явно, а не Container у конструкторі",
+    "should_trigger": false
+  },
+  {
+    "query": "pnpm install у server падає з ERR_PNPM_OUTDATED_LOCKFILE після мержу main. полагодь",
+    "should_trigger": false
+  },
+  {
+    "query": "додай zod у mcp/package.json і онови lockfile, він там потрібен для валідації аргументів тулів",
+    "should_trigger": false
+  },
+  {
+    "query": "онови всі пакети до останніх версій і прожени тести, хочу закрити техборг до кінця тижня",
+    "should_trigger": false
+  },
+  {
+    "query": "client перестав збиратись після оновлення tailwind — next build падає на postcss. розберись",
+    "should_trigger": false
+  },
+  {
+    "query": "перевір чи arch:check не пропускає імпорт з adapters у modules, здається dependency-cruiser правило написане не тим боком",
+    "should_trigger": false
+  },
+  {
+    "query": "додай у .github/workflows/ci.yml крок з npm audit --audit-level=high щоб воно падало на високих",
+    "should_trigger": false
+  },
+  {
+    "query": "pnpm-lock.yaml конфліктує при кожному мержі. є спосіб налаштувати git щоб він сам це розрулював?",
+    "should_trigger": false
+  },
+  {
+    "query": "витягни список ліцензій усіх залежностей — юристи просять таблицю перед раундом",
+    "should_trigger": false
+  },
+  {
+    "query": "наш docker image 2.1 GB, треба зменшити. подивись на Dockerfile, там точно щось не так з шарами",
+    "should_trigger": false
+  }
+]

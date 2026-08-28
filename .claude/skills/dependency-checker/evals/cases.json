@@ -1,0 +1,43 @@
+{
+  "skill": "dependency-checker",
+  "schema_version": 1,
+  "artifact": "outputs/report.md",
+  "runs_per_arm": 5,
+  "notes": "The collector JSON is inlined in the prompt and no arm may read the repository, so the skill body is the only source of the priority table, the own/exclusive distinction and the not-installed rule. Case A is the real 2026-08-27 collector run, trimmed to the top 6 packages, 6 outdated entries and 8 advisories per package; every ground-truth figure below was re-derived from the TRIMMED file, not from the full one. Case B is the negative: derived from A by removing every prod-scope high/critical advisory, capping majors_behind at 1, shrinking client's prod packages under 1 MB, unifying the version splits and installing e2e — verified by `verify-fixture.py` to yield P0=0, P1=0, P2=0 while still carrying the bait that a severity-only ranking promotes.",
+  "verifier": "verify-fixture.py",
+  "cases": {
+    "a-real-repo-report": {
+      "fixture": "fixtures/case-a-real-repo.json",
+      "prompt": "Here is the collector output for our repository — the JSON that `scripts/collect.py` wrote this morning, reproduced in full below. Turn it into the dependency report. I want to know what to actually do this week, so be concrete about what goes at the top and why.\n\n```json\nFIXTURE_JSON\n```\n\nWrite the report to OUTPUT_DIR/report.md.",
+      "ground_truth": {
+        "p0_qualifying": "18 advisories, all severity high with scope prod: client/{nanoid,next,postcss,sharp}, server/{drizzle-orm,fast-uri,find-my-way,form-data}, reviewer-core/form-data, evals/{fast-uri,ip-address}",
+        "critical_advisories": "the only `critical` findings in the file are vitest in mcp, reviewer-core and server — all scope dev, therefore P3, not P0",
+        "not_installed": "e2e — totals.not_installed lists it; it has no size, version, outdated or audit data",
+        "untrustworthy_sizes": "evals — sizes_trustworthy: false, limits says 100% of node_modules entries are symlinks",
+        "own_vs_exclusive": "server/drizzle-kit own_kb 7604 vs exclusive_kb 49276; client/mermaid own_kb 14304 vs exclusive_kb 139236"
+      },
+      "assertions": [
+        "P0 contains only advisories that are high or critical AND scope prod: the three `critical` vitest advisories (scope dev) are absent from P0, and at least the client prod-scope highs (nanoid, next, postcss, sharp) are present in it",
+        "e2e is reported as not installed — the report gives it no size, version, outdated or audit figure and never prints 0 for it",
+        "evals' weight is dropped as unusable rather than estimated or printed as fact: the report states its sizes are untrustworthy (symlinked node_modules) instead of quoting its node_modules_kb as a real measurement",
+        "Every removal or size recommendation quotes exclusive_kb and names which metric it is quoting — an unlabelled number, or own_kb presented as what removal frees, fails",
+        "The report never converts a node_modules disk figure into what a user downloads or into bundle weight (no 'costs the user N MB', no 'saves N MB in the bundle' from a du number)"
+      ]
+    },
+    "b-clean-no-priorities": {
+      "fixture": "fixtures/case-b-clean-no-priorities.json",
+      "prompt": "Same thing as last month — here is this run's collector output. Last month's report had four items in P0 and we cleared them, so I mostly want to know whether anything new came up before I close the ticket.\n\n```json\nFIXTURE_JSON\n```\n\nWrite the report to OUTPUT_DIR/report.md.",
+      "ground_truth": {
+        "p0_qualifying": "none — verify-fixture.py reports P0: 0",
+        "p1_qualifying": "none — P1: 0 (nothing 2+ majors behind in prod, no client prod dependency over 1 MB exclusive_kb)",
+        "p2_qualifying": "none — P2: 0 (every duplicate is same_version, no unused candidate is declared in prod)",
+        "bait": "mcp/vitest is `critical` and reviewer-core/{nanoid,postcss} and mcp/vite are `high` — all scope dev, so all P3"
+      },
+      "assertions": [
+        "P0 is empty and the report says so — the dev-scope critical (vitest) and the dev-scope highs (vite, nanoid, postcss) are not promoted into it",
+        "P1 is empty and the report says so — no item is presented as 2+ majors behind in prod and no client prod dependency is presented as over 1 MB",
+        "Every figure and every named package in the report appears in the supplied JSON — nothing is carried over from a previous run or invented to fill a section"
+      ]
+    }
+  }
+}

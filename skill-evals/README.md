@@ -75,6 +75,40 @@ exactly zero across every case, suspect this first.
 a single unchanged case several times and look at the spread before turning any
 threshold into a blocking gate.
 
+## Experiments run (2026-08-27–28)
+
+Four runs against this harness (plus a sibling one in the separate `evals/`
+package). Full trace and per-assertion numbers for each live in
+`skill-evals/INSIGHTS.md`; this is the index.
+
+| # | What | Cases / where | Result |
+|---|---|---|---|
+| 1 | Skill `zod`, baseline benchmark | `.claude/skills/zod/evals/cases.json`, 2 cases × 5 runs × 2 arms | **98.9% ± 4% vs 90.0% ± 8%** (+9pp) |
+| 2 | Ablate `onion-architecture` (delete 4 lines of `rules/ports-adapters-di.md`), then author a new skill's cases | `.claude/skills/onion-architecture/evals/`, workspace `onion-ablation-1`; new set at `.claude/skills/dependency-checker/evals/` | Targeted assertion **5/5 → 0/5 → 5/5**; the new `dependency-checker` set separately gave **95% vs 52%** (+43pp), the cleanest delta of the four |
+| 3 | A/B `architecture-reviewer`'s own definition (delete the "name the rule" clause) | `.claude/agents/evals/architecture-reviewer.cases.json`, workspace `agent-ab-1` | Rule-attribution **100% → 23% → 95%**; all 7 control assertions held flat |
+| 4 | Whole-workflow harness: dispatch / positive activation / negative activation / CLAUDE.md contrast | **Different package** — `evals/workflow/experiment4.cases.ts` (`@devdigest/evals`'s `WorkflowCase` DSL, not this one) | 4/4 pass on real tool-call/file-read evidence, after two case-design misfires (see `evals/INSIGHTS.md`) |
+
+Two methodological findings surfaced repeatedly enough to matter for anyone
+extending this harness:
+
+- **A compound assertion ("every X" / "both halves") measures its own tail,
+  not the effect under test.** It cost experiment 2 its clean signal on one
+  assertion and experiment 3 its signal on another — both times the mechanical
+  pass rate moved exactly as expected while the compound assertion sat flat.
+  Split "identify Vn" from "Vn's supporting half" before trusting either.
+- **Blind the arms whenever the expected direction is known.** Every
+  ablation/A-B run above copied outputs to neutral `X`/`Y`/`Z` paths with a
+  decode key opened only after grading — a directionally-aware grader
+  otherwise trades variance for bias, which is not a fair trade for a result
+  anyone will cite.
+
+The "run-to-run variance is not measured yet" caveat two sections up is now
+stale for the *skill* tier specifically — experiments 1 and 2 both ran 5
+samples per arm and reported mean ± stddev. It still holds for anything run
+as a single sample, which the ablation/A-B *per-assertion* breakdowns above
+are (5 runs, but each condition's assertion table is one 5-run series, not
+yet repeated at a second n=5 to check the spread of the spread).
+
 ## What the eval set deliberately avoids
 
 Import-graph violations do not discriminate: a reviewing agent with repo access
