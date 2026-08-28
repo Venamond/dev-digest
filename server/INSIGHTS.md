@@ -42,6 +42,20 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## Codebase Patterns
 
+- **Any recursive scan of `server/` reads a second, complete copy of this
+  repository — enumerate with `git ls-files`, not a filesystem walk.**
+  `server/clones/` is gitignored and holds the review engine's checkouts; on
+  2026-08-27 it contained a full `dev-digest` tree, so an `os.walk` over
+  `server/` looking for imports found every dependency "used" on the strength
+  of the clone's own source, not ours. The dependency-checker's unused-scan hit
+  exactly this and was rewritten around `git ls-files -z`. The same applies to
+  any grep, codemod or metric run over the package: `grep -rn foo server/` will
+  report hits inside somebody else's repository as if they were ours, and the
+  count will look plausible. Prefer `git -C server ls-files -z | xargs -0 grep`,
+  or scope the path below `server/src`. Sibling of the Tool & Library Notes
+  entry about clone remotes carrying a live token — both are consequences of
+  `clones/` being real repositories rather than data. (2026-08-27)
+
 - **The root `CLAUDE.md`'s "DB schema already has every table for every future
   course lesson" is a generalisation, not a guarantee — check before planning a
   lesson around it.** Verified 2026-08-23 while planning the Project Context

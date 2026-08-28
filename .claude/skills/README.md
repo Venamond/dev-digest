@@ -23,6 +23,7 @@ Reusable AI skills that provide specialized knowledge and workflows. Canonical l
 | [run-plan](run-plan/SKILL.md) | Process | Executes an approved Implementation Plan from `docs/plans/` — dispatches implementers, runs the gates, reviews, drives a bounded fix cycle |
 | [engineering-insights](engineering-insights/SKILL.md) | Process | Read a module's `INSIGHTS.md` before working in it; append a new lesson at wrap-up when one cleared the bar |
 | [workflow-retro](workflow-retro/SKILL.md) | Process | Retrospective on a finished multi-agent run — what it cost, where the waste was, proposals; appends to `docs/retro/ledger.md`. Manual trigger, dispatches no agents |
+| [dependency-checker](dependency-checker/SKILL.md) | Process | Reads every package's dependencies — weight on disk, versions, vulnerabilities, duplicates, unused candidates, internal graph — and writes one report under `docs/dependencies/`. Manual trigger, dispatches no agents, changes nothing |
 
 ## What Are Skills?
 
