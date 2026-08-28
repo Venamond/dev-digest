@@ -106,3 +106,5 @@ Writing nothing is the correct outcome when nothing new cleared that bar.
 **Before running `gh pr create`, run the `pr-self-review` skill (or
 `/pr-self-review`) against the local change set.** It routes the diff to the
 relevant skills above and blocks on CRITICAL findings.
+
+<!-- ci-trigger-test: 2026-08-28, harness evals workflow smoke test — no semantic change, safe to drop -->

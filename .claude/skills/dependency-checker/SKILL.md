@@ -174,3 +174,5 @@ the collector. Timeouts are Python-side; `pnpm-lock.yaml` is never parsed —
   more than the work.
 - Installs, upgrades, removes or pins anything.
 - Adds a dependency to the repository in order to analyse dependencies.
+
+<!-- ci-trigger-test: 2026-08-28, harness evals workflow smoke test — no semantic change, safe to drop -->

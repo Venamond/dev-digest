@@ -260,3 +260,5 @@ this verdict does not unblock `git push`; `/pr-self-review` owns that gate
   findings come after it.
 - If a rule appears wrong rather than the code, say so instead of inventing
   a violation.
+
+<!-- ci-trigger-test: 2026-08-28, harness evals workflow smoke test — no semantic change, safe to drop -->
