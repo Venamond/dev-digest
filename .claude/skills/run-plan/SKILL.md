@@ -1,6 +1,6 @@
 ---
 name: run-plan
-description: Execute an already approved Implementation Plan from docs/plans/ end to end — dispatch implementers over the plan's tracks, run the gates once, review with architecture-reviewer and plan-verifier in parallel, then drive a bounded fix cycle. Use when the human wants a plan carried out without retyping briefs between agents, or wants to resume a run that was interrupted. Requires an approved plan; it never writes a spec, never plans, never commits and never pushes. Trigger terms: run the plan, execute the plan, /run-plan, продовжити план, виконати план.
+description: "Execute an already approved Implementation Plan from docs/plans/ end to end — dispatch implementers over the plan's tracks, run the gates once, review with architecture-reviewer and plan-verifier in parallel, then drive a bounded fix cycle. Use when the human wants a plan carried out without retyping briefs between agents, or wants to resume a run that was interrupted. Requires an approved plan; it never writes a spec, never plans, never commits and never pushes. Trigger terms: run the plan, execute the plan, /run-plan, продовжити план, виконати план."
 ---
 
 # run-plan — executing an approved plan
