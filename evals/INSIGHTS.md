@@ -7,6 +7,27 @@ file as a **draft to spot-check**, not ground truth.
 
 ## Tool & Library Notes
 
+**`ci-detect.mjs`'s `hasEvals()` only checks that eval FILES exist — it never
+checks that the AGENT DEFINITION they test for actually exists, so an orphaned
+eval permanently red-lines its CI job regardless of what changed.**
+`evals/agents/architecture-reviewer-lite/architecture-reviewer-lite.eval.ts`
+exists, but `.claude/agents/architecture-reviewer-lite.md` does not — only
+`architecture-reviewer.md` is a real agent in this repo. `touched()` derives
+the agent name from either `.claude/agents/<name>.md` OR
+`evals/agents/<name>/` changing, and `hasEvals('agents', name)` only checks
+the second directory for a `*.eval.ts` file — so any diff touching
+`evals/agents/architecture-reviewer-lite/` (not the agent itself) puts
+`architecture-reviewer-lite` in the CI matrix, where `agentTask` throws
+`agent not found: .../architecture-reviewer-lite.md` immediately (verified on
+PR #11, run `33199090831`, job `98943866712` — `src/artifacts/load.ts:36`).
+**Do:** before trusting `ci-detect.mjs`'s output, or if `eval-agents`/`eval-skills`
+red-lines with "not found" rather than a real assertion failure, check whether
+the matching `.claude/agents/<name>.md` (or `.claude/skills/<name>/SKILL.md`)
+actually exists — `hasEvals()` alone does not guarantee it. The stale
+`architecture-reviewer-lite` eval directory should be deleted or the missing
+agent restored; this is a pre-existing repo gap, not something this session's
+CI wiring introduced.
+
 **`pnpm eval:workflow` (`vitest run workflow`) is a path substring match — any
 `*.eval.ts` someone else drops under `workflow/` runs too, and `results/` is
 shared, append-only state across concurrent sessions.** Observed 2026-08-28:
