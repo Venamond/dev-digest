@@ -11,8 +11,8 @@ ${fx("checkout-service.diff")}`;
 // (`core-no-node-builtins`, from architecture-reviewer.md's own rule table — verified against
 // .claude/agents/architecture-reviewer.md:175, not invented) that a competent model will describe
 // in prose but will not spontaneously name unless the agent forces a citation. The checkout diff's
-// textbook violations don't discriminate this on their own — the model volunteers
-// `inward-only-dependencies`/`di-discipline` either way.
+// textbook violations don't discriminate this on their own — the model volunteers a real
+// identifier (`no-domain-io`) either way.
 //
 // The second violation (skipping the mandatory `groundFindings()` gate) does NOT get its own
 // citation requirement below: unlike the fs-import rule, no documented identifier exists for it
@@ -47,7 +47,18 @@ export const cases: AgentCase[] = [
     practices: [
       "flags the domain file (checkout.ts) importing a type from 'fastify' as a violation of the inward-only dependency rule between Domain and Presentation layers",
       "flags the `new PgCheckoutRepository()` call inside service.ts as a violation of DI discipline (concrete adapters/repositories must be constructed only in the composition root / container)",
-      "names the specific documented rule identifier for EVERY finding (e.g. `inward-only-dependencies`, `di-discipline`) rather than describing the problem only in prose",
+      // Examples corrected 2026-08-28: `inward-only-dependencies` and `di-discipline` are not
+      // real identifiers anywhere in architecture-reviewer.md's own rule table (the fs-import
+      // finding's real name is `no-domain-io`; verified against architecture-reviewer.md:168). For
+      // the DI-discipline finding specifically, dependency-cruiser can't express "constructed
+      // outside the composition root" at all — that's a call-site check, not an import-graph rule
+      // — so the agent's own doc allows citing a preloaded skill SECTION instead
+      // (architecture-reviewer.md ~L178: "A finding may also cite a section of a preloaded
+      // skill"), and .claude/skills/onion-architecture/rules/ports-adapters-di.md is exactly that
+      // section, confirmed to exist. Haiku's real output used `no-domain-io` correctly but fell
+      // back to prose labels for the DI finding — with misleading examples this masked whether
+      // that's a real compliance gap or the test still pointing at nothing citable; now it isn't.
+      "names the specific documented rule identifier for EVERY finding — `no-domain-io` for the fastify-import finding, and either a real dependency-cruiser rule or a cited onion-architecture rule section (e.g. `rules/ports-adapters-di.md`) for the DI-discipline finding — rather than describing either problem only in prose",
       "assigns a severity (critical/high/medium/low/info) to each finding",
       "quotes the offending line verbatim as evidence for each finding, not a paraphrase",
       "ends with an explicit PASS/FAIL gate verdict based on whether any critical or high findings exist",
@@ -60,7 +71,7 @@ export const cases: AgentCase[] = [
     kind: "quality",
     prompt: REVIEW_PROMPT,
     practices: [
-      "does not invent an architecture-contract violation for the optional `reply?: FastifyReply` parameter beyond the inward-only-dependencies import issue itself (no runtime bug/security finding fabricated as an architecture rule)",
+      "does not invent an architecture-contract violation for the optional `reply?: FastifyReply` parameter beyond the `no-domain-io` import issue itself (no runtime bug/security finding fabricated as an architecture rule)",
       "stays scoped to structural/layering/DI findings and does not comment on naming, style, or test coverage",
     ],
     threshold: 1.0,
