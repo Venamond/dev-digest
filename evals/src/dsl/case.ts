@@ -164,7 +164,19 @@ export function runWorkflowCases(cases: WorkflowCase[]): void {
           expect(result.subagents, `subagents: ${result.subagents.join(", ")}`).toContain(c.expectSubagent);
         });
       } else if (c.kind === "activation") {
-        const result = await workflowTask(c.prompt, { maxTurns: c.maxTurns });
+        // An activation case expects a direct answer — no case here dispatches a subagent on
+        // purpose. If the model dispatches one anyway (observed 2026-08-28: 2 parent turns, then
+        // 243729ms / 28 tool calls absorbed inside a `researcher` subagent's own uncapped run,
+        // blowing past vitest's 240_000ms testTimeout), stop the instant the dispatch fires
+        // instead of waiting out the nested session. The parent's own skillsInvoked/filesRead are
+        // unaffected by the subagent's work either way (see the trace-absorption entry in
+        // INSIGHTS.md), so stopping early does not change the verdict for a `shouldActivate: false`
+        // case — it only removes the wait. A future `shouldActivate: true` case whose ONLY path to
+        // activation runs through a dispatched subagent would need its own kind, not this one.
+        const result = await workflowTask(c.prompt, {
+          maxTurns: c.maxTurns,
+          stopWhen: (p) => p.subagents.length > 0,
+        });
         logTrace(c.name, result);
         assertAndRecord(c.name, result, () => {
           // A session that died on the turn ceiling proves nothing about activation: the skill
