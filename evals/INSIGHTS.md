@@ -336,6 +336,31 @@ silently injected, and `expectFilesRead` can name them directly — subject to t
 symlink caveat above (the model opened `AGENTS.md`, but `CLAUDE.md` would have
 been just as valid a path for it to choose).
 
+## Recurring Errors & Fixes
+
+**A red `eval-skills`/`eval-agents` job is not evidence the model is too
+cheap — check whether the failing expectation is grounded in real source
+before believing that.** PR #11 (2026-08-28): three separate failures across
+`dependency-checker` and `architecture-reviewer`, diagnosed against
+`deepseek/deepseek-chat`'s actual CI output, turned out to be eval-authoring
+bugs, not model quality — a `grounding` substring (`"flowchart"`) that
+`SKILL.md` never mandates, and two `practices` rule identifiers
+(`reviewer-core-zero-io`, `reviewer-core-ground-findings-gate`) that exist
+nowhere in `.claude/agents/architecture-reviewer.md` or any
+`.dependency-cruiser.cjs` — one had a real name under a different string
+(`core-no-node-builtins`), the other had no backing rule at all. In all three
+cases the model's actual answer was correct; the check was wrong. This is the
+same class of bug `skill-evals/INSIGHTS.md` already documents for
+`onion-architecture`'s cases ("Do not name a dependency-cruiser rule from its
+comment") — recorded here too because it recurred independently in a
+different eval suite in this package.
+**Do:** before concluding a failure is about model capability, `grep` every
+literal string in `grounding` and every named identifier in `practices`
+against the real source it claims to test (the skill's `SKILL.md`, the
+agent's own `.md` file, the actual `.dependency-cruiser.cjs`). If the string
+isn't there, the eval is wrong, not the model — fix the case, don't reach for
+a pricier model to paper over it.
+
 ## Open Questions
 
 **An `eval-workflow` CI run logged a LiteLLM request for `openrouter/claude-sonnet-5`
