@@ -7,6 +7,63 @@ file as a **draft to spot-check**, not ground truth.
 
 ## Tool & Library Notes
 
+**`pnpm eval:workflow` (`vitest run workflow`) is a path substring match — any
+`*.eval.ts` someone else drops under `workflow/` runs too, and `results/` is
+shared, append-only state across concurrent sessions.** Observed 2026-08-28:
+mid-session, an untracked `workflow/experiment4.cases.ts` +
+`.eval.ts` appeared (another concurrent session's scratch file, confirmed live
+via `ps aux | grep vitest` — a real `npm exec vitest run
+workflow/experiment4.eval.ts` process, not a leftover), and that session's
+`record()` calls interleaved into the SAME `results/records.jsonl` and edited
+this SAME `INSIGHTS.md` while this session was also writing to it.
+**Do:** before clearing `results/records.jsonl` or running the whole
+`eval:workflow`/`eval` pattern, run `ps aux | grep -i vitest` to check for a
+live process in this repo. If one is running, either wait for it
+(`while kill -0 <pid> 2>/dev/null; do sleep 5; done`, or the `Monitor` tool)
+or scope your own run to your own file (`npx vitest run
+workflow/<your-file>.eval.ts`) instead of the wide `workflow` pattern — it
+skips any sibling file a concurrent session dropped in the same directory.
+Never bulk-clear `results/records.jsonl`; filter by `run_id`/label instead
+when a concurrent session's rows are mixed in with your own.
+
+**`toolsUsed` records an attempted tool_use, not a successful one — it cannot
+tell you whether a restricted tool actually executed.** A positive-activation
+case against `engineering-insights` (a genuine bug-fix story, no tools
+restriction override — plain `workflowTask`, so `Edit`/`Write`/`Bash` are
+outside `tools`) produced a trace with `Edit` in `toolsUsed` and 13/12 turns
+used against real file re-reads of `server/INSIGHTS.md` (12 identical `Read`
+entries in one attempt). `run-claude.ts` pushes `block.name` for every
+`tool_use` block unconditionally (`case.ts`'s own logic never inspects the SDK's
+response to that call), so an `Edit` name in the trace is consistent with
+either "the SDK let it through" or "the model tried, the SDK rejected it, and
+the model kept trying." The two are indistinguishable from `records.jsonl`
+alone.
+**Verified the restriction held**, but not from the trace: `server/INSIGHTS.md`
+carried an unrelated, already-dirty diff from before this session even started
+(present in the very first `git status` of the run), and after the case's Edit
+attempts the file's diff was byte-identical to that starting state — no new
+content, no duplicate block. Confirming this required checking `git status`
+immediately before AND after the run and diffing the file, not trusting the
+trace.
+**Do:** before touching a real repo doc's contents after a workflow run that
+carried an unexpected tool name, check `git status`/`git diff` on that specific
+file first — do not `git checkout` a "polluted" file on the trace's word alone.
+Doing exactly that here (checking out `server/INSIGHTS.md` on the strength of
+an `Edit` appearing in `toolsUsed`) deleted a real, already-existing entry;
+caught by cross-referencing its content against `.claude/skills/
+dependency-checker/scripts/collect.py` (which already implements what the
+entry described) before the mistake could compound, and restored verbatim.
+**A second fix works even where a tools restriction doesn't need one:** telling
+the model outright, in-prompt, which tools it does and doesn't have for this
+session ("У цій сесії в тебе НЕМАЄ інструменту для редагування чи запису
+файлів... виконай процес... тими інструментами, які в тебе є") turned a
+13-turn `Edit`-retry loop into a clean 4-turn pass (`Read` + `Skill`, 2 tool
+calls). `runClaude` already does exactly this when `allowedTools` is empty (the
+"you have NO tools available" directive in `run-claude.ts`) but never for a
+non-empty, merely-restricted set — which is precisely the gap a case author
+still has to paper over by hand in the prompt.
+
+
 **A vitest test-level timeout does not stop the underlying session, and a late
 `finally` can still record a pass for a test vitest already reported as
 FAILED.** `assertAndRecord`'s `finally` runs `record()` whenever the wrapped
