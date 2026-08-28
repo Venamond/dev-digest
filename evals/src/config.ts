@@ -24,7 +24,10 @@ export const COST_REGRESSION_RATIO = 1.25; // candidate mean tokens > 125% of ba
 // --- Tool allow-lists -------------------------------------------------------
 // Subagent-spawning tool name varies by harness; count both.
 export const SPAWN_TOOLS = new Set(["Task", "Agent"]);
-// workflowTask runs against the LIVE repo with bypassPermissions — keep this read-only.
+// workflowTask runs against the LIVE repo with bypassPermissions — keep this read-only. runClaude
+// passes this list as both allowedTools AND tools, so it is an actual restriction on the parent
+// session (not just an auto-approve list). It does NOT restrict a dispatched subagent, which gets
+// its own tools from its .claude/agents/<name>.md frontmatter.
 export const WORKFLOW_ALLOWED_TOOLS = ["Read", "Grep", "Glob", "Task", "Agent", "Skill"];
 
 // --- Output verbosity -------------------------------------------------------

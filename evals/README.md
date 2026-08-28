@@ -571,9 +571,15 @@ tokens > 125% of baseline), `missing_data` (a config has zero records for a test
 
 ## Safety
 
-Sessions run with `permissionMode: "bypassPermissions"`, so `workflowTask` keeps a **read-only
-allow-list** (`Read, Grep, Glob, Task, Agent, Skill` — no `Bash`/`Write`/`Edit`). Don't copy the
-bypass pattern into a context that grants write tools.
+Sessions run with `permissionMode: "bypassPermissions"` — nothing is ever prompted, which means
+the SDK's `allowedTools` (an auto-approve list) restricts nothing on its own. `runClaude` also
+passes the same list as `tools`, the option that actually shrinks the base toolset, so
+`workflowTask`'s **read-only allow-list** (`Read, Grep, Glob, Task, Agent, Skill` — no
+`Bash`/`Write`/`Edit`) is a real restriction on the parent session. It is not a restriction on a
+subagent `workflowTask` dispatches — a dispatched agent gets its own tools from its
+`.claude/agents/<name>.md` frontmatter, which can include `Bash`/`Write`, by design (it mirrors
+production). Don't copy the bypass pattern into a context that grants write tools, and don't rely
+on `allowedTools` alone anywhere in this package — always pair it with `tools`.
 
 ## Deferred (recorded so it isn't rediscovered)
 

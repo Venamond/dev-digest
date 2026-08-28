@@ -62,9 +62,15 @@ export async function runClaude(prompt: string, opts: RunOptions = {}): Promise<
   const options: Options = {
     model: opts.model ?? EVAL_MODEL,
     maxTurns: opts.maxTurns ?? MAX_TURNS,
-    permissionMode: "bypassPermissions", // safe: evals only read/plan and tools are allow-listed
+    // bypassPermissions means nothing is ever prompted, so `allowedTools` (an auto-APPROVE list)
+    // enforces nothing on its own — every runClaude call would otherwise get the SDK's full
+    // default toolset against the real repo (cwd defaults to REPO_ROOT below). `tools` is the
+    // option that actually restricts the base set; pass the same list to both. An empty
+    // allowedTools now genuinely means zero tools, matching the "NO tools" directive above.
+    permissionMode: "bypassPermissions",
     systemPrompt,
     allowedTools,
+    tools: allowedTools,
     cwd: opts.cwd ?? REPO_ROOT,
     // Default: do NOT load on-disk config — isolates the injected artifact. workflowTask overrides.
     settingSources: opts.settingSources ?? [],

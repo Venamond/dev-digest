@@ -7,6 +7,40 @@ file as a **draft to spot-check**, not ground truth.
 
 ## Tool & Library Notes
 
+**`allowedTools` does not restrict anything — it is an auto-approve list, and
+the workflow tier's "read-only sandbox" does not exist.** In
+`@anthropic-ai/claude-agent-sdk` 0.3.198, `Options.allowedTools` is documented
+as "tool names that are auto-allowed without prompting… **To restrict which
+tools are available, use the `tools` option instead**" (`sdk.d.ts:1305-1311`).
+Restriction lives in `tools` (the base set, `sdk.d.ts:1367`) and
+`disallowedTools` (removes from context, `sdk.d.ts:1331`). `workflowTask` sets
+neither, and runs with `permissionMode: "bypassPermissions"` against the live
+repo — so `Write`, `Edit` and `Bash` are all available, and the model did call
+`Bash` on 2026-08-27. Three places claim otherwise: the "Safety" comment in
+`src/tasks.ts`, the `WORKFLOW_ALLOWED_TOOLS` comment in `src/config.ts`, and the
+Safety section of `README.md`.
+*(Now enforced: `runClaude` passes `allowedTools` as `tools` too, so every
+caller — `skillTask`, `agentTask`, `workflowTask` — actually restricts its
+parent session, not just this tier. Comments in `tasks.ts`, `config.ts` and
+`README.md` were also wrong and are corrected. This does NOT restrict a
+dispatched subagent, which gets its own tools from its
+`.claude/agents/<name>.md` frontmatter by design — e.g. `architecture-reviewer`
+still has `Bash`/`Write` when `workflowTask` dispatches it. This also changes
+the measurement: a session that could reach for `Bash` before 2026-08-28 no
+longer can, so runs before and after this fix are not comparable.)*
+
+**Skills are configured by their own option, and `'Skill'` in `allowedTools` is
+deprecated.** `Options.skills?: string[] | 'all'` is "the single place to turn
+skills on; you do not need to add `'Skill'` to `allowedTools`"
+(`sdk.d.ts:1848-1869`). `workflowTask` never sets it. This does NOT by itself
+explain the zero skill activations recorded below: the same doc says omitting it
+means "no SDK auto-configuration. The CLI's own defaults still apply, so this is
+**not** 'skills off'".
+**Do:** before concluding anything about skill activation, settle it with one
+session — set `skills: 'all'` and re-run the wrap-up case. If the `Skill` tool
+starts firing, the activation entry below is wrong and those failures were a
+harness misconfiguration, not model behaviour.
+
 **`maxTurns` is a safety margin on a positive case but part of the measurement
 on a negative one — set it generously on negatives, never tightly.** A
 `shouldActivate: false` case asserts that a skill did NOT engage. If the session
@@ -43,12 +77,14 @@ which also makes it the honest fallback whenever `records.jsonl` is in doubt.
 
 **The parent trace absorbs a dispatched subagent's tool calls, so an assertion
 can be satisfied by the subagent instead of the session under test.** Same run,
-case 1 attempt 1: the trace lists `Bash` — which is not in
-`WORKFLOW_ALLOWED_TOOLS` and the parent therefore cannot call — along with 49
-tool calls, `skills: onion-architecture, spec-creator`, and reads across the
-whole repo, all after an `Agent` call dispatching `researcher`. `Result` carries
+case 1 attempt 1: 49 tool calls, `skills: onion-architecture, spec-creator`, and
+reads across the whole repo, all after an `Agent` call dispatching `researcher`
+— against 5 tool calls on the attempt that dispatched nothing. `Result` carries
 no depth or session id, so parent and child work cannot be separated after the
-fact.
+fact. (Corrected 2026-08-28: the original evidence for this was `Bash` appearing
+in the trace "outside the allow-list". That reasoning was wrong —
+`allowedTools` does not restrict anything, so the parent could call `Bash`
+itself. The volume gap is the surviving evidence, and it is weaker.)
 **Do:** treat `expectFilesRead` / `expectSkills` as unreliable on any case that
 also dispatches a subagent; assert the dispatch alone, or order the prompt so
 the reads happen before the dispatch and keep `stopWhen` tight.
