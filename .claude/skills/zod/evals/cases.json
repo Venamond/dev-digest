@@ -1,0 +1,159 @@
+{
+  "skill": "zod",
+  "schema_version": 1,
+  "notes": "Authoring cases, not review cases. The code and the spec are inlined in the prompt and both arms are forbidden to read the repository, so the skill body is the only source of Zod guidance the with_skill arm has that the control does not. This is the no-tools shape skill-evals/INSIGHTS.md recommends after four onion-architecture iterations saturated: with repo access both arms re-derive the rules from source and the delta collapses to noise. 5 runs per arm per case — no token or time claim is made from fewer.",
+  "artifact": "outputs/solution.md",
+  "runs_per_arm": 5,
+  "cases": {
+    "a-harden-route-handler": {
+      "prompt": "This route file is already in production and it keeps biting us: a malformed POST /users body returns a 500 with a stack trace instead of a 400, and last week someone imported a batch where `age` came through as a string and nothing complained. `role` in our system is always one of `admin`, `editor` or `viewer`, `email` must be a real email address, and `metadata` is a free-form JSON blob we only ever forward to the analytics queue. Go through this file and give me the fixed version plus a short explanation of what was wrong with each thing you changed.\n\n```typescript\n// server/src/routes/users.ts\nimport { z } from 'zod'\nimport type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'\nimport { db } from '../db.js'\n\nconst configSchema = z.object({\n  DATABASE_URL: z.string().url(),\n  MAX_UPLOAD_MB: z.coerce.number().int().positive(),\n})\nexport const config = configSchema.parse(process.env)\n\nconst createUserSchema = z.object({\n  email: z.string(),\n  name: z.string(),\n  age: z.number(),\n  role: z.string(),\n  metadata: z.any(),\n})\n\ninterface CreateUserInput {\n  email: string\n  name: string\n  age: number\n  role: string\n  metadata: any\n}\n\nexport async function registerUserRoutes(app: FastifyInstance) {\n  app.post('/users', async (req: FastifyRequest, reply: FastifyReply) => {\n    const input: CreateUserInput = createUserSchema.parse(req.body)\n    const user = await db.users.create({ data: input })\n    return reply.code(201).send(user)\n  })\n\n  app.post('/users/import', async (req, reply) => {\n    const raw = (req.body as { payload: string }).payload\n    const rows = JSON.parse(raw) as CreateUserInput[]\n    for (const row of rows) {\n      await db.users.create({ data: row })\n    }\n    return reply.send({ imported: rows.length })\n  })\n}\n\nexport function toErrorResponse(err: z.ZodError) {\n  return { message: err.issues[0].message }\n}\n```\n\nWrite the result to OUTPUT_DIR/solution.md.",
+      "planted_violations": [
+        {
+          "id": "V1",
+          "where": "POST /users handler",
+          "rule": "parse-use-safeparse",
+          "summary": "createUserSchema.parse(req.body) throws a ZodError on bad input inside a Fastify handler with no catch, so an invalid body becomes a 500 with a stack trace. User input must go through safeParse() (or an equivalent guarded path) and return a 400."
+        },
+        {
+          "id": "V2",
+          "where": "interface CreateUserInput",
+          "rule": "type-use-z-infer",
+          "summary": "The hand-written interface duplicates the schema and will silently drift from it. The type must be derived with z.infer<typeof createUserSchema>."
+        },
+        {
+          "id": "V3",
+          "where": "metadata: z.any()",
+          "rule": "schema-use-unknown-not-any",
+          "summary": "z.any() disables type checking for everything downstream. z.unknown() (or a concrete schema / z.record) keeps the value opaque but forces narrowing before use."
+        },
+        {
+          "id": "V4",
+          "where": "role: z.string()",
+          "rule": "schema-use-enums",
+          "summary": "role has three fixed values (admin, editor, viewer). A bare z.string() accepts any typo. It must be z.enum([...]) (or a literal union)."
+        },
+        {
+          "id": "V5",
+          "where": "email: z.string(), name: z.string(), age: z.number()",
+          "rule": "schema-string-validations",
+          "summary": "No validation is applied at the schema level: email is not checked as an email address and name accepts the empty string. The constraints belong on the schema, not in downstream code."
+        },
+        {
+          "id": "V6",
+          "where": "toErrorResponse",
+          "rule": "parse-handle-all-issues / error-use-flatten",
+          "summary": "Returning only err.issues[0].message forces the client into a fix-submit-fix loop. All issues must be reported, e.g. via z.flattenError / error.flatten() or by mapping error.issues."
+        },
+        {
+          "id": "V7",
+          "where": "POST /users/import",
+          "rule": "parse-never-trust-json",
+          "summary": "JSON.parse(raw) is cast with `as CreateUserInput[]` and written straight to the database. The parsed value must be validated by a Zod schema (e.g. z.array(createUserSchema)) before use."
+        }
+      ],
+      "legal_distractors": [
+        {
+          "id": "D1",
+          "where": "export const config = configSchema.parse(process.env)",
+          "why_legal": "Module-load configuration parsing is the sanctioned use of parse(): invalid config should crash the process at boot, not be handled. Converting this to safeParse (or calling it a bug) is a false positive."
+        },
+        {
+          "id": "D2",
+          "where": "createUserSchema declared once at module scope",
+          "why_legal": "The schema is already created once and reused, which is exactly what schema caching asks for. Reporting it as a performance problem, or wrapping it in a factory/useMemo, is a false positive."
+        },
+        {
+          "id": "D3",
+          "where": "MAX_UPLOAD_MB: z.coerce.number()",
+          "why_legal": "Environment variables are always strings, so coercion here is correct, not a loose-typing defect."
+        }
+      ],
+      "assertions": [
+        "V1 fixed: the POST /users body goes through safeParse (or an equivalent non-throwing guard) and an invalid body yields a 4xx response instead of an uncaught throw",
+        "V2 fixed: the hand-written CreateUserInput interface is gone and the type is derived with z.infer from the schema",
+        "V3 fixed: metadata is no longer z.any() — it is z.unknown(), z.record(...), or a concrete schema",
+        "V4 fixed: role is a z.enum / literal union over admin, editor, viewer rather than z.string()",
+        "V5 fixed: field-level validations are applied on the schema (at minimum a real email check on email and a non-empty check on name)",
+        "V6 fixed: the error response carries every validation issue (flatten/treeifyError/mapping issues), not just issues[0]",
+        "V7 fixed: the JSON.parse result in /users/import is validated by a Zod schema before any row reaches the database, and the `as CreateUserInput[]` cast is gone",
+        "No false positive on D1-D3: the module-load config parse() is kept as parse (or its crash-early intent is explicitly endorsed), the module-scope schema is not reported as a caching/perf defect, and z.coerce on the env var is not called a defect",
+        "Factual accuracy: every Zod API the answer uses exists in the version it targets — no invented methods, and any v3/v4 specific API (z.flattenError, z.email, .flatten(), z.string().email()) is used consistently with the version the answer states it is writing for"
+      ]
+    },
+    "b-design-articles-schemas": {
+      "prompt": "I'm starting the validation layer for our articles API in a Next.js 15 + TypeScript app and I'd rather get the schema design right now than refactor it in a month. Here is what the three endpoints have to accept:\n\n```\nEndpoint 1 — GET /api/articles (search page, params come from the URL query string)\n  q          optional free-text search\n  page       page number, defaults to 1\n  perPage    page size, defaults to 20, max 100\n  publishedOnly  boolean, defaults to false\n\nEndpoint 2 — POST /api/articles (create) and PATCH /api/articles/:id (update)\n  title          required, 3..120 chars\n  body           required, non-empty\n  status         one of \"draft\" | \"review\" | \"published\"\n  publishedAt    an ISO date string on the wire that we want as a real Date in\n                 our handler code\n  reviewerId     a user id that may legitimately be set to \"no reviewer\" by a\n                 PATCH — the client must be able to clear it explicitly, and\n                 that is different from \"this PATCH does not touch the field\"\n  A PATCH may send any subset of these fields.\n\nEndpoint 3 — POST /api/webhooks/articles (an event we receive from our CMS)\n  { \"type\": \"article.published\", \"articleId\": \"...\", \"publishedAt\": \"...\" }\n  { \"type\": \"article.deleted\",   \"articleId\": \"...\", \"reason\": \"...\" }\n  { \"type\": \"article.renamed\",   \"articleId\": \"...\", \"oldTitle\": \"...\", \"newTitle\": \"...\" }\n```\n\nGive me the schemas file plus the parsing code at each of the three boundaries, and explain the design decisions you made — I want to understand the trade-offs, not just copy the code.\n\nWrite the result to OUTPUT_DIR/solution.md.",
+      "planted_violations": [
+        {
+          "id": "V1",
+          "where": "GET /api/articles query params",
+          "rule": "schema-coercion-for-form-data",
+          "summary": "Query-string values are always strings. page/perPage/publishedOnly need z.coerce (or preprocess) plus defaults, or z.number()/z.boolean() will reject \"2\" and \"true\"."
+        },
+        {
+          "id": "V2",
+          "where": "PATCH body schema",
+          "rule": "object-partial-for-updates",
+          "summary": "The update schema must be derived from the create schema with .partial() (optionally with pick/omit), not re-declared as a second literal object that can drift."
+        },
+        {
+          "id": "V3",
+          "where": "reviewerId",
+          "rule": "object-optional-vs-nullable",
+          "summary": "\"Client can explicitly clear it\" is nullable (null accepted as a value); \"the PATCH does not touch the field\" is optional (key absent). The field needs both — .nullable() inside the partial, or .nullish() — and the distinction has to be stated, not collapsed into a bare .optional()."
+        },
+        {
+          "id": "V4",
+          "where": "POST /api/webhooks/articles",
+          "rule": "object-discriminated-unions",
+          "summary": "Three variants keyed by a literal `type` field is exactly z.discriminatedUnion(\"type\", [...]). A plain z.union() gives unusable errors (it reports failures for every branch) and does not narrow as cleanly."
+        },
+        {
+          "id": "V5",
+          "where": "publishedAt",
+          "rule": "type-input-vs-output",
+          "summary": "An ISO string on the wire that becomes a Date in handler code is a transform, so input and output types differ. The answer must use z.input for what the client sends and z.infer/z.output for what the handler receives (or explicitly flag that the two differ)."
+        },
+        {
+          "id": "V6",
+          "where": "the schemas module",
+          "rule": "type-export-schemas-and-types",
+          "summary": "Both the schemas and their inferred types must be exported so consumers do not re-derive or hand-write them."
+        },
+        {
+          "id": "V7",
+          "where": "the three boundaries",
+          "rule": "parse-use-safeparse / parse-validate-early",
+          "summary": "Each of the three request boundaries must validate with safeParse (or an equivalent guarded path) and turn a failure into a 4xx with the issues, rather than parse() throwing inside a route handler."
+        }
+      ],
+      "legal_distractors": [
+        {
+          "id": "D1",
+          "where": "status field",
+          "why_legal": "Three fixed values modelled as z.enum is correct; demanding a discriminated union or a branded type here is over-engineering, and so is refusing z.enum in favour of z.nativeEnum."
+        },
+        {
+          "id": "D2",
+          "where": "articleId / reviewerId as plain strings",
+          "why_legal": "Branded types are a real Zod technique but nothing in the brief asks for id-mixup safety. Introducing them is acceptable only as an explicitly optional suggestion; presenting them as required is scope creep."
+        },
+        {
+          "id": "D3",
+          "where": "the create schema's default object behaviour",
+          "why_legal": "Zod strips unknown keys by default. Calling the default strip behaviour a security bug, or making every schema .strict() without saying why the trade-off matters here, is a false positive."
+        }
+      ],
+      "assertions": [
+        "V1 met: page, perPage and publishedOnly are coerced from strings (z.coerce or preprocess) and carry the stated defaults and the perPage max of 100",
+        "V2 met: the PATCH schema is derived from the create schema (.partial(), optionally with pick/omit/extend) rather than re-declared as an independent object literal",
+        "V3 met: reviewerId is modelled so that null explicitly clears it AND an absent key leaves it untouched (nullable inside the partial, or nullish), and the answer states the optional-vs-nullable distinction",
+        "V4 met: the webhook payload uses z.discriminatedUnion on the `type` field rather than a plain z.union",
+        "V5 met: publishedAt is transformed/coerced to a Date and the answer distinguishes the pre-transform wire type (z.input) from the post-transform type (z.infer/z.output)",
+        "V6 met: the module exports both the schemas and the inferred types",
+        "V7 met: all three boundaries validate with safeParse (or an equivalent guarded path) and return a 4xx carrying the validation issues instead of letting a parse throw",
+        "No false positive on D1-D3: status stays a plain enum, branded types are absent or offered only as an explicit optional extra, and Zod's default key-stripping is not reported as a bug",
+        "Factual accuracy: every Zod API the answer uses exists in the version it targets — no invented methods, and any v3/v4 specific API (z.iso.datetime, z.coerce.date, z.string().datetime(), z.discriminatedUnion arity) is used consistently with the version the answer states it is writing for"
+      ]
+    }
+  }
+}

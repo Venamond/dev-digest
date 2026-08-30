@@ -66,7 +66,19 @@ export async function reviewsForPull(
     .orderBy(desc(t.reviews.createdAt));
   if (reviews.length === 0) return [];
   const ids = reviews.map((r) => r.id);
-  const findings = await db.select().from(t.findings).where(inArray(t.findings.reviewId, ids));
+  // `orderBy` is load-bearing, not tidiness. Without it Postgres returns heap
+  // order, and an UPDATE writes a NEW tuple version — so accepting or
+  // dismissing a finding moves that row's physical position and the next
+  // refetch hands the client a different order. On screen the list reorders
+  // under the cursor and the reviewer lands on a different finding than the
+  // one they just judged. Any deterministic key fixes it; `id` is stable and
+  // the client re-sorts by severity on top of it (a stable sort, so this base
+  // order is what keeps equal severities from swapping).
+  const findings = await db
+    .select()
+    .from(t.findings)
+    .where(inArray(t.findings.reviewId, ids))
+    .orderBy(t.findings.id);
   return reviews.map((review) => ({
     review,
     findings: findings.filter((f) => f.reviewId === review.id),

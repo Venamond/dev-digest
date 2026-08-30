@@ -9,7 +9,20 @@
     "replyToAuthor": "Reply to author",
     "replyPlaceholder": "Reply to the author about this finding…",
     "sendReply": "Send reply",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "learnDisabled": "Teaching an agent from a finding is a separate feature — not part of the eval pipeline.",
+    "turnIntoEvalCase": "Turn into eval case",
+    "evalTitleUndecided": "Accept or dismiss this finding first — an eval case seeded from a finding nobody has judged would treat unverified output as ground truth.",
+    "evalTitleDismissed": "Create a 'must NOT comment' eval case from this dismissal",
+    "evalTitleDefault": "Create a 'must find' eval case from this finding",
+    "replyDisabled": "Replying to the pull-request author is a separate feature — not part of the eval pipeline.",
+    "evalCaseExists": "eval case",
+    "evalCaseExistsTitle": "An eval case has already been seeded from this finding.",
+    "evalCaseExistsNotice": "This finding already has an eval case. Creating another makes a second case with a colliding name.",
+    "evalCreateAnyway": "Create another",
+    "evalNoticeCancel": "Cancel",
+    "undo": "Undo",
+    "undoTitle": "Clear the decision — the finding goes back to undecided"
   },
   "trifecta": {
     "lethal": "LETHAL TRIFECTA — ALL 3 PRESENT",
@@ -37,7 +50,132 @@
     "running": "Running…",
     "runReview": "Run Review",
     "mergedWarning": "Already merged — review is informational",
-    "mergedTooltip": "This PR is already merged; running a review won’t affect the merged code."
+    "mergedTooltip": "This PR is already merged; running a review won’t affect the merged code.",
+    "noAgentsYet": "No agents yet — create one"
+  },
+  "detail": {
+    "viewOnGithub": "View on GitHub",
+    "staleBanner": "This PR is already {status} — running a review is informational and won't affect the merged code.",
+    "loadErrorTitle": "Couldn't load this pull request",
+    "loadErrorBody": "PR #{number} could not be loaded.",
+    "tabs": {
+      "overview": "Overview",
+      "findings": "Agent runs",
+      "diff": "Files changed"
+    }
+  },
+  "findingsTab": {
+    "sectionLabel": "Review runs",
+    "groupedHint": "grouped by run · newest first",
+    "emptyTitle": "No findings yet",
+    "emptyBody": "Run a review to generate findings. Use Run Review ▾ above (run all enabled agents or a specific one).",
+    "cancel": "Cancel",
+    "openTrace": "Open run trace",
+    "liveReview": "Live review",
+    "inProgress": "Review in progress…",
+    "inProgressSub": "the agent is analyzing the diff — this can take a while on large PRs.",
+    "lethalTitle": "Lethal Trifecta detected",
+    "findingsCount": "{count} finding(s)",
+    "timeline": "Timeline",
+    "timelineHint": "runs & commits · newest first",
+    "severityScopeLabel": "across every run",
+    "severityScopeTitle": "These totals sum every review ever run on this pull request. A re-run of the same agent ADDS to them rather than replacing its earlier findings, so a finding a later run no longer reports is still counted here. The timeline above shows each run separately.",
+    "findingNotFound": "That finding is no longer available — its review run may have been deleted."
+  },
+  "overview": {
+    "description": "Description"
+  },
+  "brief": {
+    "label": "PR Brief",
+    "notReviewed": "Not reviewed",
+    "noReviewRun": "No review run",
+    "scoreEmpty": "—",
+    "regenerate": "Regenerate brief",
+    "build": "Build brief",
+    "retry": "Try again",
+    "empty": "No brief has been built for this pull request yet.",
+    "building": "Building the brief…",
+    "error": "The brief could not be built.",
+    "stale": "This brief was built for an earlier state of the pull request.",
+    "risk": {
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "focus": {
+      "title": "Review focus — read these first"
+    },
+    "inputs": {
+      "title": "Brief inputs",
+      "included": "Went in",
+      "cut": "Cut to fit the budget",
+      "overBudget": "Everything above was cut and the input still did not fit: {measured} tokens against a budget of {budget}. Read this brief as incomplete.",
+      "missing": "Built without",
+      "none": "Nothing"
+    },
+    "input": {
+      "pr_meta": "Pull request metadata",
+      "intent": "Intent",
+      "blast_map": "Blast map",
+      "blast_summary": "Blast summary",
+      "issue": "Linked issue",
+      "documents": "Repository documents",
+      "findings": "Findings",
+      "changed_files": "Changed files"
+    },
+    "blast": {
+      "partial": "The blast index is partial, so the map behind this brief is incomplete.",
+      "degraded": "The blast index is degraded, so the map behind this brief is incomplete.",
+      "none": "No blast map was available, so this brief was built without it."
+    }
+  },
+  "intent": {
+    "title": "Intent",
+    "inScope": "In scope",
+    "outOfScope": "Out of scope",
+    "risks": "Risk areas",
+    "derive": "Derive",
+    "rederive": "Re-derive",
+    "recompute": "Recompute",
+    "stale": "This intent was classified against an older head commit. Recompute to refresh it.",
+    "empty": "No intent classified yet.",
+    "confidence": "Confidence",
+    "sources": "Sources",
+    "missing": "Missing context",
+    "unavailable": "Unavailable"
+  },
+  "severity": {
+    "CRITICAL": "CRITICAL",
+    "WARNING": "WARNING",
+    "SUGGESTION": "SUGGESTION",
+    "INFO": "INFO"
+  },
+  "reviewRun": {
+    "agentTitle": "Agent",
+    "findingsCount": "{count} finding(s)",
+    "blockersCount": "{count} blocker(s)",
+    "agentFallback": "agent",
+    "deleteConfirm": "Delete this \"{agent}\" review run and its findings?",
+    "deleteTitle": "Delete this review run"
+  },
+  "diffTab": {
+    "showComments": "Show comments ({count})",
+    "hideComments": "Hide comments ({count})",
+    "postError": "Couldn't post the comment to GitHub."
+  },
+  "smartDiff": {
+    "eyebrowSmart": "Reviewer-ordered diff",
+    "eyebrowOriginal": "Files changed",
+    "fileCount": "{count} files",
+    "order": {
+      "smart": "Smart order",
+      "original": "Original order"
+    },
+    "empty": "No changed files imported yet — open this PR's Files changed tab to load them.",
+    "tooBig": "This PR is large ({lines} reviewable lines). Consider splitting it:",
+    "proposedSplit": "{name} ({count} files)",
+    "zeroNewTokens": "0 new tokens",
+    "builtOnLastReview": "built on {count} from last review"
   },
   "runStatus": {
     "elapsed": "Running · {count} agent(s)",
@@ -49,16 +187,6 @@
     "running": "running",
     "findings": "{count} finding(s)",
     "blockers": " · {count} blockers"
-  },
-  "smartDiff": {
-    "coreLabel": "Core",
-    "wiringLabel": "Wiring",
-    "boilerplateLabel": "Boilerplate",
-    "largeTitle": "This PR is large ({lines} changed lines)",
-    "largeBody": "Consider splitting it into smaller, focused PRs for easier review:",
-    "filesCount": "{count} files",
-    "findingLines": "{count} finding-lines",
-    "groupedByRole": "Smart Diff · grouped by role"
   },
   "list": {
     "breadcrumb": "Pull Requests",
@@ -91,8 +219,14 @@
       "author": "Author",
       "size": "Size",
       "score": "Score",
+      "findings": "Findings",
       "status": "Status",
+      "cost": "Cost",
       "updated": "Updated"
+    },
+    "findingsPreview": {
+      "title": "{count} FINDINGS",
+      "error": "Couldn't load findings"
     },
     "filesCount": "{count} files",
     "errorTitle": "Couldn’t load pull requests",
@@ -104,6 +238,8 @@
   "timeline": {
     "goToReview": "Jump to this run’s findings below",
     "openTrace": "Open run trace & logs",
-    "deleteRun": "Delete run"
+    "deleteRun": "Delete run",
+    "deleteConfirm": "Delete this run from history? (its logs are removed too)",
+    "tokens": "{count, number} tok"
   }
 }

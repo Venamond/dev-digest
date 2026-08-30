@@ -17,12 +17,10 @@
  *     so the practical loss is small. TODO(T3): wire `ignore` once we accept
  *     a new dep, OR honor `git ls-files` so we get .gitignore for free.
  *
- * Pure-ish: takes a root path + does fs ops; returns plain data so the caller
- * (full.ts / incremental.ts) can decide what to do with it.
+ * Takes an injected {@link CloneFs} — no direct `node:fs` import.
  */
-import { readdir, stat } from 'node:fs/promises';
-import type { Dirent } from 'node:fs';
 import { extname, join, relative, sep } from 'node:path';
+import type { CloneFs } from '../../../adapters/clone-fs.js';
 import {
   EXCLUDED_DIRS,
   MAX_FILE_SIZE,
@@ -52,11 +50,11 @@ export interface WalkResult {
  * Recursively walk `root`, returning the file set to parse + a small stats
  * object the pipeline persists into `repo_index_state.stats`.
  */
-export async function walkClone(root: string): Promise<WalkResult> {
+export async function walkClone(root: string, fs: CloneFs): Promise<WalkResult> {
   const out: string[] = [];
   const stats: WalkStats = { totalCandidates: 0, skippedTooLarge: 0, bounded: 0 };
 
-  await walkDir(root, root, out, stats);
+  await walkDir(fs, root, root, out, stats);
 
   // Stable order: alphabetical relpath. Keeps "first N when bounded" reproducible
   // across runs (until T3 replaces it with rank-driven selection).
@@ -71,14 +69,15 @@ export async function walkClone(root: string): Promise<WalkResult> {
 }
 
 async function walkDir(
+  fs: CloneFs,
   root: string,
   dir: string,
   out: string[],
   stats: WalkStats,
 ): Promise<void> {
-  let entries: Dirent[];
+  let entries;
   try {
-    entries = (await readdir(dir, { withFileTypes: true })) as Dirent[];
+    entries = await fs.readdir(dir, { withFileTypes: true });
   } catch {
     // Unreadable directory (permissions, dangling symlink) — skip cleanly so
     // the indexer keeps making progress on the parts of the clone it CAN read.
@@ -91,7 +90,7 @@ async function walkDir(
 
     if (entry.isDirectory()) {
       if (EXCLUDED_SET.has(name)) continue;
-      await walkDir(root, join(dir, name), out, stats);
+      await walkDir(fs, root, join(dir, name), out, stats);
       continue;
     }
 
@@ -105,7 +104,7 @@ async function walkDir(
     const full = join(dir, name);
     let size: number;
     try {
-      size = (await stat(full)).size;
+      size = (await fs.stat(full)).size;
     } catch {
       continue;
     }

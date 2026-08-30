@@ -1,0 +1,11 @@
+ALTER TABLE "pr_brief" ADD COLUMN IF NOT EXISTS "head_sha" text;
+ALTER TABLE "pr_brief" ADD COLUMN IF NOT EXISTS "intent_key" text;
+ALTER TABLE "pr_brief" ADD COLUMN IF NOT EXISTS "blast_key" text;
+ALTER TABLE "pr_brief" ADD COLUMN IF NOT EXISTS "run_key" text;
+ALTER TABLE "pr_brief" ADD COLUMN IF NOT EXISTS "state_key" text;
+ALTER TABLE "pr_brief" ADD COLUMN IF NOT EXISTS "model" text;
+ALTER TABLE "pr_brief" ADD COLUMN IF NOT EXISTS "cost_usd" double precision;
+ALTER TABLE "pr_brief" ADD COLUMN IF NOT EXISTS "tokens_in" integer;
+ALTER TABLE "pr_brief" ADD COLUMN IF NOT EXISTS "tokens_out" integer;
+ALTER TABLE "pr_brief" ADD COLUMN IF NOT EXISTS "built_at" timestamp with time zone;
+ALTER TABLE "pr_brief" ADD COLUMN IF NOT EXISTS "inputs" jsonb;

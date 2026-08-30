@@ -39,3 +39,10 @@ export class ConfigError extends AppError {
     super('config_error', message, 500, details);
   }
 }
+
+/** Resource exists but is not ready for the requested operation (e.g. uncloned repo). */
+export class ConflictError extends AppError {
+  constructor(message: string, details?: unknown) {
+    super('conflict', message, 409, details);
+  }
+}

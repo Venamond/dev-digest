@@ -1,0 +1,34 @@
+# Keep server/client vendored Zod contracts byte-identical.
+# server/src/vendor/shared is the source of truth (see root AGENTS.md).
+name: shared contracts
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/src/vendor/shared/**'
+      - 'client/src/vendor/shared/**'
+      - 'scripts/check-shared-sync.sh'
+      - '.github/workflows/shared-contracts.yml'
+  pull_request:
+    paths:
+      - 'server/src/vendor/shared/**'
+      - 'client/src/vendor/shared/**'
+      - 'scripts/check-shared-sync.sh'
+      - '.github/workflows/shared-contracts.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shared-contracts-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    name: vendor/shared identical
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Diff server vs client vendor/shared
+        run: ./scripts/check-shared-sync.sh

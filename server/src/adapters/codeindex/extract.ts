@@ -195,9 +195,53 @@ export function extractEndpoints(content: string): string[] {
 }
 
 /**
+ * A cron expression as a person would say it: `0 * * * *` → `hourly`.
+ *
+ * Only the shapes that actually recur in application code are named; anything
+ * else keeps its raw expression, because a wrong friendly label is worse than
+ * an unfriendly correct one. Exported for its tests.
+ */
+export function humanizeCron(expr: string): string {
+  const f = expr.trim().split(/\s+/);
+  if (f.length < 5) return expr.trim();
+  const [min, hour, dom, mon, dow] = f as [string, string, string, string, string];
+  const everyDayOfMonth = dom === '*' && mon === '*';
+
+  if (f.every((x) => x === '*')) return 'every minute';
+  const perMin = /^\*\/(\d+)$/.exec(min);
+  if (perMin && hour === '*' && everyDayOfMonth && dow === '*') {
+    return `every ${perMin[1]} minutes`;
+  }
+  const perHour = /^\*\/(\d+)$/.exec(hour);
+  if (min === '0' && perHour && everyDayOfMonth && dow === '*') {
+    return `every ${perHour[1]} hours`;
+  }
+  if (min === '0' && hour === '*' && everyDayOfMonth && dow === '*') return 'hourly';
+  if (min === '0' && hour === '0' && everyDayOfMonth && dow === '*') return 'daily';
+  if (min === '0' && /^\d+$/.test(hour) && everyDayOfMonth && dow === '*') {
+    return `daily at ${hour.padStart(2, '0')}:00`;
+  }
+  if (min === '0' && hour === '0' && dom === '*' && mon === '*' && /^\d$/.test(dow)) {
+    return 'weekly';
+  }
+  if (min === '0' && hour === '0' && dom === '1' && mon === '*') return 'monthly';
+  return expr.trim();
+}
+
+/** A quoted name on the schedule line that is not the expression itself. */
+const SCHEDULE_NAME_RE = /['"`]([a-z][a-z0-9]*(?:[-_][a-z0-9]+)+)['"`]/i;
+/** …or the handler passed alongside it: `schedule('0 * * * *', resetBuckets)`. */
+const SCHEDULE_HANDLER_RE = /,\s*(?:\(\s*\)\s*=>\s*)?([A-Za-z_$][A-Za-z0-9_$]*)\s*[(),]/;
+
+/**
  * Heuristic cron/scheduled-job detector. Catches cron expressions in
  * `schedule('* * * * *')`, `cron.schedule(...)`, `CronJob(...)`, and
  * `jobs.register('kind')` / `enqueue(ws, 'kind')` style background work.
+ *
+ * A schedule is reported as `name (hourly)` when the line also names the job,
+ * and as the humanised schedule alone otherwise. The name matters more than
+ * the expression to the person reading a blast map: `reset-rate-buckets
+ * (hourly)` says what breaks, `0 * * * *` makes them go and look.
  */
 export function extractCrons(content: string): string[] {
   const out = new Set<string>();
@@ -206,7 +250,15 @@ export function extractCrons(content: string): string[] {
   const jobKindRe = /\b(?:register|enqueue)\s*\(\s*(?:[A-Za-z0-9_$.]+\s*,\s*)?['"`]([a-z][a-z0-9_]*)['"`]/i;
   for (const raw of lines) {
     const m = raw.match(cronExprRe);
-    if (m) out.add(m[1]!.trim());
+    if (m) {
+      const expr = m[1]!.trim();
+      const schedule = humanizeCron(expr);
+      // The expression itself can look like a name to the name regex, so cut
+      // the line at the expression before looking for one.
+      const rest = raw.slice(raw.indexOf(expr) + expr.length);
+      const named = SCHEDULE_NAME_RE.exec(rest)?.[1] ?? SCHEDULE_HANDLER_RE.exec(rest)?.[1];
+      out.add(named ? `${named} (${schedule})` : schedule);
+    }
     const j = raw.match(jobKindRe);
     if (j && /poll|index|clone|digest|cron|sync|schedule|job/i.test(raw)) out.add(`job:${j[1]}`);
   }

@@ -82,8 +82,52 @@ export interface BlastResult {
    * Present on the persistent (non-degraded) path; absent otherwise.
    */
   factsByFile?: Record<string, { endpoints: string[]; crons: string[] }>;
+  /**
+   * Per changed-symbol NAME: the exact pre-cap count of resolved references,
+   * so consumers can report honest truncation. Present on the persistent path
+   * only. Absent → treat total as `callers.length` and truncated as false.
+   */
+  callerStatsBySymbol?: Record<string, { total: number; truncated: boolean }>;
   degraded?: boolean;
   reason?: DegradedReason;
+}
+
+/** One seed this file reaches, and how many hops away that seed is. */
+export interface ReverseDependentVia {
+  seed: string;
+  depth: number;
+}
+
+/**
+ * A file that (transitively) imports one or more of the seed files.
+ *
+ * `via` carries a hop count PER SEED rather than a seed list beside one shared
+ * depth. Those are different facts, and conflating them asserts a relationship
+ * that does not exist: when both `FindingsPanel.tsx` and `hooks/reviews.ts`
+ * are changed files, the barrel `FindingsPanel/index.ts` is ONE hop from the
+ * first and TWO from the second — a single `depth: 1` beside a `via`
+ * containing both let a consumer call it a direct importer of `reviews.ts`,
+ * which it is not.
+ *
+ * `depth` stays as the shortest hop to ANY seed: useful for ordering, never
+ * for attribution. Attribute with `via`.
+ */
+export interface ReverseDependentRow {
+  file: string;
+  via: ReverseDependentVia[];
+  depth: number;
+  endpoints: string[];
+  crons: string[];
+}
+
+/**
+ * `truncated` is true when any BFS level hit MAX_REVERSE_DEPENDENTS, i.e. the
+ * dependent set (and therefore the endpoints derived from it) is a subset of
+ * what the index holds. Consumers MUST surface this.
+ */
+export interface ReverseDependentsResult {
+  dependents: ReverseDependentRow[];
+  truncated: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -144,7 +188,22 @@ export interface RepoIntel {
   getIndexState(repoId: string): Promise<IndexState>;
 
   // --- Reads --------------------------------------------------------------
-  getBlastRadius(repoId: string, changedFiles: string[]): Promise<BlastResult>;
+  getBlastRadius(
+    repoId: string,
+    changedFiles: string[],
+    opts?: { maxCallersPerSymbol?: number; persistentOnly?: boolean },
+  ): Promise<BlastResult>;
+  /**
+   * Files that import (transitively, at most `depth` levels, hard-capped at
+   * BFS_DEPTH) any of `files`, with their precomputed file_facts. Returns
+   * `{ dependents: [], truncated: false }` when the flag is off, the index is
+   * unusable, or `files` is empty.
+   */
+  getReverseDependents(
+    repoId: string,
+    files: string[],
+    depth?: number,
+  ): Promise<ReverseDependentsResult>;
   getRepoMap(repoId: string, tokenBudget?: number): Promise<RepoMapResult>;
   getFileRank(repoId: string, paths: string[]): Promise<FileRankRow[]>;
   getSymbolsInFiles(repoId: string, paths: string[]): Promise<SymbolRow[]>;

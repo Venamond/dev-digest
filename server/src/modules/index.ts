@@ -5,8 +5,16 @@ import pulls from './pulls/routes.js';
 import polling from './polling/routes.js';
 import workspace from './workspace/routes.js';
 import agents from './agents/routes.js';
+import skills from './skills/routes.js';
+import conventions from './conventions/routes.js';
+import context from './context/routes.js';
 import reviews from './reviews/routes.js';
 import repoIntel from './repo-intel/routes.js';
+import smartDiff from './smart-diff/routes.js';
+import blast from './blast/routes.js';
+import brief from './brief/routes.js';
+// `eval` is a reserved identifier, so the eval module binds as `evalPipeline`.
+import evalPipeline from './eval/routes.js';
 
 /**
  * Module registry. Each feature module is a Fastify plugin in
@@ -28,6 +36,13 @@ export const modules: Record<string, FastifyPluginAsync> = {
   polling,
   workspace,
   agents,
+  skills,
+  conventions,
+  context,
   reviews,
   repoIntel,
+  smartDiff,
+  blast,
+  brief,
+  evalPipeline,
 };

@@ -1,0 +1,147 @@
+import type { CSSProperties } from "react";
+
+const COLS = "34px 150px 70px 1fr 1fr 1fr 90px 80px";
+
+/** Co-located styles for one agent's eval view (design ScreenEval, agent view). */
+export const s = {
+  page: { padding: "20px 28px 40px", maxWidth: 980, margin: "0 auto" } satisfies CSSProperties,
+  back: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 12,
+    padding: "4px 8px 4px 4px",
+    borderRadius: 6,
+    border: "none",
+    background: "transparent",
+    color: "var(--text-secondary)",
+    fontSize: 12.5,
+    fontWeight: 600,
+    cursor: "pointer",
+  } satisfies CSSProperties,
+  headerRow: { display: "flex", alignItems: "flex-end", marginBottom: 18 } satisfies CSSProperties,
+  h1: {
+    fontSize: 22,
+    fontWeight: 700,
+    letterSpacing: "-0.02em",
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+  } satisfies CSSProperties,
+  modelChip: {
+    fontSize: 11.5,
+    fontWeight: 500,
+    color: "var(--text-muted)",
+    padding: "2px 7px",
+    borderRadius: 5,
+    border: "1px solid var(--border)",
+  } satisfies CSSProperties,
+  subtitle: { fontSize: 13, color: "var(--text-secondary)", marginTop: 3 } satisfies CSSProperties,
+  headerActions: {
+    marginLeft: "auto",
+    display: "flex",
+    gap: 8,
+    alignItems: "center",
+  } satisfies CSSProperties,
+
+  alert: {
+    display: "flex",
+    gap: 10,
+    alignItems: "center",
+    padding: "11px 14px",
+    borderRadius: 8,
+    border: "1px solid var(--warn)",
+    background: "var(--warn-bg)",
+    marginBottom: 18,
+  } satisfies CSSProperties,
+  alertText: { fontSize: 13, color: "var(--text-secondary)" } satisfies CSSProperties,
+  alertStrong: { color: "var(--text-primary)" } satisfies CSSProperties,
+
+  cards: { display: "flex", gap: 14, marginBottom: 8 } satisfies CSSProperties,
+  completion: {
+    fontSize: 11.5,
+    color: "var(--text-muted)",
+    marginBottom: 20,
+  } satisfies CSSProperties,
+
+  card: {
+    border: "1px solid var(--border)",
+    borderRadius: 9,
+    background: "var(--bg-elevated)",
+    padding: 16,
+    marginBottom: 20,
+  } satisfies CSSProperties,
+  cardHead: {
+    display: "flex",
+    alignItems: "center",
+    gap: 16,
+    marginBottom: 12,
+  } satisfies CSSProperties,
+  legend: {
+    marginLeft: "auto",
+    display: "flex",
+    gap: 14,
+    fontSize: 11.5,
+  } satisfies CSSProperties,
+  legendItem: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 5,
+    color: "var(--text-secondary)",
+  } satisfies CSSProperties,
+
+  runsHead: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 4,
+  } satisfies CSSProperties,
+  affordance: { fontSize: 11.5, color: "var(--text-muted)" } satisfies CSSProperties,
+  runsActions: { marginLeft: "auto" } satisfies CSSProperties,
+
+  table: {
+    border: "1px solid var(--border)",
+    borderRadius: 8,
+    overflow: "hidden",
+    background: "var(--bg-elevated)",
+    marginTop: 8,
+  } satisfies CSSProperties,
+  thead: {
+    display: "grid",
+    gridTemplateColumns: COLS,
+    gap: 12,
+    padding: "9px 16px",
+    background: "var(--bg-surface)",
+    borderBottom: "1px solid var(--border)",
+    fontSize: 10.5,
+    fontWeight: 700,
+    letterSpacing: "0.05em",
+    color: "var(--text-muted)",
+    textTransform: "uppercase",
+  } satisfies CSSProperties,
+  row: {
+    display: "grid",
+    gridTemplateColumns: COLS,
+    gap: 12,
+    padding: "10px 16px",
+    alignItems: "center",
+    fontSize: 12.5,
+    cursor: "pointer",
+    width: "100%",
+    textAlign: "left",
+    border: "none",
+  } satisfies CSSProperties,
+  checkbox: {
+    width: 16,
+    height: 16,
+    borderRadius: 4,
+    display: "grid",
+    placeItems: "center",
+  } satisfies CSSProperties,
+  ranAt: { color: "var(--text-secondary)", fontSize: 11.5 } satisfies CSSProperties,
+  version: { color: "var(--accent-text)" } satisfies CSSProperties,
+  pass: { fontWeight: 600 } satisfies CSSProperties,
+  cost: { color: "var(--text-secondary)" } satisfies CSSProperties,
+
+  state: { padding: "20px 0", fontSize: 13, color: "var(--text-muted)" } satisfies CSSProperties,
+};

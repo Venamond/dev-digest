@@ -1,0 +1,11 @@
+server/src/vendor/shared/contracts/reports.ts
+client/src/vendor/shared/contracts/reports.ts
+server/src/modules/_shared/repos.ts
+server/src/modules/reports/routes.ts
+server/src/modules/reports/service.ts
+server/src/modules/reports/aggregate.ts
+server/src/modules/reports/repository.ts
+server/src/modules/reports/helpers.ts
+server/src/modules/reports/constants.ts
+server/src/modules/reports/deps.ts
+server/src/modules/reports/schedule.ts

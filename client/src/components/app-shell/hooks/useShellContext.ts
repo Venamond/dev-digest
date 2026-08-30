@@ -1,13 +1,13 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { type ShellContext } from "@devdigest/ui";
 import { useTheme } from "../../../lib/theme";
 import { useActiveRepo } from "../../../lib/repo-context";
 import { usePulls, useDeleteRepo } from "../../../lib/hooks";
+import { ShellLink } from "../ShellLink";
 import { activeKeyFor, toShellRepo } from "../helpers";
 
 interface ShellContextOptions {
@@ -59,7 +59,9 @@ export function useShellContext({ onOpenCommandPalette }: ShellContextOptions): 
 
   return React.useMemo<ShellContext>(
     () => ({
-      Link,
+      // Span+router.push — not next/link <a> — so hover does not paint the URL
+      // into the browser status bar at the bottom of the window.
+      Link: ShellLink,
       activeKey: activeKeyFor(pathname),
       repoId,
       repos: repos.map(toShellRepo),

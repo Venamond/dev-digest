@@ -1,12 +1,15 @@
 import type { Container } from '../../platform/container.js';
-import type { FindingActionKind, RunEventKind, RunTrace } from '@devdigest/shared';
-import { AppError, NotFoundError } from '../../platform/errors.js';
+import type { FindingActionKind, PrIntentRecord, RunEventKind, RunTrace } from '@devdigest/shared';
+import { AppError, ConflictError, ConfigError, NotFoundError } from '../../platform/errors.js';
 import type { AgentRow } from '../../db/rows.js';
 import { ReviewRepository } from './repository.js';
 import { type ReviewDto, type ReviewDtoFinding } from './helpers.js';
 import { ReviewRunExecutor, type Logger } from './run-executor.js';
 import { actOnFinding as actOnFindingImpl } from './findings.js';
 import { reviewToDto } from './helpers.js';
+import { classify } from './intent/classify.js';
+import { toPrIntentRecord } from './intent/record.js';
+import { emitPromptAssemblyLog } from '../../platform/prompt-log.js';
 
 // Re-export DTO types + converters for backward-compatible imports from
 // './service.js' (these previously lived here; logic now in ./helpers.ts).
@@ -175,5 +178,54 @@ export class ReviewService {
 
   async getRunTrace(runId: string): Promise<RunTrace | undefined> {
     return this.repo.getRunTrace(runId);
+  }
+
+  async getIntent(workspaceId: string, prId: string): Promise<PrIntentRecord | null> {
+    const pull = await this.repo.getPull(workspaceId, prId);
+    if (!pull) throw new NotFoundError('Pull request not found');
+    const row = await this.repo.getIntent(prId);
+    if (!row) return null;
+    return toPrIntentRecord(row, pull);
+  }
+
+  async deriveIntent(
+    workspaceId: string,
+    prId: string,
+    opts?: { force?: boolean; correlationId?: string },
+    logger?: Logger,
+  ): Promise<PrIntentRecord> {
+    const pull = await this.repo.getPull(workspaceId, prId);
+    if (!pull) throw new NotFoundError('Pull request not found');
+    const repo = await this.repo.getRepo(pull.repoId);
+    if (!repo) throw new NotFoundError('Repo not found');
+    try {
+      const result = await classify({
+        container: this.container,
+        reviews: this.repo,
+        workspaceId,
+        pull,
+        repo,
+        force: opts?.force,
+      });
+      if (result.promptStats) {
+        emitPromptAssemblyLog({
+          mode: this.container.config.promptLog,
+          logger,
+          payload: {
+            correlationId: opts?.correlationId ?? `intent:${prId}`,
+            model: result.model,
+            prompt: 'intent',
+            summary: result.promptStats,
+          },
+          fingerprints: result.promptFingerprints,
+        });
+      }
+      return result.record;
+    } catch (err) {
+      if (err instanceof ConfigError) {
+        throw new ConflictError(err.message, { reason: 'missing_provider_key' });
+      }
+      throw err;
+    }
   }
 }

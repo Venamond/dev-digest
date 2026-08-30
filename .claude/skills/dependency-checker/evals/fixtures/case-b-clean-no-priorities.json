@@ -1,0 +1,1105 @@
+{
+ "generated": "2026-09-03T09:14:02Z",
+ "env": {
+  "node": "v25.7.0",
+  "pnpm": "10.34.5",
+  "npm": "11.10.1",
+  "node_linker": null
+ },
+ "scope": [
+  "client",
+  "e2e",
+  "evals",
+  "mcp",
+  "reviewer-core",
+  "server"
+ ],
+ "discovered": [
+  "client",
+  "e2e",
+  "evals",
+  "mcp",
+  "reviewer-core",
+  "server"
+ ],
+ "limits": [
+  "unused_candidates is a heuristic over imports, config files and scripts \u2014 it is a list to check, not a verdict",
+  "sizes are on-disk node_modules bytes, which include sourcemaps, types and dual CJS/ESM builds \u2014 they are not bundle sizes"
+ ],
+ "totals": {
+  "packages_analysed": 6,
+  "node_modules_kb": 1549096,
+  "not_installed": []
+ },
+ "totals_redundant_kb": 107568,
+ "root": "/repo",
+ "duplicates": [
+  {
+   "name": "@types/node",
+   "versions": {
+    "22.20.1": [
+     "client",
+     "evals",
+     "mcp",
+     "reviewer-core",
+     "server"
+    ]
+   },
+   "same_version": true,
+   "installed_in": [
+    "client",
+    "mcp",
+    "reviewer-core",
+    "server"
+   ],
+   "disk_kb": 10348,
+   "redundant_kb": 0
+  },
+  {
+   "name": "js-tiktoken",
+   "versions": {
+    "1.0.21": [
+     "mcp",
+     "server"
+    ]
+   },
+   "same_version": true,
+   "installed_in": [
+    "mcp",
+    "server"
+   ],
+   "disk_kb": 44016,
+   "redundant_kb": 22008
+  },
+  {
+   "name": "openai",
+   "versions": {
+    "4.104.0": [
+     "evals",
+     "reviewer-core",
+     "server"
+    ]
+   },
+   "same_version": true,
+   "installed_in": [
+    "reviewer-core",
+    "server"
+   ],
+   "disk_kb": 19584,
+   "redundant_kb": 9708
+  },
+  {
+   "name": "tsx",
+   "versions": {
+    "4.23.12": [
+     "evals",
+     "mcp",
+     "reviewer-core",
+     "server"
+    ]
+   },
+   "same_version": true,
+   "installed_in": [
+    "mcp",
+    "reviewer-core",
+    "server"
+   ],
+   "disk_kb": 12456,
+   "redundant_kb": 0
+  },
+  {
+   "name": "typescript",
+   "versions": {
+    "5.9.3": [
+     "client",
+     "evals",
+     "mcp",
+     "reviewer-core",
+     "server"
+    ]
+   },
+   "same_version": true,
+   "installed_in": [
+    "client",
+    "mcp",
+    "reviewer-core",
+    "server"
+   ],
+   "disk_kb": 93552,
+   "redundant_kb": 70164
+  },
+  {
+   "name": "vitest",
+   "versions": {
+    "2.1.9": [
+     "client",
+     "evals",
+     "mcp",
+     "reviewer-core",
+     "server"
+    ]
+   },
+   "same_version": true,
+   "installed_in": [
+    "client",
+    "mcp",
+    "reviewer-core",
+    "server"
+   ],
+   "disk_kb": 7640,
+   "redundant_kb": 5688
+  },
+  {
+   "name": "zod",
+   "versions": {
+    "4.4.3": [
+     "client",
+     "mcp",
+     "reviewer-core",
+     "server"
+    ]
+   },
+   "same_version": true,
+   "installed_in": [
+    "client",
+    "mcp",
+    "reviewer-core",
+    "server"
+   ],
+   "disk_kb": 21812,
+   "redundant_kb": 0
+  }
+ ],
+ "packages": {
+  "client": {
+   "dir": "client",
+   "name": "@devdigest/web",
+   "manager": "pnpm",
+   "installed": true,
+   "installed_count": 421,
+   "node_modules_kb": 634380,
+   "sizes_trustworthy": true,
+   "packages_all_count": 25,
+   "unused_candidates": [],
+   "notes": [],
+   "tsconfig_links": [],
+   "direct_counts": {
+    "prod": 12,
+    "dev": 13,
+    "peer": 0
+   },
+   "packages": [
+    {
+     "name": "mermaid",
+     "type": "prod",
+     "shared_with": [],
+     "own_kb": 780,
+     "exclusive_kb": 940,
+     "transitive_count": 3,
+     "exclusive_count": 2,
+     "version": "11.15.0"
+    },
+    {
+     "name": "lucide-react",
+     "type": "prod",
+     "shared_with": [],
+     "own_kb": 780,
+     "exclusive_kb": 940,
+     "transitive_count": 3,
+     "exclusive_count": 2,
+     "version": "0.469.0"
+    },
+    {
+     "name": "typescript",
+     "type": "dev",
+     "shared_with": [],
+     "own_kb": 23388,
+     "exclusive_kb": 23388,
+     "transitive_count": 0,
+     "exclusive_count": 1,
+     "version": "5.9.3"
+    },
+    {
+     "name": "recharts",
+     "type": "prod",
+     "shared_with": [],
+     "own_kb": 780,
+     "exclusive_kb": 940,
+     "transitive_count": 3,
+     "exclusive_count": 2,
+     "version": "2.15.4"
+    },
+    {
+     "name": "@tailwindcss/postcss",
+     "type": "dev",
+     "shared_with": [],
+     "own_kb": 116,
+     "exclusive_kb": 5600,
+     "transitive_count": 43,
+     "exclusive_count": 20,
+     "version": "4.3.0"
+    },
+    {
+     "name": "@testing-library/react",
+     "type": "dev",
+     "shared_with": [],
+     "own_kb": 384,
+     "exclusive_kb": 5576,
+     "transitive_count": 21,
+     "exclusive_count": 10,
+     "version": "16.3.2"
+    }
+   ],
+   "outdated": [
+    {
+     "name": "jsdom",
+     "current": "25.0.1",
+     "wanted": "25.0.1",
+     "latest": "25.99.0",
+     "majors_behind": 1
+    },
+    {
+     "name": "@types/node",
+     "current": "22.19.19",
+     "wanted": "22.19.19",
+     "latest": "22.99.0",
+     "majors_behind": 1
+    },
+    {
+     "name": "@vitejs/plugin-react",
+     "current": "4.7.0",
+     "wanted": "4.7.0",
+     "latest": "4.99.0",
+     "majors_behind": 1
+    },
+    {
+     "name": "typescript",
+     "current": "5.9.3",
+     "wanted": "5.9.3",
+     "latest": "5.99.0",
+     "majors_behind": 1
+    },
+    {
+     "name": "vitest",
+     "current": "2.1.9",
+     "wanted": "2.1.9",
+     "latest": "2.99.0",
+     "majors_behind": 1
+    },
+    {
+     "name": "@testing-library/jest-dom",
+     "current": "6.9.1",
+     "wanted": "6.9.1",
+     "latest": "7.0.1",
+     "majors_behind": 1
+    }
+   ],
+   "audit": {
+    "findings": [],
+    "totals": {}
+   },
+   "internal_graph": {
+    "available": false,
+    "reason": "no .dependency-cruiser.cjs in this package"
+   }
+  },
+  "e2e": {
+   "dir": "e2e",
+   "name": "@devdigest/e2e",
+   "manager": "npm",
+   "installed": true,
+   "node_modules_kb": 142880,
+   "unused_candidates": [],
+   "notes": [
+    "node_modules is not installed \u2014 sizes, versions, outdated and audit are unavailable for this package (not zero, unmeasured)"
+   ],
+   "tsconfig_links": [],
+   "direct_counts": {
+    "prod": 0,
+    "dev": 3,
+    "peer": 0
+   },
+   "internal_graph": {
+    "available": false,
+    "reason": "no .dependency-cruiser.cjs in this package"
+   },
+   "installed_count": 118,
+   "sizes_trustworthy": true,
+   "packages": [
+    {
+     "name": "@playwright/test",
+     "type": "dev",
+     "shared_with": [],
+     "own_kb": 2140,
+     "exclusive_kb": 121400,
+     "transitive_count": 9,
+     "exclusive_count": 9,
+     "version": "1.56.1"
+    }
+   ],
+   "outdated": [],
+   "audit": {
+    "findings": [],
+    "totals": {}
+   },
+   "packages_all_count": 4
+  },
+  "evals": {
+   "dir": "evals",
+   "name": "@devdigest/evals",
+   "manager": "pnpm",
+   "installed": true,
+   "installed_count": 7,
+   "node_modules_kb": 340100,
+   "sizes_trustworthy": true,
+   "packages_all_count": 7,
+   "unused_candidates": [],
+   "notes": [
+    "100% of node_modules entries are symlinks \u2014 du measures the link, not the package. Every size for this package is unusable; re-run with node-linker=hoisted or drop the weight section."
+   ],
+   "tsconfig_links": [],
+   "direct_counts": {
+    "prod": 2,
+    "dev": 5,
+    "peer": 0
+   },
+   "packages": [
+    {
+     "name": "@anthropic-ai/claude-agent-sdk",
+     "type": "prod",
+     "shared_with": [],
+     "own_kb": null,
+     "exclusive_kb": null,
+     "transitive_count": 107,
+     "exclusive_count": 93,
+     "version": "0.3.198"
+    },
+    {
+     "name": "@types/node",
+     "type": "dev",
+     "shared_with": [
+      "openai",
+      "vitest"
+     ],
+     "own_kb": null,
+     "exclusive_kb": null,
+     "transitive_count": 1,
+     "exclusive_count": 0,
+     "version": "22.20.0"
+    },
+    {
+     "name": "gray-matter",
+     "type": "dev",
+     "shared_with": [],
+     "own_kb": null,
+     "exclusive_kb": null,
+     "transitive_count": 9,
+     "exclusive_count": 10,
+     "version": "4.0.3"
+    },
+    {
+     "name": "openai",
+     "type": "prod",
+     "shared_with": [],
+     "own_kb": null,
+     "exclusive_kb": null,
+     "transitive_count": 39,
+     "exclusive_count": 24,
+     "version": "4.104.0"
+    },
+    {
+     "name": "tsx",
+     "type": "dev",
+     "shared_with": [],
+     "own_kb": null,
+     "exclusive_kb": null,
+     "transitive_count": 28,
+     "exclusive_count": 28,
+     "version": "4.22.4"
+    },
+    {
+     "name": "typescript",
+     "type": "dev",
+     "shared_with": [],
+     "own_kb": null,
+     "exclusive_kb": null,
+     "transitive_count": 0,
+     "exclusive_count": 1,
+     "version": "5.9.3"
+    }
+   ],
+   "outdated": [
+    {
+     "name": "@types/node",
+     "current": "22.20.0",
+     "wanted": "22.20.0",
+     "latest": "22.99.0",
+     "majors_behind": 1
+    },
+    {
+     "name": "openai",
+     "current": "4.104.0",
+     "wanted": "4.104.0",
+     "latest": "4.99.0",
+     "majors_behind": 1
+    },
+    {
+     "name": "typescript",
+     "current": "5.9.3",
+     "wanted": "5.9.3",
+     "latest": "5.99.0",
+     "majors_behind": 1
+    },
+    {
+     "name": "vitest",
+     "current": "2.1.9",
+     "wanted": "2.1.9",
+     "latest": "2.99.0",
+     "majors_behind": 1
+    },
+    {
+     "name": "@anthropic-ai/claude-agent-sdk",
+     "current": "0.3.198",
+     "wanted": "0.3.198",
+     "latest": "0.3.247",
+     "majors_behind": 0
+    },
+    {
+     "name": "tsx",
+     "current": "4.22.4",
+     "wanted": "4.22.4",
+     "latest": "4.23.12",
+     "majors_behind": 0
+    }
+   ],
+   "audit": {
+    "findings": [
+     {
+      "name": "@hono/node-server",
+      "severity": "moderate",
+      "direct": false,
+      "via": [
+       "Node.js Adapter for Hono: Path traversal in `serve-static` on Windows via encoded backslash (`%5C`)"
+      ],
+      "fix_available": true,
+      "scope": "prod"
+     },
+     {
+      "name": "hono",
+      "severity": "moderate",
+      "direct": false,
+      "via": [
+       "Hono: ReDoS in CORS middleware via Access-Control-Request-Headers"
+      ],
+      "fix_available": true,
+      "scope": "prod"
+     },
+     {
+      "name": "hono",
+      "severity": "moderate",
+      "direct": false,
+      "via": [
+       "Hono: `memo()` retains SSR output across requests, leading to cross-user data disclosure"
+      ],
+      "fix_available": true,
+      "scope": "prod"
+     },
+     {
+      "name": "hono",
+      "severity": "moderate",
+      "direct": false,
+      "via": [
+       "Hono: Algorithmic Complexity DoS in Language Middleware"
+      ],
+      "fix_available": true,
+      "scope": "prod"
+     },
+     {
+      "name": "ip-address",
+      "severity": "moderate",
+      "direct": false,
+      "via": [
+       "ip-address: a CIDR suffix on the parsed address suppresses special-use classification and can bypass SSRF and trust-boundary checks"
+      ],
+      "fix_available": true,
+      "scope": "prod"
+     }
+    ],
+    "totals": {
+     "moderate": 5
+    }
+   },
+   "internal_graph": {
+    "available": false,
+    "reason": "no .dependency-cruiser.cjs in this package"
+   }
+  },
+  "mcp": {
+   "dir": "mcp",
+   "name": "@devdigest/mcp",
+   "manager": "npm",
+   "installed": true,
+   "installed_count": 64,
+   "node_modules_kb": 105300,
+   "sizes_trustworthy": true,
+   "packages_all_count": 8,
+   "unused_candidates": [],
+   "notes": [],
+   "tsconfig_links": [],
+   "direct_counts": {
+    "prod": 2,
+    "dev": 6,
+    "peer": 0
+   },
+   "packages": [
+    {
+     "name": "vitest",
+     "type": "dev",
+     "shared_with": [],
+     "own_kb": 1896,
+     "exclusive_kb": 34512,
+     "transitive_count": 105,
+     "exclusive_count": 81,
+     "version": "2.1.9"
+    },
+    {
+     "name": "typescript",
+     "type": "dev",
+     "shared_with": [],
+     "own_kb": 23388,
+     "exclusive_kb": 23388,
+     "transitive_count": 0,
+     "exclusive_count": 1,
+     "version": "5.9.3"
+    },
+    {
+     "name": "js-tiktoken",
+     "type": "dev",
+     "shared_with": [],
+     "own_kb": 22008,
+     "exclusive_kb": 22032,
+     "transitive_count": 1,
+     "exclusive_count": 2,
+     "version": "1.0.21"
+    },
+    {
+     "name": "tsx",
+     "type": "dev",
+     "shared_with": [],
+     "own_kb": 668,
+     "exclusive_kb": 11164,
+     "transitive_count": 28,
+     "exclusive_count": 6,
+     "version": "4.23.12"
+    },
+    {
+     "name": "@modelcontextprotocol/client",
+     "type": "dev",
+     "shared_with": [],
+     "own_kb": 6652,
+     "exclusive_kb": 7640,
+     "transitive_count": 12,
+     "exclusive_count": 11,
+     "version": "2.0.0"
+    },
+    {
+     "name": "@modelcontextprotocol/server",
+     "type": "prod",
+     "shared_with": [],
+     "own_kb": 6368,
+     "exclusive_kb": 6368,
+     "transitive_count": 2,
+     "exclusive_count": 1,
+     "version": "2.0.0"
+    }
+   ],
+   "outdated": [
+    {
+     "name": "@types/node",
+     "current": "22.20.1",
+     "wanted": "22.20.1",
+     "latest": "22.99.0",
+     "majors_behind": 1
+    },
+    {
+     "name": "typescript",
+     "current": "5.9.3",
+     "wanted": "5.9.3",
+     "latest": "5.99.0",
+     "majors_behind": 1
+    },
+    {
+     "name": "vitest",
+     "current": "2.1.9",
+     "wanted": "2.1.9",
+     "latest": "2.99.0",
+     "majors_behind": 1
+    }
+   ],
+   "audit": {
+    "findings": [
+     {
+      "name": "vitest",
+      "severity": "critical",
+      "direct": true,
+      "via": [
+       "@vitest/mocker",
+       "When Vitest UI server is listening, arbitrary file can be read and executed",
+       "vite",
+       "vite-node"
+      ],
+      "fix_available": true,
+      "scope": "dev"
+     },
+     {
+      "name": "vite",
+      "severity": "high",
+      "direct": false,
+      "via": [
+       "Vite Vulnerable to Path Traversal in Optimized Deps `.map` Handling",
+       "launch-editor: NTLMv2 hash disclosure via UNC path handling on Windows",
+       "vite: `server.fs.deny` bypass on Windows alternate paths",
+       "esbuild"
+      ],
+      "fix_available": true,
+      "scope": "dev"
+     },
+     {
+      "name": "@vitest/mocker",
+      "severity": "moderate",
+      "direct": false,
+      "via": [
+       "vite"
+      ],
+      "fix_available": true,
+      "scope": "dev"
+     },
+     {
+      "name": "esbuild",
+      "severity": "moderate",
+      "direct": false,
+      "via": [
+       "esbuild enables any website to send any requests to the development server and read the response"
+      ],
+      "fix_available": true,
+      "scope": "dev"
+     },
+     {
+      "name": "vite-node",
+      "severity": "moderate",
+      "direct": false,
+      "via": [
+       "vite"
+      ],
+      "fix_available": true,
+      "scope": "dev"
+     }
+    ],
+    "totals": {
+     "critical": 1,
+     "high": 1,
+     "moderate": 3
+    }
+   },
+   "internal_graph": {
+    "available": false,
+    "reason": "no .dependency-cruiser.cjs in this package"
+   }
+  },
+  "reviewer-core": {
+   "dir": "reviewer-core",
+   "name": "@devdigest/reviewer-core",
+   "manager": "npm",
+   "installed": true,
+   "installed_count": 83,
+   "node_modules_kb": 79820,
+   "sizes_trustworthy": true,
+   "packages_all_count": 6,
+   "unused_candidates": [],
+   "notes": [],
+   "tsconfig_links": [
+    {
+     "alias": "@devdigest/shared",
+     "target": "../server/src/vendor/shared/index.ts"
+    },
+    {
+     "alias": "@devdigest/shared/*",
+     "target": "../server/src/vendor/shared/*"
+    }
+   ],
+   "direct_counts": {
+    "prod": 2,
+    "dev": 4,
+    "peer": 0
+   },
+   "packages": [
+    {
+     "name": "vitest",
+     "type": "dev",
+     "shared_with": [],
+     "own_kb": 1896,
+     "exclusive_kb": 34372,
+     "transitive_count": 104,
+     "exclusive_count": 79,
+     "version": "2.1.9"
+    },
+    {
+     "name": "typescript",
+     "type": "dev",
+     "shared_with": [],
+     "own_kb": 23388,
+     "exclusive_kb": 23388,
+     "transitive_count": 0,
+     "exclusive_count": 1,
+     "version": "5.9.3"
+    },
+    {
+     "name": "openai",
+     "type": "prod",
+     "shared_with": [],
+     "own_kb": 9876,
+     "exclusive_kb": 16016,
+     "transitive_count": 41,
+     "exclusive_count": 38,
+     "version": "4.104.0"
+    },
+    {
+     "name": "tsx",
+     "type": "dev",
+     "shared_with": [],
+     "own_kb": 664,
+     "exclusive_kb": 11112,
+     "transitive_count": 28,
+     "exclusive_count": 6,
+     "version": "4.22.4"
+    },
+    {
+     "name": "zod",
+     "type": "prod",
+     "shared_with": [
+      "openai"
+     ],
+     "own_kb": 5136,
+     "exclusive_kb": 0,
+     "transitive_count": 0,
+     "exclusive_count": 0,
+     "version": "3.25.76"
+    },
+    {
+     "name": "@types/node",
+     "type": "dev",
+     "shared_with": [
+      "openai",
+      "vitest"
+     ],
+     "own_kb": 2536,
+     "exclusive_kb": 0,
+     "transitive_count": 1,
+     "exclusive_count": 0,
+     "version": "22.19.20"
+    }
+   ],
+   "outdated": [
+    {
+     "name": "@types/node",
+     "current": "22.19.20",
+     "wanted": "22.20.1",
+     "latest": "22.99.0",
+     "majors_behind": 1
+    },
+    {
+     "name": "openai",
+     "current": "4.104.0",
+     "wanted": "4.104.0",
+     "latest": "4.99.0",
+     "majors_behind": 1
+    },
+    {
+     "name": "typescript",
+     "current": "5.9.3",
+     "wanted": "5.9.3",
+     "latest": "5.99.0",
+     "majors_behind": 1
+    },
+    {
+     "name": "vitest",
+     "current": "2.1.9",
+     "wanted": "2.1.9",
+     "latest": "2.99.0",
+     "majors_behind": 1
+    },
+    {
+     "name": "zod",
+     "current": "3.25.76",
+     "wanted": "3.25.76",
+     "latest": "4.4.3",
+     "majors_behind": 1
+    },
+    {
+     "name": "tsx",
+     "current": "4.22.4",
+     "wanted": "4.23.12",
+     "latest": "4.23.12",
+     "majors_behind": 0
+    }
+   ],
+   "audit": {
+    "findings": [
+     {
+      "name": "vitest",
+      "severity": "critical",
+      "direct": true,
+      "via": [
+       "@vitest/mocker",
+       "When Vitest UI server is listening, arbitrary file can be read and executed",
+       "vite",
+       "vite-node"
+      ],
+      "fix_available": true,
+      "scope": "dev"
+     },
+     {
+      "name": "nanoid",
+      "severity": "high",
+      "direct": false,
+      "via": [
+       "nanoid: non-secure generators can loop indefinitely with negative size",
+       "nanoid: custom generators can loop indefinitely when size is zero"
+      ],
+      "fix_available": true,
+      "scope": "dev"
+     },
+     {
+      "name": "postcss",
+      "severity": "high",
+      "direct": false,
+      "via": [
+       "PostCSS: incomplete fix of GHSA-6g55-p6wh-862q \u2014 attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset",
+       "PostCSS: Path Traversal in Previous Source Map Auto-Loading (sourceMappingURL) leads to Arbitrary .map File Disclosure"
+      ],
+      "fix_available": true,
+      "scope": "dev"
+     },
+     {
+      "name": "vite",
+      "severity": "high",
+      "direct": false,
+      "via": [
+       "Vite Vulnerable to Path Traversal in Optimized Deps `.map` Handling",
+       "launch-editor: NTLMv2 hash disclosure via UNC path handling on Windows",
+       "vite: `server.fs.deny` bypass on Windows alternate paths",
+       "esbuild"
+      ],
+      "fix_available": true,
+      "scope": "dev"
+     },
+     {
+      "name": "@vitest/mocker",
+      "severity": "moderate",
+      "direct": false,
+      "via": [
+       "vite"
+      ],
+      "fix_available": true,
+      "scope": "dev"
+     },
+     {
+      "name": "esbuild",
+      "severity": "moderate",
+      "direct": false,
+      "via": [
+       "esbuild enables any website to send any requests to the development server and read the response",
+       "esbuild allows arbitrary file read when running the development server on Windows"
+      ],
+      "fix_available": true,
+      "scope": "dev"
+     },
+     {
+      "name": "vite-node",
+      "severity": "moderate",
+      "direct": false,
+      "via": [
+       "vite"
+      ],
+      "fix_available": true,
+      "scope": "dev"
+     }
+    ],
+    "totals": {
+     "critical": 1,
+     "high": 3,
+     "moderate": 3
+    }
+   },
+   "internal_graph": {
+    "available": true,
+    "mermaid": "flowchart LR\n\nsubgraph 0[\"..\"]\nsubgraph 1[\"server\"]\n2[\" \"]\nend\nend\nsubgraph 3[\"src\"]\n4[\"grounding.ts\"]\n5[\"index.ts\"]\nsubgraph 6[\"llm\"]\n7[\" \"]\nend\nsubgraph 8[\"output\"]\n9[\" \"]\nend\nA[\"prompt-log.ts\"]\nB[\"prompt.ts\"]\nsubgraph C[\"review\"]\nD[\" \"]\nend\nend\n4-->2\n5-->4\n5-->7\n5-->9\n5-->A\n5-->B\n5-->D\n7-->2\n9-->4\n9-->2\nA-->2\nB-->2\nD-->2\nD-->4\nD-->A\nD-->B"
+   }
+  },
+  "server": {
+   "dir": "server",
+   "name": "@devdigest/api",
+   "manager": "pnpm",
+   "installed": true,
+   "installed_count": 403,
+   "node_modules_kb": 246616,
+   "sizes_trustworthy": true,
+   "packages_all_count": 32,
+   "unused_candidates": [],
+   "notes": [],
+   "tsconfig_links": [
+    {
+     "alias": "@devdigest/reviewer-core",
+     "target": "../reviewer-core/src/index.ts"
+    },
+    {
+     "alias": "@devdigest/reviewer-core/*",
+     "target": "../reviewer-core/src/*"
+    }
+   ],
+   "direct_counts": {
+    "prod": 24,
+    "dev": 8,
+    "peer": 0
+   },
+   "packages": [
+    {
+     "name": "drizzle-kit",
+     "type": "dev",
+     "shared_with": [],
+     "own_kb": 7604,
+     "exclusive_kb": 49276,
+     "transitive_count": 65,
+     "exclusive_count": 63,
+     "version": "0.30.6"
+    },
+    {
+     "name": "vitest",
+     "type": "dev",
+     "shared_with": [],
+     "own_kb": 1896,
+     "exclusive_kb": 42860,
+     "transitive_count": 91,
+     "exclusive_count": 87,
+     "version": "2.1.9"
+    },
+    {
+     "name": "tsx",
+     "type": "dev",
+     "shared_with": [],
+     "own_kb": 11124,
+     "exclusive_kb": 30108,
+     "transitive_count": 28,
+     "exclusive_count": 28,
+     "version": "4.22.4"
+    },
+    {
+     "name": "typescript",
+     "type": "dev",
+     "shared_with": [],
+     "own_kb": 23388,
+     "exclusive_kb": 23388,
+     "transitive_count": 0,
+     "exclusive_count": 1,
+     "version": "5.9.3"
+    },
+    {
+     "name": "js-tiktoken",
+     "type": "prod",
+     "shared_with": [],
+     "own_kb": 22008,
+     "exclusive_kb": 22008,
+     "transitive_count": 1,
+     "exclusive_count": 1,
+     "version": "1.0.21"
+    },
+    {
+     "name": "drizzle-orm",
+     "type": "prod",
+     "shared_with": [],
+     "own_kb": 13484,
+     "exclusive_kb": 13484,
+     "transitive_count": 1,
+     "exclusive_count": 1,
+     "version": "0.38.4"
+    }
+   ],
+   "outdated": [
+    {
+     "name": "@types/node",
+     "current": "22.19.19",
+     "wanted": "22.19.19",
+     "latest": "22.99.0",
+     "majors_behind": 1
+    },
+    {
+     "name": "fastify-type-provider-zod",
+     "current": "4.0.2",
+     "wanted": "4.0.2",
+     "latest": "4.99.0",
+     "majors_behind": 1
+    },
+    {
+     "name": "openai",
+     "current": "4.104.0",
+     "wanted": "4.104.0",
+     "latest": "4.99.0",
+     "majors_behind": 1
+    },
+    {
+     "name": "@testcontainers/postgresql",
+     "current": "10.28.0",
+     "wanted": "10.28.0",
+     "latest": "10.99.0",
+     "majors_behind": 1
+    },
+    {
+     "name": "testcontainers",
+     "current": "10.28.0",
+     "wanted": "10.28.0",
+     "latest": "10.99.0",
+     "majors_behind": 1
+    },
+    {
+     "name": "typescript",
+     "current": "5.9.3",
+     "wanted": "5.9.3",
+     "latest": "5.99.0",
+     "majors_behind": 1
+    }
+   ],
+   "audit": {
+    "findings": [
+     {
+      "name": "vitest",
+      "severity": "critical",
+      "direct": false,
+      "via": [
+       "When Vitest UI server is listening, arbitrary file can be read and executed"
+      ],
+      "fix_available": true,
+      "scope": "dev"
+     },
+     {
+      "name": "brace-expansion",
+      "severity": "high",
+      "direct": false,
+      "via": [
+       "brace-expansion: DoS via exponential-time expansion of consecutive non-expanding {} groups"
+      ],
+      "fix_available": true,
+      "scope": "dev"
+     }
+    ],
+    "totals": {
+     "critical": 1,
+     "high": 1
+    }
+   },
+   "internal_graph": {
+    "available": true,
+    "mermaid": "flowchart LR\n\nsubgraph 0[\"..\"]\nsubgraph 1[\"reviewer-core\"]\n2[\" \"]\nend\nend\nsubgraph 3[\"src\"]\nsubgraph 4[\"adapters\"]\n5[\" \"]\nend\n6[\"app.ts\"]\nsubgraph 7[\"db\"]\n8[\" \"]\nend\nsubgraph 9[\"modules\"]\nA[\" \"]\nend\nsubgraph B[\"platform\"]\nC[\" \"]\nend\nD[\"server.ts\"]\nsubgraph E[\"vendor\"]\nF[\" \"]\nend\nend\n2-->F\n5-->A\n5-->8\n5-->F\n5-->C\n6-->8\n6-->A\n6-->C\n8-->F\nA-->C\nA-->F\nA-->8\nA-->5\nA-->2\nC-->2\nC-->5\nC-->8\nC-->A\nC-->F\nD-"
+   }
+  }
+ }
+}

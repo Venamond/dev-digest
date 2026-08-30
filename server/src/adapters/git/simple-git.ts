@@ -1,6 +1,14 @@
 import { simpleGit, type SimpleGit } from 'simple-git';
-import { join } from 'node:path';
-import { mkdir, readFile, access, rm } from 'node:fs/promises';
+import { join, resolve, isAbsolute, dirname, basename, sep } from 'node:path';
+import {
+  mkdir,
+  readFile,
+  writeFile,
+  access,
+  rm,
+  realpath,
+  lstat,
+} from 'node:fs/promises';
 import { constants } from 'node:fs';
 import type {
   GitClient,
@@ -128,6 +136,80 @@ export class SimpleGitClient implements GitClient {
 
   async readFile(repo: RepoRef, path: string): Promise<string> {
     return readFile(join(this.clonePathFor(repo), path), 'utf8');
+  }
+
+  /**
+   * Write UTF-8 `content` to a repository-relative `path` inside the clone.
+   *
+   * `path` originates in the browser, so this method does NOT trust the caller
+   * to have validated it — the service's own check is the first guard, this is
+   * the second. It refuses an absolute path, any `..` segment, and anything
+   * that resolves outside the clone once symlinks are followed. It creates no
+   * directories (a write into a path that does not exist yet fails), makes no
+   * commit and contacts no remote: the edit lives in the working tree until the
+   * next resync overwrites it.
+   */
+  async writeFile(repo: RepoRef, path: string, content: string): Promise<void> {
+    const dest = await this.resolveWritable(this.clonePathFor(repo), path);
+    await writeFile(dest, content, 'utf8');
+  }
+
+  async createFile(repo: RepoRef, path: string, content: string): Promise<void> {
+    const base = this.clonePathFor(repo);
+    // Validate the FULL path first, with the same rules as a write, before any
+    // directory is made — otherwise a rejected path could still leave folders
+    // behind inside the clone.
+    const dest = await this.resolveWritable(base, path, { allowMissingParent: true });
+    if (await lstat(dest).catch(() => null)) {
+      throw new Error(`refusing to overwrite an existing document: ${path}`);
+    }
+    await mkdir(dirname(dest), { recursive: true });
+    await writeFile(dest, content, 'utf8');
+  }
+
+  /** Absolute destination inside `base`, or throw. See `writeFile`. */
+  private async resolveWritable(
+    base: string,
+    relPath: string,
+    opts: { allowMissingParent?: boolean } = {},
+  ): Promise<string> {
+    if (!relPath || isAbsolute(relPath)) {
+      throw new Error(`refusing to write outside the clone: ${relPath}`);
+    }
+    // Reject `..` on the raw segments as well as after normalisation, so a
+    // Windows-style or repeated separator cannot smuggle one past `resolve`.
+    if (relPath.split(/[\\/]/).some((seg) => seg === '..')) {
+      throw new Error(`refusing to write outside the clone: ${relPath}`);
+    }
+    const dest = resolve(base, relPath);
+    if (!dest.startsWith(base + sep)) {
+      throw new Error(`refusing to write outside the clone: ${relPath}`);
+    }
+    // Symlinks: a link INSIDE the clone pointing out of it is the same problem
+    // in another shape, so containment is re-checked on the real paths. The
+    // parent must already exist — we create no directories.
+    const realBase = await realpath(base);
+    // When creating, the parent may not exist yet — resolve the nearest ancestor
+    // that does, so a symlinked ancestor still cannot carry us out of the clone.
+    let probe = dirname(dest);
+    if (opts.allowMissingParent) {
+      while (probe.startsWith(base) && !(await lstat(probe).catch(() => null))) {
+        probe = dirname(probe);
+      }
+    }
+    const realParent = await realpath(probe);
+    if (realParent !== realBase && !realParent.startsWith(realBase + sep)) {
+      throw new Error(`refusing to write outside the clone: ${relPath}`);
+    }
+    const existing = await lstat(dest).catch(() => null);
+    if (existing?.isSymbolicLink()) {
+      const realDest = await realpath(dest);
+      if (!realDest.startsWith(realBase + sep)) {
+        throw new Error(`refusing to write outside the clone: ${relPath}`);
+      }
+      return realDest;
+    }
+    return join(realParent, basename(dest));
   }
 }
 

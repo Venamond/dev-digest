@@ -31,6 +31,11 @@ function splitSystem(messages: ChatMessage[]): {
   return { system, rest };
 }
 
+export interface AnthropicProviderOptions {
+  /** Injected cost estimator (e.g. PriceBook.estimate); falls back to the static table. */
+  estimateCost?: (model: string, tokensIn: number, tokensOut: number) => number | null;
+}
+
 /**
  * Anthropic LLMProvider.
  * - listModels: dynamic via GET /models.
@@ -41,9 +46,11 @@ function splitSystem(messages: ChatMessage[]): {
 export class AnthropicProvider implements LLMProvider {
   readonly id = 'anthropic' as const;
   private client: Anthropic;
+  private estimateCost: (model: string, tokensIn: number, tokensOut: number) => number | null;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, opts: AnthropicProviderOptions = {}) {
     this.client = new Anthropic({ apiKey });
+    this.estimateCost = opts.estimateCost ?? estimateCost;
   }
 
   async listModels(): Promise<ModelInfo[]> {
@@ -82,7 +89,7 @@ export class AnthropicProvider implements LLMProvider {
       model: req.model,
       tokensIn,
       tokensOut,
-      costUsd: estimateCost(req.model, tokensIn, tokensOut),
+      costUsd: this.estimateCost(req.model, tokensIn, tokensOut),
     };
   }
 
@@ -132,7 +139,7 @@ export class AnthropicProvider implements LLMProvider {
           model: req.model,
           tokensIn,
           tokensOut,
-          costUsd: estimateCost(req.model, tokensIn, tokensOut),
+          costUsd: this.estimateCost(req.model, tokensIn, tokensOut),
           raw: lastRaw,
           attempts: attempt,
         };

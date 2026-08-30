@@ -28,6 +28,16 @@ export async function actOnFinding(
       const row = await repo.setFindingDismissed(findingId, new Date());
       return { finding: findingRowToDto(row!) };
     }
+    /* Clears BOTH columns, returning the finding to undecided. `setFindingAccepted`
+       already nulls `dismissedAt` on every call, so passing `null` clears the pair
+       — there is no third setter and none is needed. Without this a disposition is
+       one-way: the eval-case seed is derived from it, so a misclick permanently
+       fixed whether that finding could become a `must_find` or a `must_not_flag`
+       case. */
+    case 'undo': {
+      const row = await repo.setFindingAccepted(findingId, null);
+      return { finding: findingRowToDto(row!) };
+    }
     default:
       throw new AppError('invalid_action', `Action '${action}' is not available in the starter`, 400);
   }

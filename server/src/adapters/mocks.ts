@@ -53,6 +53,12 @@ export interface MockLLMOptions {
   structuredBySchema?: Record<string, unknown>;
   completionText?: string;
   embedding?: number[];
+  /** Delay before completeStructured resolves — lets tests act while a run is
+   *  still "in flight" (e.g. delete it mid-review to exercise that race). */
+  delayMs?: number;
+  /** Override the fixed $0.001 mock cost — lets a test give two agents two
+   *  different costs to verify an endpoint sums them instead of picking one. */
+  costUsd?: number;
 }
 
 export class MockLLMProvider implements LLMProvider {
@@ -88,6 +94,7 @@ export class MockLLMProvider implements LLMProvider {
 
   async completeStructured<T>(req: StructuredRequest<T>): Promise<StructuredResult<T>> {
     this.calls.push({ method: 'completeStructured', req });
+    if (this.opts.delayMs) await new Promise((r) => setTimeout(r, this.opts.delayMs));
     const fixture = this.opts.structuredBySchema?.[req.schemaName] ?? this.opts.structured ?? {};
     const parsed = (req.schema as z.ZodType<T>).safeParse(fixture);
     if (!parsed.success) {
@@ -98,7 +105,7 @@ export class MockLLMProvider implements LLMProvider {
       model: req.model,
       tokensIn: 100,
       tokensOut: 50,
-      costUsd: 0.001,
+      costUsd: this.opts.costUsd ?? 0.001,
       raw: JSON.stringify(fixture),
       attempts: 1,
     };
@@ -254,6 +261,8 @@ export interface MockGitOptions {
 export class MockGitClient implements GitClient {
   public cloned: { repo: RepoRef; url: string }[] = [];
   public syncs: { repo: RepoRef; branch: string }[] = [];
+  /** Every accepted `writeFile`, so a test can assert what a save actually wrote. */
+  public wrote: { path: string; content: string }[] = [];
   private syncedHead?: string;
 
   constructor(private opts: MockGitOptions = {}) {}
@@ -292,6 +301,27 @@ export class MockGitClient implements GitClient {
   }
   async readFile(_repo: RepoRef, path: string): Promise<string> {
     return this.opts.files?.[path] ?? '';
+  }
+  /**
+   * Writes into the in-memory `files` map instead of the disk, so a test can
+   * read the bytes back through `readFile`. Refuses the same paths the real
+   * adapter refuses — a traversal that "works" against the mock would let a
+   * route test pass while the production write throws.
+   */
+  async writeFile(_repo: RepoRef, path: string, content: string): Promise<void> {
+    if (!path || path.startsWith('/') || path.split(/[\\/]/).some((s) => s === '..')) {
+      throw new Error(`refusing to write outside the clone: ${path}`);
+    }
+    this.opts.files = { ...(this.opts.files ?? {}), [path]: content };
+    this.wrote.push({ path, content });
+  }
+
+  /** Same refusals as `writeFile`, plus the real adapter's no-overwrite rule. */
+  async createFile(repo: RepoRef, path: string, content: string): Promise<void> {
+    if (this.opts.files?.[path] != null) {
+      throw new Error(`refusing to overwrite an existing document: ${path}`);
+    }
+    await this.writeFile(repo, path, content);
   }
 }
 

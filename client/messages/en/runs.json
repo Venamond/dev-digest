@@ -33,12 +33,20 @@
       "provider": "Provider",
       "memoryPulled": "Memory pulled",
       "specsRead": "Specs read",
+      "specsOmitted": "Specs omitted",
+      "specsRevision": "Specs revision",
+      "omittedUnreadable": "could not be read",
+      "omittedOverCeiling": "did not fit",
+      "specsNoneAttached": "no documents attached",
+      "specsAllOmitted": "none reached the prompt",
       "items": "{count, plural, one {# item} other {# items}}",
-      "none": "none"
+      "none": "none",
+      "specsViaSkill": "via {skills}"
     },
     "stat": {
       "duration": "DURATION",
       "tokens": "TOKENS",
+      "cost": "COST",
       "findings": "FINDINGS"
     },
     "prompt": {
@@ -46,8 +54,9 @@
       "skills": "Skills (dynamic)",
       "memory": "Memory (dynamic)",
       "repoMap": "Repo skeleton — repo-intel (dynamic)",
-      "specs": "Project context (dynamic)",
+      "specs": "Project context — attached specs (untrusted)",
       "callers": "Callers of changed symbols — repo-intel (dynamic)",
+      "intent": "PR intent (dynamic)",
       "user": "User / diff (dynamic)",
       "copy": "Copy",
       "fullscreen": "Open fullscreen",
@@ -67,7 +76,7 @@
     "running": "running",
     "completed": "completed",
     "copyRawOutput": "Copy raw output",
-  "copied": "Copied!",
+    "copied": "Copied!",
     "tracePending": "Trace is written when the run completes — see the Live log tab.",
     "loadingTrace": "Loading trace…",
     "noTrace": "No trace available yet."

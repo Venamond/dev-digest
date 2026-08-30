@@ -41,12 +41,15 @@ export const PromptAssembly = z.object({
   skills: z.string().nullish(),
   memory: z.string().nullish(),
   specs: z.string().nullish(),
-  /** Callers-of-changed-symbols digest (repo-intel); null when absent. */
+  /** Callers-of-changed-symbols digest (T1.3); null when absent. */
   callers: z.string().nullish(),
-  /** Repo skeleton / map (repo-intel); null when absent. */
+  /** Repo skeleton / map (T3); null when absent. Enables per-slot token
+      attribution in the run trace. */
   repo_map: z.string().nullish(),
   /** PR author's description/body (truncated); null when absent. */
   pr_description: z.string().nullish(),
+  /** Assembled `## PR intent` section text; omitted when intent was not classified. */
+  intent: z.string().nullish(),
   user: z.string(),
 });
 export type PromptAssembly = z.infer<typeof PromptAssembly>;
@@ -61,6 +64,8 @@ export const RunStats = z.object({
   duration_ms: z.number().int(),
   tokens_in: z.number().int(),
   tokens_out: z.number().int(),
+  /** USD cost of this run's LLM calls; null when the model's price is unknown. */
+  cost_usd: z.number().nullable(),
   findings: z.number().int(),
   grounding: z.string(),
 });
@@ -82,6 +87,44 @@ export const RunTrace = z.object({
   raw_output: z.string(),
   memory_pulled: z.array(MemoryPulled),
   specs_read: z.array(z.string()),
+  /**
+   * Attached project-context documents that did NOT reach the prompt, with
+   * why. `unreadable` = missing, empty or not valid UTF-8; `over_ceiling` =
+   * whole document did not fit in what remained of the token ceiling (it is
+   * skipped, never truncated, and later documents are still considered).
+   *
+   * `.optional()`, NOT `.default([])`: a Zod default is stripped of `undefined`
+   * in `z.infer`, so the key would be REQUIRED at the TS level and every
+   * existing `const trace: RunTrace = {…}` literal would stop compiling
+   * (`run-executor.ts:373`/`:561`, `platform/trace-builder.ts:38` — verified).
+   * Absent and `[]` mean the same thing here; read it as `?? []`.
+   */
+  /**
+   * Where each read document came from: attached to the agent itself, or
+   * inherited from a skill (and which). `.optional()`, not `.default([])` — a
+   * default makes the key REQUIRED on the inferred output type and breaks every
+   * existing `const trace: RunTrace = {…}` literal.
+   */
+  specs_sources: z
+    .array(
+      z.object({
+        path: z.string(),
+        via: z.enum(['agent', 'skill']),
+        /** Names of the enabled skills contributing it; empty when `via: 'agent'`. */
+        skills: z.array(z.string()),
+      }),
+    )
+    .optional(),
+  specs_omitted: z
+    .array(
+      z.object({
+        path: z.string(),
+        reason: z.enum(['unreadable', 'over_ceiling']),
+      }),
+    )
+    .optional(),
+  /** Clone HEAD the documents were read at; null when there was no clone. */
+  specs_revision: z.string().nullish(),
   log: z.array(RunLogLine),
 });
 export type RunTrace = z.infer<typeof RunTrace>;
@@ -101,6 +144,8 @@ export const RunSummary = z.object({
   duration_ms: z.number().int().nullable(),
   tokens_in: z.number().int().nullable(),
   tokens_out: z.number().int().nullable(),
+  /** USD cost of this run's LLM calls; null when unknown or run failed pre-LLM. */
+  cost_usd: z.number().nullable(),
   findings_count: z.number().int().nullable(),
   grounding: z.string().nullable(),
   ran_at: z.string().nullable(),

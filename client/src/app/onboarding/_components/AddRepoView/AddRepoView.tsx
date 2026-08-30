@@ -6,12 +6,14 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Button, Icon, IconBtn, Kbd, TextInput, FormField } from "@devdigest/ui";
 import { useAddRepo } from "@/lib/hooks";
 import { ApiError } from "@/lib/api";
 
 export function AddRepoView() {
   const router = useRouter();
+  const t = useTranslations("home");
   const [repoUrl, setRepoUrl] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
   const addRepo = useAddRepo();
@@ -34,7 +36,7 @@ export function AddRepoView() {
       const repo = await addRepo.mutateAsync(repoUrl.trim());
       router.push(`/repos/${repo.id}/pulls`);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Could not add repository");
+      setError(e instanceof ApiError ? e.message : t("addRepo.errorFallback"));
     }
   };
 
@@ -55,7 +57,7 @@ export function AddRepoView() {
         <div style={{ width: 30, height: 30, borderRadius: 8, background: "var(--text-primary)", display: "grid", placeItems: "center" }}>
           <Icon.Layers size={17} style={{ color: "var(--bg-primary)" }} />
         </div>
-        <span style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-0.02em" }}>DevDigest</span>
+        <span style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-0.02em" }}>{t("brand")}</span>
       </div>
 
       <div
@@ -71,13 +73,12 @@ export function AddRepoView() {
         }}
       >
         <div style={{ position: "absolute", top: 16, right: 16 }}>
-          <IconBtn icon="X" label="Close" onClick={close} />
+          <IconBtn icon="X" label={t("addRepo.close")} onClick={close} />
         </div>
 
-        <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em" }}>Add a repository</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em" }}>{t("addRepo.title")}</h1>
         <p style={{ fontSize: 14, color: "var(--text-secondary)", marginTop: 8, marginBottom: 28, lineHeight: 1.5 }}>
-          Paste a GitHub repository URL — DevDigest clones it locally and imports open PRs.
-          API keys aren’t needed here; set them once in{" "}
+          {t("addRepo.bodyBeforeLink")}{" "}
           <a
             href="/settings/api-keys"
             onClick={(e) => {
@@ -86,17 +87,17 @@ export function AddRepoView() {
             }}
             style={{ color: "var(--accent-text)" }}
           >
-            Settings → API Keys
+            {t("addRepo.settingsLink")}
           </a>
-          .
+          {t("addRepo.bodyAfterLink")}
         </p>
 
-        <FormField label="Repository URL" hint="e.g. https://github.com/acme/payments-api">
+        <FormField label={t("addRepo.urlLabel")} hint={t("addRepo.urlHint")}>
           <TextInput
             value={repoUrl}
             onChange={setRepoUrl}
             mono
-            placeholder="https://github.com/owner/repo"
+            placeholder={t("addRepo.urlPlaceholder")}
             onKeyDown={(e) => {
               if (e.key === "Enter") submit();
             }}
@@ -123,7 +124,7 @@ export function AddRepoView() {
 
         <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 24 }}>
           <Button kind="ghost" size="md" onClick={close}>
-            Cancel
+            {t("addRepo.cancel")}
           </Button>
           <div style={{ flex: 1 }} />
           <Button
@@ -133,13 +134,13 @@ export function AddRepoView() {
             onClick={submit}
             disabled={!repoUrl.trim() || addRepo.isPending}
           >
-            {addRepo.isPending ? "Cloning…" : "Add repository"}
+            {addRepo.isPending ? t("addRepo.cloning") : t("addRepo.submit")}
           </Button>
         </div>
       </div>
 
       <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 24, display: "inline-flex", gap: 8, alignItems: "center" }}>
-        <Icon.Lock size={12} /> API keys live in Settings · <Kbd>esc</Kbd> to close
+        <Icon.Lock size={12} /> {t("addRepo.footerBefore")} <Kbd>esc</Kbd> {t("addRepo.footerEsc")}
       </p>
     </div>
   );

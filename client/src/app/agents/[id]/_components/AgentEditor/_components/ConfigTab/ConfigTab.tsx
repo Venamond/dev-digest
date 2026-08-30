@@ -6,7 +6,7 @@ import { FormField, TextInput, SelectInput, SearchableSelect, Textarea, Toggle, 
 import type { Agent, CiFailOn, Provider, ReviewStrategy } from "@devdigest/shared";
 import { useUpdateAgent, useProviderModels } from "../../../../../../../lib/hooks/agents";
 import { useToast } from "../../../../../../../lib/toast";
-import { toModelOptions } from "../../../../../../../lib/model-label";
+import { modelLabel, toModelOptions } from "../../../../../../../lib/model-label";
 import { CI_FAIL_ON_VALUES, OUTPUT_SCHEMA_VALUE, PROVIDER_OPTIONS, STRATEGY_VALUES } from "./constants";
 import { s } from "./styles";
 
@@ -42,8 +42,10 @@ export function ConfigTab({ agent }: { agent: Agent }) {
   // Show the price (USD per 1M in/out tokens) in the label when the provider
   // exposes it (OpenRouter) so a cheap model is easy to pick; value stays the id.
   const modelOptions = toModelOptions(models);
-  const hasModel = modelOptions.some((o) => (typeof o === "string" ? o : o.value) === model);
-  if (!hasModel) modelOptions.unshift(model);
+  const hasModel = modelOptions.some((o) => o.value === model);
+  if (!hasModel) {
+    modelOptions.unshift({ value: model, label: modelLabel({ id: model }) });
+  }
   // Empty list after load = provider key missing/invalid (listModels failed) —
   // guide the user instead of showing a silent one-item dropdown.
   const noModels = models !== undefined && models.length === 0;

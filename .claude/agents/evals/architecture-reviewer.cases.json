@@ -1,0 +1,69 @@
+{
+  "agent": "architecture-reviewer",
+  "schema_version": 1,
+  "notes": "A/B case for the AGENT, not a skill. The change set is the onion set's case-e fixture, copied out of .claude/skills/ so no arm has to break its own file ban. The agent runs with full repo access by design — that is fine here because the ablated requirement is about what the report must CARRY (a named rule per finding), not about knowledge the repo could supply. Assertion 1 is the only one tied to the ablation; 2-8 are controls that must not move, and a version comparison where they do move is measuring noise, not the edit.",
+  "artifact": "outputs/report.md",
+  "runs_per_condition": 5,
+  "ablation": {
+    "target": ".claude/agents/architecture-reviewer.md",
+    "removed": [
+      "hard constraint 4's clause requiring the named rule alongside severity, file:line and the quoted line",
+      "the `**Rule:**` field in the ## Output format finding template",
+      "the same clause in the frontmatter description"
+    ],
+    "deliberately_kept": "the 'Rules you may cite by name' allow-list — it forbids INVENTING a rule name, which is a different requirement from having to name one. Removing both would move two variables and assertion 2 could no longer act as a control."
+  },
+  "cases": {
+    "e-ports-and-secrets-agent": {
+      "fixture": "skill-evals/workspace/onion-baseline-1/fixture",
+      "prompt": "Review the Notifier-port change set for architecture problems before it is pushed; write the report to the named path.",
+      "planted_violations": [
+        {
+          "id": "V1",
+          "where": "server/src/adapters/notify/webhook.ts",
+          "rule": "secrets go through SecretsProvider, never process.env outside the secrets adapter (rules/ports-adapters-di.md; root AGENTS.md) — NOT caught by arch:check",
+          "summary": "The `endpoint` getter reads `process.env.DIGEST_WEBHOOK_URL` directly. Secrets live in ~/.devdigest/secrets.json behind the SecretsProvider port; process.env is only a fallback and is never read directly outside that adapter."
+        },
+        {
+          "id": "V2",
+          "where": "server/src/modules/notify/service.ts",
+          "rule": "a service takes explicit ports, not Container (rules/ports-adapters-di.md) — NOT caught by arch:check",
+          "summary": "`NotifyService` takes `constructor(private container: Container)`. The Container-in-constructor service-locator pattern is grandfathered for existing services and the rule says explicitly not to copy it into a new one; this service should take the Notifier port."
+        },
+        {
+          "id": "V3",
+          "where": "server/src/platform/container.ts (and the absent server/src/adapters/mocks.ts change)",
+          "rule": "the port sequence steps 4-5: ContainerOverrides field + mock in adapters/mocks.ts (rules/ports-adapters-di.md) — NOT caught by arch:check",
+          "summary": "A new port was added but the DI sequence is left incomplete: `ContainerOverrides` gains no `notifier?: Notifier` field, so tests cannot inject a double, and no mock implementation was added to server/src/adapters/mocks.ts (it is not in CHANGED_FILES.txt at all)."
+        }
+      ],
+      "legal_distractors": [
+        {
+          "id": "D1",
+          "where": "server/src/vendor/shared/adapters.ts and client/src/vendor/shared/adapters.ts",
+          "why_legal": "The port interface is defined in ring 0 and mirrored byte-identically into the client copy — steps 1 of the sequence, done correctly, and the mirroring satisfies the vendor/shared do-not-touch rule."
+        },
+        {
+          "id": "D2",
+          "where": "server/src/platform/container.ts",
+          "why_legal": "The lazy `get notifier(): Notifier` getter constructing and caching the concrete WebhookNotifier while returning the interface type is step 3 done right; the composition root is exempt from the ring rules by design."
+        },
+        {
+          "id": "D3",
+          "where": "server/src/adapters/notify/webhook.ts",
+          "why_legal": "The adapter importing only ring 0 (vendor/shared/adapters.js, @devdigest/shared) plus platform/errors.js is correct for ring 2 — an adapter implementing a ring-0 interface imports ring 0."
+        }
+      ],
+      "assertions": [
+        "TARGET — Rule citation: every finding under ## Findings names the architectural rule it breaks, either a dependency-cruiser rule id or a named section/heading of a skill. A finding that states the problem and the fix but names no rule fails this, whether or not the report uses a **Rule:** label",
+        "CONTROL — Citation validity: no finding invents a dependency-cruiser rule name; every cruiser-style name used is one of the ten in the agent's allow-list (no-domain-io, no-domain-node-builtins, no-route-to-db, no-app-to-schema, no-infra-to-app, no-cross-module-internals, no-circular, core-no-node-builtins, core-allowlisted-deps-only, core-no-circular)",
+        "CONTROL — Identifies V1: the adapter reading process.env directly instead of resolving the webhook through SecretsProvider",
+        "CONTROL — Identifies V2: NotifyService taking Container in its constructor instead of the Notifier port",
+        "CONTROL — Identifies V3: the incomplete port sequence — no ContainerOverrides entry and no mock in adapters/mocks.ts",
+        "CONTROL — Precision: every finding in the report's highest severity band is a planted violation or an independently verifiable defect — no fabricated top-severity finding",
+        "CONTROL — No false positive on the legal distractors D1-D3: the ring-0 port placement with its mirrored client copy, the container's lazy getter, and the adapter's own construction are not reported as violations",
+        "CONTROL — Deterministic first: the report's ## Deterministic checks section names the checker commands it ran and pastes their output, before any LLM finding"
+      ]
+    }
+  }
+}

@@ -2,6 +2,12 @@
 
 Choose the right data fetching pattern for each use case.
 
+> **Project note:** this decision tree assumes Next.js owns the data layer
+> (direct DB access, Server Actions). `client/` in this repo is on a
+> different, equally valid Next.js data architecture — see
+> `frontend-architecture/SKILL.md` § Data Architecture. In `client/`, skip
+> this tree: use TanStack Query hooks against the Fastify API instead.
+
 ## Decision Tree
 
 ```

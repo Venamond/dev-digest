@@ -25,10 +25,13 @@ import { PriceBook } from './price-book.js';
 import { ConfigError } from './errors.js';
 import { AgentsRepository } from '../modules/agents/repository.js';
 import { ReviewRepository } from '../modules/reviews/repository.js';
+import { SkillsRepository } from '../modules/skills/repository.js';
 import type { RepoIntel } from '../modules/repo-intel/types.js';
 import { RepoIntelService } from '../modules/repo-intel/service.js';
 import { type DepGraph, DepCruiseGraph } from '../adapters/depgraph/index.js';
 import { type Tokenizer, TiktokenTokenizer } from '../adapters/tokenizer/index.js';
+import { type CloneFs, nodeCloneFs } from '../adapters/clone-fs.js';
+import { type CodeAnalysis, astgrepCodeAnalysis } from '../adapters/code-analysis.js';
 
 /**
  * DI container. One per app instance. Holds config, db, the JobRunner,
@@ -51,6 +54,9 @@ export interface ContainerOverrides {
   /** repo-intel T3 adapters — only the indexer pipeline reads these. */
   depgraph?: DepGraph;
   tokenizer?: Tokenizer;
+  /** Clone filesystem / code analysis — repo-intel application ports. */
+  fs?: CloneFs;
+  codeAnalysis?: CodeAnalysis;
 }
 
 export class Container {
@@ -72,6 +78,7 @@ export class Container {
   // `container.agentsRepo` instead of reaching into another module's folder.
   private _agentsRepo?: AgentsRepository;
   private _reviewRepo?: ReviewRepository;
+  private _skillsRepo?: SkillsRepository;
   private _repoIntel?: RepoIntel;
   private _depgraph?: DepGraph;
   private _tokenizer?: Tokenizer;
@@ -100,6 +107,16 @@ export class Container {
     return (this._reviewRepo ??= new ReviewRepository(this.db));
   }
 
+  /**
+   * Skill reads for consumers outside `modules/skills` — the eval runner needs
+   * a skill's body and the agents it is linked to. Same shape and same reason
+   * as `agentsRepo`/`reviewRepo` above: `no-cross-module-internals` forbids
+   * `modules/eval` importing another module's repository directly.
+   */
+  get skillsRepo(): SkillsRepository {
+    return (this._skillsRepo ??= new SkillsRepository(this.db));
+  }
+
   get codeIndex(): CodeIndex {
     if (this.overrides.codeIndex) return this.overrides.codeIndex;
     this._codeIndex ??= new RipgrepCodeIndex(this.git);
@@ -113,6 +130,7 @@ export class Container {
    */
   get repoIntel(): RepoIntel {
     if (this.overrides.repoIntel) return this.overrides.repoIntel;
+    // Pass `this` as RepoIntelDeps (structural) — service must not import Container.
     this._repoIntel ??= new RepoIntelService(this);
     return this._repoIntel;
   }
@@ -129,6 +147,16 @@ export class Container {
     if (this.overrides.tokenizer) return this.overrides.tokenizer;
     this._tokenizer ??= new TiktokenTokenizer();
     return this._tokenizer;
+  }
+
+  /** Clone filesystem for repo-intel walk/parse (injectable in tests). */
+  get fs(): CloneFs {
+    return this.overrides.fs ?? nodeCloneFs;
+  }
+
+  /** Ast-grep + extract facts for repo-intel (injectable in tests). */
+  get codeAnalysis(): CodeAnalysis {
+    return this.overrides.codeAnalysis ?? astgrepCodeAnalysis;
   }
 
   /**
@@ -171,25 +199,24 @@ export class Container {
   }
 
   private async buildLlm(id: 'openai' | 'anthropic' | 'openrouter'): Promise<LLMProvider> {
+    // All three providers share ONE injection point: PriceBook. Bare openai/
+    // anthropic model IDs (e.g. "gpt-4.1") are normalized inside
+    // PriceBook.estimate to OpenRouter namespaced keys when the cache is warm.
+    const estimateCost = (model: string, tokensIn: number, tokensOut: number) =>
+      this.priceBook.estimate(model, tokensIn, tokensOut);
     if (id === 'openai') {
       const key = await this.secrets.get('OPENAI_API_KEY');
       if (!key) throw new ConfigError('OPENAI_API_KEY is not configured');
-      return new OpenAIProvider(key);
+      return new OpenAIProvider(key, { estimateCost });
     }
     if (id === 'openrouter') {
-      // Single OpenRouter provider lives in reviewer-core (shared with the CI
-      // runner); inject the PriceBook so cost attribution uses LIVE OpenRouter
-      // prices (with the static table as a fallback) rather than a hardcoded one.
       const key = await this.secrets.get('OPENROUTER_API_KEY');
       if (!key) throw new ConfigError('OPENROUTER_API_KEY is not configured');
-      return new OpenRouterProvider(key, {
-        estimateCost: (model, tokensIn, tokensOut) =>
-          this.priceBook.estimate(model, tokensIn, tokensOut),
-      });
+      return new OpenRouterProvider(key, { estimateCost });
     }
     const key = await this.secrets.get('ANTHROPIC_API_KEY');
     if (!key) throw new ConfigError('ANTHROPIC_API_KEY is not configured');
-    return new AnthropicProvider(key);
+    return new AnthropicProvider(key, { estimateCost });
   }
 
   async embedder(): Promise<Embedder> {

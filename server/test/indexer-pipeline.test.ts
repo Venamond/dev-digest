@@ -25,6 +25,8 @@ import type { RepoIntelRepository } from '../src/modules/repo-intel/repository.j
 import { INDEXER_VERSION } from '../src/modules/repo-intel/constants.js';
 import type { IndexState } from '../src/modules/repo-intel/types.js';
 import type { Container } from '../src/platform/container.js';
+import { nodeCloneFs } from '../src/adapters/clone-fs.js';
+import { astgrepCodeAnalysis } from '../src/adapters/code-analysis.js';
 
 // ---------------------------------------------------------------------------
 // In-memory repository stub — matches RepoIntelRepository's surface.
@@ -134,6 +136,8 @@ function makeContainer(git: MiniGit): Container {
     // T3 adapters — stubbed: empty graph (rank degrades to flat) + char/4 tokens.
     depgraph: { buildEdges: async () => [] },
     tokenizer: { count: (text: string) => Math.ceil(text.length / 4) },
+    fs: nodeCloneFs,
+    codeAnalysis: astgrepCodeAnalysis,
   } as unknown as Container;
 }
 

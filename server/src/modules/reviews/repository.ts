@@ -13,7 +13,8 @@ import type { Finding, Intent, RunSummary, RunTrace } from '@devdigest/shared';
  * composes them so its public API stays identical.
  */
 
-import type { FindingRow, PullRow } from '../../db/rows.js';
+import type { FindingRow, PrCommitRow, PrIntentRow, PullRow } from '../../db/rows.js';
+import type { PromptSkillRef } from '../agents/helpers.js';
 export type { FindingRow, PullRow };
 
 export type ReviewRow = typeof t.reviews.$inferSelect;
@@ -37,6 +38,10 @@ export class ReviewRepository {
 
   getPrFiles(prId: string): Promise<(typeof t.prFiles.$inferSelect)[]> {
     return pullRepo.getPrFiles(this.db, prId);
+  }
+
+  getPrCommits(prId: string): Promise<PrCommitRow[]> {
+    return pullRepo.getPrCommits(this.db, prId);
   }
 
   // ---- reviews + findings -------------------------------------------------
@@ -87,6 +92,12 @@ export class ReviewRepository {
     return runRepo.deleteAgentRun(this.db, workspaceId, runId);
   }
 
+  /** Whether an agent_runs row still exists (not workspace-scoped — callers
+   *  already hold the runId from a job they started). */
+  agentRunExists(runId: string): Promise<boolean> {
+    return runRepo.agentRunExists(this.db, runId);
+  }
+
   /** Mark a still-running run as cancelled (no-op if it already finished). */
   cancelRunIfRunning(runId: string): Promise<boolean> {
     return runRepo.cancelRunIfRunning(this.db, runId);
@@ -127,11 +138,19 @@ export class ReviewRepository {
 
   // ---- intent -------------------------------------------------------------
 
-  upsertIntent(prId: string, intent: Intent): Promise<void> {
-    return pullRepo.upsertIntent(this.db, prId, intent);
+  upsertIntent(
+    prId: string,
+    input: {
+      intent: Intent;
+      headSha: string;
+      model: string;
+      classifiedAt: Date;
+    },
+  ): Promise<void> {
+    return pullRepo.upsertIntent(this.db, prId, input);
   }
 
-  getIntent(prId: string): Promise<Intent | undefined> {
+  getIntent(prId: string): Promise<PrIntentRow | undefined> {
     return pullRepo.getIntent(this.db, prId);
   }
 
@@ -161,6 +180,8 @@ export class ReviewRepository {
       score?: number | null;
       /** Findings that tripped the agent's gate; 0 on failed/cancelled runs. */
       blockers?: number | null;
+      /** USD cost of this run's LLM calls; null when unknown. */
+      costUsd?: number | null;
       /** Failure reason (status='failed') / cancellation note. Null clears it. */
       error?: string | null;
     },
@@ -180,5 +201,10 @@ export class ReviewRepository {
 
   getRunTrace(runId: string): Promise<RunTrace | undefined> {
     return runRepo.getRunTrace(this.db, runId);
+  }
+
+  /** Record which skill versions were injected into a run's prompt (for stats). */
+  recordRunSkills(runId: string, refs: PromptSkillRef[]): Promise<void> {
+    return runRepo.recordRunSkills(this.db, runId, refs);
   }
 }

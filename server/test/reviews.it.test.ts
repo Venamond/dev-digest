@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { startPg, dockerAvailable, type PgFixture } from './helpers/pg.js';
 import { waitForPrRuns } from './helpers/runs.js';
 import { buildApp } from '../src/app.js';
+import { ReviewRepository } from '../src/modules/reviews/repository.js';
 import { loadConfig } from '../src/platform/config.js';
 import { seed } from '../src/db/seed.js';
 import { MockLLMProvider, MockEmbedder, MockGitClient } from '../src/adapters/mocks.js';
@@ -157,6 +158,54 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
     await app.close();
   });
 
+  it('persists the trace BEFORE the run reads as finished', async () => {
+    // A terminal `agent_runs.status` is the signal every consumer polls to
+    // mean "this run is over", and the next thing each of them does is read
+    // the trace. Writing the trace after the status flip leaves a window in
+    // which the run is done and `GET /runs/:id/trace` has nothing — narrow
+    // when idle, wide under load. That window is what made this suite flaky:
+    // `intent.it.test.ts` and `agents-skills.it.test.ts` each failed about
+    // one full-suite run in two while passing in isolation, both reading
+    // `undefined` off a trace that had not landed yet.
+    //
+    // Asserted as call ORDER rather than by racing the window, so this test
+    // fails every time on a regression instead of one run in two.
+    const order: string[] = [];
+    const traceSpy = vi.spyOn(ReviewRepository.prototype, 'saveRunTrace').mockImplementation(async () => {
+      order.push('trace');
+    });
+    const completeSpy = vi
+      .spyOn(ReviewRepository.prototype, 'completeAgentRun')
+      .mockImplementation(async () => {
+        order.push('status');
+      });
+
+    try {
+      const app = await appWith(REVIEW_FIXTURE);
+      const { pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
+      const agent = (
+        await app.inject({
+          method: 'POST',
+          url: '/agents',
+          payload: { name: 'Order', provider: 'openai', model: 'gpt-4.1', system_prompt: 'x' },
+        })
+      ).json();
+
+      await app.inject({ method: 'POST', url: `/pulls/${pr.id}/review`, payload: { agentId: agent.id } });
+      // Both spies are stubs, so the run row never reaches a terminal status —
+      // poll the recorded calls instead of the database.
+      for (let i = 0; i < 200 && order.length < 2; i++) {
+        await new Promise((r) => setTimeout(r, 25));
+      }
+
+      expect(order).toEqual(['trace', 'status']);
+      await app.close();
+    } finally {
+      traceSpy.mockRestore();
+      completeSpy.mockRestore();
+    }
+  });
+
   it('runs a review: map-reduce + grounding drops the hallucinated finding, keeps the valid one', async () => {
     const app = await appWith(REVIEW_FIXTURE);
     const { pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
@@ -208,6 +257,67 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
     expect(run!.status).toBe('done');
     expect(run!.findingsCount).toBe(1);
     expect(run!.grounding).toBe('1/2 passed');
+    // cost: a single-chunk diff makes exactly ONE completeStructured call, so
+    // MockLLMProvider's fixed costUsd (0.001) is the run's total — persisted
+    // on agent_runs, in the trace stats, and surfaced on the PR list.
+    expect(run!.costUsd).toBeCloseTo(0.001, 6);
+    expect(trace.stats.cost_usd).toBeCloseTo(0.001, 6);
+
+    const list = (await app.inject({ method: 'GET', url: `/repos/${pr.repoId}/pulls` })).json();
+    const listedPr = list.find((p: { id: string }) => p.id === pr.id);
+    expect(listedPr.cost_usd).toBeCloseTo(0.001, 6);
+
+    await app.close();
+  });
+
+  it('deleting a run while its review is still in flight does not orphan a review/findings', async () => {
+    const app = await buildApp({
+      config: config(),
+      db: pg.handle.db,
+      overrides: {
+        embedder: new MockEmbedder(),
+        git: new MockGitClient({ diff: DIFF }),
+        llm: { openai: new MockLLMProvider('openai', { structured: REVIEW_FIXTURE, delayMs: 200 }) },
+      },
+    });
+    const { pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
+    const agent = (
+      await app.inject({
+        method: 'POST',
+        url: '/agents',
+        payload: { name: 'Sec', provider: 'openai', model: 'gpt-4.1', system_prompt: 'sec' },
+      })
+    ).json();
+
+    const started = await app.inject({
+      method: 'POST',
+      url: `/pulls/${pr.id}/review`,
+      payload: { agentId: agent.id },
+    });
+    const runId = started.json().runs[0].run_id;
+
+    // The mock LLM call is mid-flight (delayMs above) — delete the run now, the
+    // way the timeline's trash icon does, before its review/findings are ever
+    // written. Reproduces the race in run-executor.ts's `runOneAgent`.
+    const del = await app.inject({ method: 'DELETE', url: `/runs/${runId}` });
+    expect(del.json().ok).toBe(true);
+
+    // The run row is gone (nothing for waitForPrRuns to poll), so just give the
+    // still-in-flight job (delayMs above) time to reach its persist step.
+    await new Promise((r) => setTimeout(r, 500));
+
+    // No orphaned review/findings: the run row is gone, and no review was ever
+    // written against it (the executor must treat the missing run as cancelled
+    // rather than persisting a review/findings nothing will ever show again).
+    const [run] = await pg.handle.db.select().from(t.agentRuns).where(eq(t.agentRuns.id, runId));
+    expect(run).toBeUndefined();
+    const orphanedReviews = await pg.handle.db.select().from(t.reviews).where(eq(t.reviews.runId, runId));
+    expect(orphanedReviews).toHaveLength(0);
+
+    const reviews = (
+      await app.inject({ method: 'GET', url: `/pulls/${pr.id}/reviews` })
+    ).json();
+    expect(reviews).toHaveLength(0);
 
     await app.close();
   });
@@ -297,6 +407,197 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
     ).json();
     // seed has 2 enabled agents; we may have created more above in this PR's ws.
     expect(body.runs.length).toBeGreaterThanOrEqual(2);
+    await app.close();
+  });
+
+  it('PR-list findings badge sums every reviewer\'s findings, not just the latest review', async () => {
+    const app = await appWith(REVIEW_FIXTURE);
+    const { pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
+
+    // Two agents reviewing the SAME PR — like a "run all" batch, each produces
+    // its own `reviews` row moments apart. Each keeps 1 CRITICAL finding after
+    // grounding (REVIEW_FIXTURE's line-999 finding is always dropped).
+    const agentA = (
+      await app.inject({
+        method: 'POST',
+        url: '/agents',
+        payload: { name: 'A', provider: 'openai', model: 'gpt-4.1', system_prompt: 'a' },
+      })
+    ).json();
+    const agentB = (
+      await app.inject({
+        method: 'POST',
+        url: '/agents',
+        payload: { name: 'B', provider: 'openai', model: 'gpt-4.1', system_prompt: 'b' },
+      })
+    ).json();
+
+    await app.inject({ method: 'POST', url: `/pulls/${pr.id}/review`, payload: { agentId: agentA.id } });
+    await app.inject({ method: 'POST', url: `/pulls/${pr.id}/review`, payload: { agentId: agentB.id } });
+    await waitForPrRuns(pg.handle.db, pr.id, { expected: 2 });
+
+    const list = (await app.inject({ method: 'GET', url: `/repos/${pr.repoId}/pulls` })).json();
+    const listedPr = list.find((p: { id: string }) => p.id === pr.id);
+    // Both reviews' findings, not just the one from whichever review row
+    // happens to be newest.
+    expect(listedPr.findings).toEqual({ critical: 2, warning: 0, suggestion: 0 });
+
+    await app.close();
+  });
+
+  it('PR-list cost sums every run\'s cost, not just the latest run\'s', async () => {
+    const app = await buildApp({
+      config: config(),
+      db: pg.handle.db,
+      overrides: {
+        embedder: new MockEmbedder(),
+        git: new MockGitClient({ diff: DIFF }),
+        llm: {
+          openai: new MockLLMProvider('openai', { structured: REVIEW_FIXTURE, costUsd: 0.002 }),
+          anthropic: new MockLLMProvider('anthropic', { structured: REVIEW_FIXTURE, costUsd: 0.005 }),
+        },
+      },
+    });
+    const { pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
+
+    const agentA = (
+      await app.inject({
+        method: 'POST',
+        url: '/agents',
+        payload: { name: 'A', provider: 'openai', model: 'gpt-4.1', system_prompt: 'a' },
+      })
+    ).json();
+    const agentB = (
+      await app.inject({
+        method: 'POST',
+        url: '/agents',
+        payload: { name: 'B', provider: 'anthropic', model: 'claude-3-5-sonnet-latest', system_prompt: 'b' },
+      })
+    ).json();
+
+    await app.inject({ method: 'POST', url: `/pulls/${pr.id}/review`, payload: { agentId: agentA.id } });
+    await app.inject({ method: 'POST', url: `/pulls/${pr.id}/review`, payload: { agentId: agentB.id } });
+    await waitForPrRuns(pg.handle.db, pr.id, { expected: 2 });
+
+    const list = (await app.inject({ method: 'GET', url: `/repos/${pr.repoId}/pulls` })).json();
+    const listedPr = list.find((p: { id: string }) => p.id === pr.id);
+    expect(listedPr.cost_usd).toBeCloseTo(0.007, 6);
+
+    await app.close();
+  });
+
+  it('records run_skills for each doubly-enabled linked skill with current version', async () => {
+    const app = await appWith(REVIEW_FIXTURE);
+
+    const [agent] = await pg.handle.db
+      .insert(t.agents)
+      .values({
+        workspaceId,
+        name: `RunSkills On ${Date.now()}`,
+        description: 'run_skills test',
+        provider: 'openai',
+        model: 'gpt-4.1',
+        systemPrompt: 'You are a reviewer.',
+        enabled: true,
+        version: 1,
+      })
+      .returning();
+
+    const [skill] = await pg.handle.db
+      .insert(t.skills)
+      .values({
+        workspaceId,
+        name: `run-skills-on-${Date.now()}`,
+        description: 'enabled',
+        type: 'rubric',
+        source: 'manual',
+        body: 'SKILL_BODY_FOR_RUN_SKILLS',
+        enabled: true,
+        version: 3,
+      })
+      .returning();
+
+    await app.inject({
+      method: 'POST',
+      url: `/agents/${agent!.id}/skills`,
+      payload: { links: [{ skill_id: skill!.id, order: 0, enabled: true }] },
+    });
+
+    const { pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/pulls/${pr.id}/review`,
+      payload: { agentId: agent!.id },
+    });
+    expect(res.statusCode).toBe(200);
+    const runId = res.json().runs[0].run_id as string;
+    await waitForPrRuns(pg.handle.db, pr.id, { expected: 1 });
+
+    const rows = await pg.handle.db
+      .select()
+      .from(t.runSkills)
+      .where(eq(t.runSkills.runId, runId));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ skillId: skill!.id, skillVersion: 3 });
+
+    await app.close();
+  });
+
+  it('does not record run_skills when skill is globally disabled', async () => {
+    const app = await appWith(REVIEW_FIXTURE);
+
+    const [agent] = await pg.handle.db
+      .insert(t.agents)
+      .values({
+        workspaceId,
+        name: `RunSkills Off ${Date.now()}`,
+        description: 'run_skills test',
+        provider: 'openai',
+        model: 'gpt-4.1',
+        systemPrompt: 'You are a reviewer.',
+        enabled: true,
+        version: 1,
+      })
+      .returning();
+
+    const [skill] = await pg.handle.db
+      .insert(t.skills)
+      .values({
+        workspaceId,
+        name: `run-skills-off-${Date.now()}`,
+        description: 'global off',
+        type: 'rubric',
+        source: 'manual',
+        body: 'SKILL_BODY_GLOBAL_OFF',
+        enabled: false,
+        version: 2,
+      })
+      .returning();
+
+    await app.inject({
+      method: 'POST',
+      url: `/agents/${agent!.id}/skills`,
+      payload: { links: [{ skill_id: skill!.id, order: 0, enabled: true }] },
+    });
+
+    const { pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/pulls/${pr.id}/review`,
+      payload: { agentId: agent!.id },
+    });
+    expect(res.statusCode).toBe(200);
+    const runId = res.json().runs[0].run_id as string;
+    await waitForPrRuns(pg.handle.db, pr.id, { expected: 1 });
+
+    const rows = await pg.handle.db
+      .select()
+      .from(t.runSkills)
+      .where(eq(t.runSkills.runId, runId));
+    expect(rows).toHaveLength(0);
+
     await app.close();
   });
 });

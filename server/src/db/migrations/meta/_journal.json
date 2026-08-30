@@ -71,6 +71,90 @@
       "when": 1781464392464,
       "tag": "0009_complex_runaways",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1785444217691,
+      "tag": "0010_jazzy_newton_destine",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1785879000000,
+      "tag": "0011_agent_skills_enabled",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1785964800000,
+      "tag": "0012_conventions_extractor",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1786051200000,
+      "tag": "0013_skill_stats_and_version_notes",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1786137600000,
+      "tag": "0014_convention_scans",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1786137660000,
+      "tag": "0015_snapshot_baseline",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1786224000000,
+      "tag": "0016_pr_intent_layer",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1786310400000,
+      "tag": "0017_project_context_attachments",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1786396800000,
+      "tag": "0018_pr_brief_cache",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1788004215123,
+      "tag": "0019_snapshot_baseline",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1788004265305,
+      "tag": "0020_eval_run_batches",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1788012918503,
+      "tag": "0021_far_harry_osborn",
+      "breakpoints": true
     }
   ]
 }

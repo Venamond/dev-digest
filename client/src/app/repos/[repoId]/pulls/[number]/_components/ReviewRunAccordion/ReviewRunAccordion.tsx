@@ -6,11 +6,14 @@
 "use client";
 
 import React from "react";
-import { Icon, Badge } from "@devdigest/ui";
+import { useTranslations } from "next-intl";
+import { Icon, Badge, type Severity } from "@devdigest/ui";
 import type { ReviewRecord, Verdict } from "@devdigest/shared";
-import { FindingsPanel } from "../FindingsPanel";
-import { VerdictBanner } from "../VerdictBanner";
+import { FindingsPanel } from "../FindingsPanel/FindingsPanel";
+import { VerdictBanner } from "../VerdictBanner/VerdictBanner";
+import { SeverityCounters } from "../SeverityCounters/SeverityCounters";
 import { useDeleteReview } from "../../../../../../../lib/hooks/reviews";
+import { usePreservedToggle } from "../PrDetailView/preserved-toggle";
 
 const VERDICT_COLOR: Record<string, string> = {
   request_changes: "var(--crit)",
@@ -31,6 +34,7 @@ export function ReviewRunAccordion({
   headSha,
   targetRunId = null,
   targetNonce = 0,
+  targetFindingId = null,
 }: {
   review: ReviewRecord;
   prId: string;
@@ -41,8 +45,12 @@ export function ReviewRunAccordion({
    *  (driven from the Timeline: clicking an agent name navigates here). */
   targetRunId?: string | null;
   targetNonce?: number;
+  targetFindingId?: string | null;
 }) {
-  const [open, setOpen] = React.useState(defaultOpen);
+  const t = useTranslations("prReview");
+  // Keyed by review id so the open/closed state survives a tab switch.
+  const [open, setOpen] = usePreservedToggle(`run:${review.id}`, defaultOpen);
+  const [severityFilter, setSeverityFilter] = React.useState<Severity | null>(null);
   const rootRef = React.useRef<HTMLDivElement | null>(null);
   React.useEffect(() => {
     if (review.run_id && review.run_id === targetRunId) {
@@ -51,6 +59,10 @@ export function ReviewRunAccordion({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetRunId, targetNonce, review.run_id]);
+  const containsFinding = !!targetFindingId && review.findings.some((f) => f.id === targetFindingId);
+  React.useEffect(() => {
+    if (containsFinding) setOpen(true);
+  }, [containsFinding, targetFindingId]);
   const del = useDeleteReview(prId);
   const findings = review.findings;
   const blockers = findings.filter((f) => f.severity === "CRITICAL" && !f.dismissed_at).length;
@@ -87,15 +99,21 @@ export function ReviewRunAccordion({
         }}
       >
         <Icon.Cpu size={15} style={{ color: "var(--text-muted)" }} />
-        <span style={{ fontWeight: 600, fontSize: 14 }}>{review.agent_name ?? "Agent"}</span>
+        <span style={{ fontWeight: 600, fontSize: 14 }}>
+          {review.agent_name ?? t("reviewRun.agentTitle")}
+        </span>
         {review.verdict && (
           <Badge color={verdictColor} bg="transparent">
-            {review.verdict.replace("_", " ")}
+            {review.verdict === "request_changes"
+              ? t("verdict.requestChanges")
+              : review.verdict === "approve"
+                ? t("verdict.approve")
+                : t("verdict.comment")}
           </Badge>
         )}
         <span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-          {findings.length} finding{findings.length === 1 ? "" : "s"}
-          {blockers > 0 ? ` · ${blockers} blocker${blockers === 1 ? "" : "s"}` : ""}
+          {t("reviewRun.findingsCount", { count: findings.length })}
+          {blockers > 0 ? ` · ${t("reviewRun.blockersCount", { count: blockers })}` : ""}
         </span>
         <span style={{ flex: 1 }} />
         {review.score != null && (
@@ -109,13 +127,19 @@ export function ReviewRunAccordion({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            if (window.confirm(`Delete this "${review.agent_name ?? "agent"}" review run and its findings?`)) {
+            if (
+              window.confirm(
+                t("reviewRun.deleteConfirm", {
+                  agent: review.agent_name ?? t("reviewRun.agentFallback"),
+                }),
+              )
+            ) {
               del.mutate(review.id);
             }
           }}
           disabled={del.isPending}
-          title="Delete this review run"
-          aria-label="Delete this review run"
+          title={t("reviewRun.deleteTitle")}
+          aria-label={t("reviewRun.deleteTitle")}
           style={{
             background: "none",
             border: "none",
@@ -147,11 +171,20 @@ export function ReviewRunAccordion({
               />
             </div>
           )}
+          {findings.length > 0 && (
+            <SeverityCounters
+              findings={findings}
+              active={severityFilter}
+              onSelect={setSeverityFilter}
+            />
+          )}
           <FindingsPanel
             findings={findings}
             prId={prId}
             repoFullName={repoFullName}
             headSha={headSha}
+            severityFilter={severityFilter}
+            targetFindingId={targetFindingId}
           />
         </div>
       )}

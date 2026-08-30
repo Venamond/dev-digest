@@ -3,23 +3,31 @@
 "use client";
 
 import React from "react";
+import { useTranslations } from "next-intl";
+import type { FindingRecord } from "@devdigest/shared";
 import { commentTargetFor, type CommentThread, type DiffCommentApi, cs } from "../comments";
 import { type Line } from "../helpers";
 import { s, lineRowFor, lineSignFor } from "../styles";
 import { CommentThreadView } from "../CommentThreadView";
 import { InlineComposer } from "../InlineComposer";
+import { FindingMarker } from "../FindingMarker";
 
 export function CodeLine({
   ln,
   path,
   threads,
   commenting,
+  findings,
+  onOpenFinding,
 }: {
   ln: Line;
   path: string;
   threads: CommentThread[];
   commenting?: DiffCommentApi;
+  findings?: FindingRecord[];
+  onOpenFinding?: (findingId: string) => void;
 }) {
+  const t = useTranslations("shell");
   const [hover, setHover] = React.useState(false);
   const [composing, setComposing] = React.useState(false);
 
@@ -46,8 +54,8 @@ export function CodeLine({
           {showAdd && target && (
             <button
               type="button"
-              title="Add a comment on this line"
-              aria-label="Add a comment on this line"
+              title={t("diffViewer.addComment")}
+              aria-label={t("diffViewer.addComment")}
               onClick={() => setComposing(true)}
               style={cs.addBtn}
             >
@@ -63,6 +71,10 @@ export function CodeLine({
           {ln.text || " "}
         </span>
       </div>
+
+      {findings?.map((f) => (
+        <FindingMarker key={f.id} finding={f} onOpenFinding={onOpenFinding} />
+      ))}
 
       {commenting &&
         commenting.showComments &&

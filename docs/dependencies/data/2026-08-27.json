@@ -1,0 +1,3021 @@
+{
+  "generated": "2026-08-27",
+  "root": "/Users/olivinvenamond/Developer/course_AI_agentic_ingeniring/dev-digest",
+  "env": {
+    "node": "v25.7.0",
+    "pnpm": "10.34.5",
+    "npm": "11.10.1",
+    "node_linker": null
+  },
+  "scope": [
+    "client",
+    "e2e",
+    "evals",
+    "mcp",
+    "reviewer-core",
+    "server"
+  ],
+  "discovered": [
+    "client",
+    "e2e",
+    "evals",
+    "mcp",
+    "reviewer-core",
+    "server"
+  ],
+  "packages": {
+    "client": {
+      "dir": "client",
+      "name": "@devdigest/web",
+      "manager": "pnpm",
+      "installed": true,
+      "direct": {
+        "prod": [
+          "@tanstack/react-query",
+          "d3-force",
+          "lucide-react",
+          "mermaid",
+          "next",
+          "next-intl",
+          "react",
+          "react-dom",
+          "react-markdown",
+          "recharts",
+          "remark-gfm",
+          "zod"
+        ],
+        "dev": [
+          "@tailwindcss/postcss",
+          "@testing-library/jest-dom",
+          "@testing-library/react",
+          "@types/d3-force",
+          "@types/node",
+          "@types/react",
+          "@types/react-dom",
+          "@vitejs/plugin-react",
+          "jsdom",
+          "postcss",
+          "tailwindcss",
+          "typescript",
+          "vitest"
+        ],
+        "peer": []
+      },
+      "direct_counts": {
+        "prod": 12,
+        "dev": 13,
+        "peer": 0
+      },
+      "declared_ranges": {
+        "@tanstack/react-query": "^5.62.8",
+        "d3-force": "^3.0.0",
+        "lucide-react": "^0.469.0",
+        "mermaid": "^11.15.0",
+        "next": "^15.1.3",
+        "next-intl": "^3.26.0",
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0",
+        "react-markdown": "^9.0.3",
+        "recharts": "^2.15.0",
+        "remark-gfm": "^4.0.0",
+        "zod": "^3.24.1",
+        "@tailwindcss/postcss": "^4.0.0",
+        "@testing-library/jest-dom": "^6.6.3",
+        "@testing-library/react": "^16.1.0",
+        "@types/d3-force": "^3.0.10",
+        "@types/node": "^22.10.0",
+        "@types/react": "^19.0.2",
+        "@types/react-dom": "^19.0.2",
+        "@vitejs/plugin-react": "^4.3.4",
+        "jsdom": "^25.0.1",
+        "postcss": "^8.4.49",
+        "tailwindcss": "^4.0.0",
+        "typescript": "^5.7.2",
+        "vitest": "^2.1.8"
+      },
+      "tsconfig_links": [],
+      "internal_graph": {
+        "available": false,
+        "reason": "no .dependency-cruiser.cjs in this package"
+      },
+      "notes": [],
+      "installed_count": 421,
+      "node_modules_kb": 634380,
+      "sizes_trustworthy": true,
+      "installed_versions": {
+        "react": "19.2.7",
+        "react-dom": "19.2.7",
+        "zod": "3.25.76",
+        "@tanstack/react-query": "5.101.0",
+        "d3-force": "3.0.0",
+        "lucide-react": "0.469.0",
+        "mermaid": "11.15.0",
+        "next": "15.5.19",
+        "recharts": "2.15.4",
+        "remark-gfm": "4.0.1",
+        "next-intl": "3.26.5",
+        "react-markdown": "9.1.0",
+        "@types/d3-force": "3.0.10",
+        "@types/react": "19.2.16",
+        "@types/react-dom": "19.2.3",
+        "postcss": "8.5.15",
+        "tailwindcss": "4.3.0",
+        "typescript": "5.9.3",
+        "@types/node": "22.19.19",
+        "@testing-library/jest-dom": "6.9.1",
+        "@testing-library/react": "16.3.2",
+        "vitest": "2.1.9",
+        "@tailwindcss/postcss": "4.3.0",
+        "@vitejs/plugin-react": "4.7.0",
+        "jsdom": "25.0.1"
+      },
+      "direct_sizes": {
+        "next": 156288,
+        "mermaid": 77104,
+        "lucide-react": 37076,
+        "typescript": 23388,
+        "recharts": 5288,
+        "react-dom": 7264,
+        "@tailwindcss/postcss": 116,
+        "@testing-library/react": 384,
+        "next-intl": 1392,
+        "zod": 5136,
+        "vitest": 1952,
+        "@tanstack/react-query": 1748,
+        "jsdom": 4420,
+        "@types/node": 2536,
+        "react-markdown": 80,
+        "@testing-library/jest-dom": 412,
+        "remark-gfm": 44,
+        "tailwindcss": 832,
+        "@vitejs/plugin-react": 80,
+        "@types/react": 436,
+        "postcss": 336,
+        "react": 252,
+        "d3-force": 132,
+        "@types/react-dom": 80,
+        "@types/d3-force": 60
+      },
+      "packages": [
+        {
+          "name": "next",
+          "type": "prod",
+          "shared_with": [
+            "next-intl"
+          ],
+          "own_kb": 156288,
+          "exclusive_kb": 0,
+          "transitive_count": 87,
+          "exclusive_count": 0,
+          "version": "15.5.19"
+        },
+        {
+          "name": "mermaid",
+          "type": "prod",
+          "shared_with": [],
+          "own_kb": 77104,
+          "exclusive_kb": 139236,
+          "transitive_count": 110,
+          "exclusive_count": 84,
+          "version": "11.15.0"
+        },
+        {
+          "name": "lucide-react",
+          "type": "prod",
+          "shared_with": [],
+          "own_kb": 37076,
+          "exclusive_kb": 37076,
+          "transitive_count": 1,
+          "exclusive_count": 1,
+          "version": "0.469.0"
+        },
+        {
+          "name": "typescript",
+          "type": "dev",
+          "shared_with": [],
+          "own_kb": 23388,
+          "exclusive_kb": 23388,
+          "transitive_count": 0,
+          "exclusive_count": 1,
+          "version": "5.9.3"
+        },
+        {
+          "name": "recharts",
+          "type": "prod",
+          "shared_with": [],
+          "own_kb": 5288,
+          "exclusive_kb": 14648,
+          "transitive_count": 43,
+          "exclusive_count": 17,
+          "version": "2.15.4"
+        },
+        {
+          "name": "react-dom",
+          "type": "prod",
+          "shared_with": [
+            "@testing-library/react",
+            "next",
+            "next-intl",
+            "recharts"
+          ],
+          "own_kb": 7264,
+          "exclusive_kb": 0,
+          "transitive_count": 2,
+          "exclusive_count": 0,
+          "version": "19.2.7"
+        },
+        {
+          "name": "@tailwindcss/postcss",
+          "type": "dev",
+          "shared_with": [],
+          "own_kb": 116,
+          "exclusive_kb": 5600,
+          "transitive_count": 43,
+          "exclusive_count": 20,
+          "version": "4.3.0"
+        },
+        {
+          "name": "@testing-library/react",
+          "type": "dev",
+          "shared_with": [],
+          "own_kb": 384,
+          "exclusive_kb": 5576,
+          "transitive_count": 21,
+          "exclusive_count": 10,
+          "version": "16.3.2"
+        },
+        {
+          "name": "next-intl",
+          "type": "prod",
+          "shared_with": [],
+          "own_kb": 1392,
+          "exclusive_kb": 5336,
+          "transitive_count": 98,
+          "exclusive_count": 10,
+          "version": "3.26.5"
+        },
+        {
+          "name": "zod",
+          "type": "prod",
+          "shared_with": [],
+          "own_kb": 5136,
+          "exclusive_kb": 5136,
+          "transitive_count": 0,
+          "exclusive_count": 1,
+          "version": "3.25.76"
+        },
+        {
+          "name": "vitest",
+          "type": "dev",
+          "shared_with": [],
+          "own_kb": 1952,
+          "exclusive_kb": 4928,
+          "transitive_count": 162,
+          "exclusive_count": 29,
+          "version": "2.1.9"
+        },
+        {
+          "name": "@tanstack/react-query",
+          "type": "prod",
+          "shared_with": [],
+          "own_kb": 1748,
+          "exclusive_kb": 4804,
+          "transitive_count": 2,
+          "exclusive_count": 2,
+          "version": "5.101.0"
+        },
+        {
+          "name": "jsdom",
+          "type": "dev",
+          "shared_with": [
+            "vitest"
+          ],
+          "own_kb": 4420,
+          "exclusive_kb": 0,
+          "transitive_count": 59,
+          "exclusive_count": 0,
+          "version": "25.0.1"
+        },
+        {
+          "name": "@types/node",
+          "type": "dev",
+          "shared_with": [
+            "@vitejs/plugin-react",
+            "vitest"
+          ],
+          "own_kb": 2536,
+          "exclusive_kb": 0,
+          "transitive_count": 1,
+          "exclusive_count": 0,
+          "version": "22.19.19"
+        },
+        {
+          "name": "react-markdown",
+          "type": "prod",
+          "shared_with": [],
+          "own_kb": 80,
+          "exclusive_kb": 2056,
+          "transitive_count": 84,
+          "exclusive_count": 31,
+          "version": "9.1.0"
+        },
+        {
+          "name": "@testing-library/jest-dom",
+          "type": "dev",
+          "shared_with": [],
+          "own_kb": 412,
+          "exclusive_kb": 1932,
+          "transitive_count": 9,
+          "exclusive_count": 9,
+          "version": "6.9.1"
+        },
+        {
+          "name": "remark-gfm",
+          "type": "prod",
+          "shared_with": [],
+          "own_kb": 44,
+          "exclusive_kb": 1064,
+          "transitive_count": 67,
+          "exclusive_count": 18,
+          "version": "4.0.1"
+        },
+        {
+          "name": "tailwindcss",
+          "type": "dev",
+          "shared_with": [
+            "@tailwindcss/postcss"
+          ],
+          "own_kb": 832,
+          "exclusive_kb": 0,
+          "transitive_count": 0,
+          "exclusive_count": 0,
+          "version": "4.3.0"
+        },
+        {
+          "name": "@vitejs/plugin-react",
+          "type": "dev",
+          "shared_with": [],
+          "own_kb": 80,
+          "exclusive_kb": 460,
+          "transitive_count": 119,
+          "exclusive_count": 10,
+          "version": "4.7.0"
+        },
+        {
+          "name": "@types/react",
+          "type": "dev",
+          "shared_with": [
+            "@testing-library/react",
+            "@types/react-dom",
+            "react-markdown"
+          ],
+          "own_kb": 436,
+          "exclusive_kb": 0,
+          "transitive_count": 1,
+          "exclusive_count": 0,
+          "version": "19.2.16"
+        },
+        {
+          "name": "postcss",
+          "type": "dev",
+          "shared_with": [
+            "@tailwindcss/postcss",
+            "@vitejs/plugin-react",
+            "vitest"
+          ],
+          "own_kb": 336,
+          "exclusive_kb": 0,
+          "transitive_count": 3,
+          "exclusive_count": 0,
+          "version": "8.5.15"
+        },
+        {
+          "name": "react",
+          "type": "prod",
+          "shared_with": [
+            "@tanstack/react-query",
+            "@testing-library/react",
+            "lucide-react",
+            "next",
+            "next-intl",
+            "react-dom",
+            "react-markdown",
+            "recharts"
+          ],
+          "own_kb": 252,
+          "exclusive_kb": 0,
+          "transitive_count": 0,
+          "exclusive_count": 0,
+          "version": "19.2.7"
+        },
+        {
+          "name": "d3-force",
+          "type": "prod",
+          "shared_with": [
+            "mermaid"
+          ],
+          "own_kb": 132,
+          "exclusive_kb": 0,
+          "transitive_count": 3,
+          "exclusive_count": 0,
+          "version": "3.0.0"
+        },
+        {
+          "name": "@types/react-dom",
+          "type": "dev",
+          "shared_with": [
+            "@testing-library/react"
+          ],
+          "own_kb": 80,
+          "exclusive_kb": 0,
+          "transitive_count": 2,
+          "exclusive_count": 0,
+          "version": "19.2.3"
+        },
+        {
+          "name": "@types/d3-force",
+          "type": "dev",
+          "shared_with": [
+            "mermaid"
+          ],
+          "own_kb": 60,
+          "exclusive_kb": 0,
+          "transitive_count": 0,
+          "exclusive_count": 0,
+          "version": "3.0.10"
+        }
+      ],
+      "packages_all_count": 25,
+      "unused_candidates": [
+        "postcss"
+      ],
+      "outdated": [
+        {
+          "name": "jsdom",
+          "current": "25.0.1",
+          "wanted": "25.0.1",
+          "latest": "30.0.1",
+          "majors_behind": 5
+        },
+        {
+          "name": "@types/node",
+          "current": "22.19.19",
+          "wanted": "22.19.19",
+          "latest": "26.4.0",
+          "majors_behind": 4
+        },
+        {
+          "name": "@vitejs/plugin-react",
+          "current": "4.7.0",
+          "wanted": "4.7.0",
+          "latest": "6.1.0",
+          "majors_behind": 2
+        },
+        {
+          "name": "typescript",
+          "current": "5.9.3",
+          "wanted": "5.9.3",
+          "latest": "7.0.2",
+          "majors_behind": 2
+        },
+        {
+          "name": "vitest",
+          "current": "2.1.9",
+          "wanted": "2.1.9",
+          "latest": "4.1.11",
+          "majors_behind": 2
+        },
+        {
+          "name": "@testing-library/jest-dom",
+          "current": "6.9.1",
+          "wanted": "6.9.1",
+          "latest": "7.0.1",
+          "majors_behind": 1
+        },
+        {
+          "name": "lucide-react",
+          "current": "0.469.0",
+          "wanted": "0.469.0",
+          "latest": "1.34.0",
+          "majors_behind": 1
+        },
+        {
+          "name": "next",
+          "current": "15.5.19",
+          "wanted": "15.5.19",
+          "latest": "16.3.3",
+          "majors_behind": 1
+        },
+        {
+          "name": "next-intl",
+          "current": "3.26.5",
+          "wanted": "3.26.5",
+          "latest": "4.14.0",
+          "majors_behind": 1
+        },
+        {
+          "name": "react-markdown",
+          "current": "9.1.0",
+          "wanted": "9.1.0",
+          "latest": "10.1.0",
+          "majors_behind": 1
+        },
+        {
+          "name": "recharts",
+          "current": "2.15.4",
+          "wanted": "2.15.4",
+          "latest": "3.10.1",
+          "majors_behind": 1
+        },
+        {
+          "name": "zod",
+          "current": "3.25.76",
+          "wanted": "3.25.76",
+          "latest": "4.4.3",
+          "majors_behind": 1
+        },
+        {
+          "name": "@tailwindcss/postcss",
+          "current": "4.3.0",
+          "wanted": "4.3.0",
+          "latest": "4.3.3",
+          "majors_behind": 0
+        },
+        {
+          "name": "@tanstack/react-query",
+          "current": "5.101.0",
+          "wanted": "5.101.0",
+          "latest": "5.102.8",
+          "majors_behind": 0
+        },
+        {
+          "name": "@testing-library/react",
+          "current": "16.3.2",
+          "wanted": "16.3.2",
+          "latest": "16.3.3",
+          "majors_behind": 0
+        },
+        {
+          "name": "@types/react",
+          "current": "19.2.16",
+          "wanted": "19.2.16",
+          "latest": "19.2.18",
+          "majors_behind": 0
+        },
+        {
+          "name": "@types/react-dom",
+          "current": "19.2.3",
+          "wanted": "19.2.3",
+          "latest": "19.2.5",
+          "majors_behind": 0
+        },
+        {
+          "name": "mermaid",
+          "current": "11.15.0",
+          "wanted": "11.15.0",
+          "latest": "11.17.2",
+          "majors_behind": 0
+        },
+        {
+          "name": "postcss",
+          "current": "8.5.15",
+          "wanted": "8.5.15",
+          "latest": "8.5.26",
+          "majors_behind": 0
+        },
+        {
+          "name": "react",
+          "current": "19.2.7",
+          "wanted": "19.2.7",
+          "latest": "19.2.8",
+          "majors_behind": 0
+        },
+        {
+          "name": "react-dom",
+          "current": "19.2.7",
+          "wanted": "19.2.7",
+          "latest": "19.2.8",
+          "majors_behind": 0
+        },
+        {
+          "name": "tailwindcss",
+          "current": "4.3.0",
+          "wanted": "4.3.0",
+          "latest": "4.3.3",
+          "majors_behind": 0
+        }
+      ],
+      "audit": {
+        "findings": [
+          {
+            "name": "vitest",
+            "severity": "critical",
+            "direct": false,
+            "via": [
+              "When Vitest UI server is listening, arbitrary file can be read and executed"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "form-data",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "form-data: CRLF injection in form-data via unescaped multipart field names and filenames"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "nanoid",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "nanoid: non-secure generators can loop indefinitely with negative size"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "nanoid",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "nanoid: custom generators can loop indefinitely when size is zero"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "next",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "Next.js: Denial of Service in App Router using Server Actions"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "next",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "Next.js: Server-Side Request Forgery in Server Actions on custom servers"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "next",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "Next.js: Server-Side Request Forgery in rewrites via attacker-controlled destination hostname"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "postcss",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "PostCSS: Arbitrary file read and information disclosure via attacker-controlled sourceMappingURL in CSS comments"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "postcss",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "PostCSS: Path Traversal in Previous Source Map Auto-Loading (sourceMappingURL) leads to Arbitrary .map File Disclosure"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "sharp",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "sharp inherited vulnerabilities in libvips: CVE-2026-33327, CVE-2026-33328, CVE-2026-35590, CVE-2026-35591"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "vite",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "vite: `server.fs.deny` bypass on Windows alternate paths"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "dompurify",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "DOMPurify: Permanent `ALLOWED_ATTR` pollution via `setConfig()` bypassing the hook clone-guard (incomplete fix of the 3.4.7 hook-pollution patch)"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "dompurify",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "DOMPurify: IN_PLACE hook removal leaves a detached subtree executable, causing XSS"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "esbuild",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "esbuild enables any website to send any requests to the development server and read the response"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "mermaid",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "Mermaid allows CSS injection applying to sibling elements of the diagram"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "mermaid",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "Mermaid Architecture diagrams are vulnerable to prototype pollution"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "mermaid",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "Mermaid XY Charts are vulnerable to an infinite loop DoS"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "mermaid",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "Mermaid radar diagrams are vulnerable to DoS"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "next",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "Next.js: Cache confusion of response bodies for requests with bodies"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "next",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "Next.js: Cache confusion of response bodies for requests with bodies containing invalid UTF-8 byte sequences"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "next",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "Next.js: Unbounded Server Action payload in Edge runtime"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "next",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "Next.js: Denial of Service in the Image Optimization API using SVGs"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "next",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "Next.js: Unauthenticated disclosure of internal Server Function endpoints"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "next-intl",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "next-intl has an open redirect vulnerability"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "next-intl",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "next-intl has prototype pollution with `experimental.messages.precompile` via attacker-controlled translation catalog keys"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "postcss",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "PostCSS has XSS via Unescaped </style> in its CSS Stringify Output"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "postcss",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "PostCSS: incomplete fix of GHSA-6g55-p6wh-862q \u2014 attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "vite",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "Vite Vulnerable to Path Traversal in Optimized Deps `.map` Handling"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "vite",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "launch-editor: NTLMv2 hash disclosure via UNC path handling on Windows"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "dompurify",
+            "severity": "low",
+            "direct": false,
+            "via": [
+              "DOMPurify: `CUSTOM_ELEMENT_HANDLING` bypasses `afterSanitizeElements` for allowed custom elements."
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "dompurify",
+            "severity": "low",
+            "direct": false,
+            "via": [
+              "DOMPurify: Trusted Types policy survives `clearConfig()` and can poison later `RETURN_TRUSTED_TYPE` output"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "mermaid",
+            "severity": "low",
+            "direct": false,
+            "via": [
+              "Mermaid configuration APIs allow prototype pollution"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          }
+        ],
+        "totals": {
+          "info": 0,
+          "low": 3,
+          "moderate": 19,
+          "high": 11,
+          "critical": 1
+        }
+      }
+    },
+    "e2e": {
+      "dir": "e2e",
+      "name": "@devdigest/e2e",
+      "manager": "npm",
+      "installed": false,
+      "direct": {
+        "prod": [],
+        "dev": [
+          "@types/node",
+          "tsx",
+          "typescript"
+        ],
+        "peer": []
+      },
+      "direct_counts": {
+        "prod": 0,
+        "dev": 3,
+        "peer": 0
+      },
+      "declared_ranges": {
+        "@types/node": "^22.10.0",
+        "tsx": "^4.19.2",
+        "typescript": "^5.7.2"
+      },
+      "tsconfig_links": [],
+      "internal_graph": {
+        "available": false,
+        "reason": "no .dependency-cruiser.cjs in this package"
+      },
+      "notes": [
+        "node_modules is not installed \u2014 sizes, versions, outdated and audit are unavailable for this package (not zero, unmeasured)"
+      ],
+      "node_modules_kb": null,
+      "packages": [],
+      "unused_candidates": null,
+      "outdated": null,
+      "audit": null
+    },
+    "evals": {
+      "dir": "evals",
+      "name": "@devdigest/evals",
+      "manager": "pnpm",
+      "installed": true,
+      "direct": {
+        "prod": [
+          "@anthropic-ai/claude-agent-sdk",
+          "openai"
+        ],
+        "dev": [
+          "@types/node",
+          "gray-matter",
+          "tsx",
+          "typescript",
+          "vitest"
+        ],
+        "peer": []
+      },
+      "direct_counts": {
+        "prod": 2,
+        "dev": 5,
+        "peer": 0
+      },
+      "declared_ranges": {
+        "@anthropic-ai/claude-agent-sdk": "^0.3.198",
+        "openai": "^4.77.0",
+        "@types/node": "^22.0.0",
+        "gray-matter": "^4.0.3",
+        "tsx": "^4.19.0",
+        "typescript": "^5.6.0",
+        "vitest": "^2.1.0"
+      },
+      "tsconfig_links": [],
+      "internal_graph": {
+        "available": false,
+        "reason": "no .dependency-cruiser.cjs in this package"
+      },
+      "notes": [
+        "100% of node_modules entries are symlinks \u2014 du measures the link, not the package. Every size for this package is unusable; re-run with node-linker=hoisted or drop the weight section."
+      ],
+      "installed_count": 7,
+      "node_modules_kb": 340100,
+      "sizes_trustworthy": false,
+      "installed_versions": {
+        "openai": "4.104.0",
+        "@anthropic-ai/claude-agent-sdk": "0.3.198",
+        "typescript": "5.9.3",
+        "@types/node": "22.20.0",
+        "tsx": "4.22.4",
+        "gray-matter": "4.0.3",
+        "vitest": "2.1.9"
+      },
+      "direct_sizes": {},
+      "packages": [
+        {
+          "name": "@anthropic-ai/claude-agent-sdk",
+          "type": "prod",
+          "shared_with": [],
+          "own_kb": null,
+          "exclusive_kb": null,
+          "transitive_count": 107,
+          "exclusive_count": 93,
+          "version": "0.3.198"
+        },
+        {
+          "name": "@types/node",
+          "type": "dev",
+          "shared_with": [
+            "openai",
+            "vitest"
+          ],
+          "own_kb": null,
+          "exclusive_kb": null,
+          "transitive_count": 1,
+          "exclusive_count": 0,
+          "version": "22.20.0"
+        },
+        {
+          "name": "gray-matter",
+          "type": "dev",
+          "shared_with": [],
+          "own_kb": null,
+          "exclusive_kb": null,
+          "transitive_count": 9,
+          "exclusive_count": 10,
+          "version": "4.0.3"
+        },
+        {
+          "name": "openai",
+          "type": "prod",
+          "shared_with": [],
+          "own_kb": null,
+          "exclusive_kb": null,
+          "transitive_count": 39,
+          "exclusive_count": 24,
+          "version": "4.104.0"
+        },
+        {
+          "name": "tsx",
+          "type": "dev",
+          "shared_with": [],
+          "own_kb": null,
+          "exclusive_kb": null,
+          "transitive_count": 28,
+          "exclusive_count": 28,
+          "version": "4.22.4"
+        },
+        {
+          "name": "typescript",
+          "type": "dev",
+          "shared_with": [],
+          "own_kb": null,
+          "exclusive_kb": null,
+          "transitive_count": 0,
+          "exclusive_count": 1,
+          "version": "5.9.3"
+        },
+        {
+          "name": "vitest",
+          "type": "dev",
+          "shared_with": [],
+          "own_kb": null,
+          "exclusive_kb": null,
+          "transitive_count": 91,
+          "exclusive_count": 87,
+          "version": "2.1.9"
+        }
+      ],
+      "packages_all_count": 7,
+      "unused_candidates": [],
+      "outdated": [
+        {
+          "name": "@types/node",
+          "current": "22.20.0",
+          "wanted": "22.20.0",
+          "latest": "26.4.0",
+          "majors_behind": 4
+        },
+        {
+          "name": "openai",
+          "current": "4.104.0",
+          "wanted": "4.104.0",
+          "latest": "7.8.0",
+          "majors_behind": 3
+        },
+        {
+          "name": "typescript",
+          "current": "5.9.3",
+          "wanted": "5.9.3",
+          "latest": "7.0.2",
+          "majors_behind": 2
+        },
+        {
+          "name": "vitest",
+          "current": "2.1.9",
+          "wanted": "2.1.9",
+          "latest": "4.1.11",
+          "majors_behind": 2
+        },
+        {
+          "name": "@anthropic-ai/claude-agent-sdk",
+          "current": "0.3.198",
+          "wanted": "0.3.198",
+          "latest": "0.3.247",
+          "majors_behind": 0
+        },
+        {
+          "name": "tsx",
+          "current": "4.22.4",
+          "wanted": "4.22.4",
+          "latest": "4.23.12",
+          "majors_behind": 0
+        }
+      ],
+      "audit": {
+        "findings": [
+          {
+            "name": "vitest",
+            "severity": "critical",
+            "direct": false,
+            "via": [
+              "When Vitest UI server is listening, arbitrary file can be read and executed"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "fast-uri",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "fast-uri vulnerable to host confusion via literal backslash authority delimiter"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "fast-uri",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "fast-uri vulnerable to host confusion via backslash authority introducer"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "ip-address",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "ip-address: Address4 decodes leading-zero octets as decimal while resolvers decode them as octal, allowing SSRF and trust-boundary bypass"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "js-yaml",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "JS-YAML: Quadratic CPU consumption in !!omap resolution (3.x and 4.x) \u2014 CVE-2026-59870 fix not backported"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "nanoid",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "nanoid: non-secure generators can loop indefinitely with negative size"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "nanoid",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "nanoid: custom generators can loop indefinitely when size is zero"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "postcss",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "PostCSS: Path Traversal in Previous Source Map Auto-Loading (sourceMappingURL) leads to Arbitrary .map File Disclosure"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "vite",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "vite: `server.fs.deny` bypass on Windows alternate paths"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "@hono/node-server",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "Node.js Adapter for Hono: Path traversal in `serve-static` on Windows via encoded backslash (`%5C`)"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "esbuild",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "esbuild enables any website to send any requests to the development server and read the response"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "hono",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "Hono: ReDoS in CORS middleware via Access-Control-Request-Headers"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "hono",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "Hono: `memo()` retains SSR output across requests, leading to cross-user data disclosure"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "hono",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "Hono: Algorithmic Complexity DoS in Language Middleware"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "ip-address",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "ip-address: a CIDR suffix on the parsed address suppresses special-use classification and can bypass SSRF and trust-boundary checks"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "ip-address",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "ip-address: misclassification of IPv4-mapped/NAT64 IPv6 addresses can bypass SSRF and trust-boundary checks"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "postcss",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "PostCSS: incomplete fix of GHSA-6g55-p6wh-862q \u2014 attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "vite",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "Vite Vulnerable to Path Traversal in Optimized Deps `.map` Handling"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "vite",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "launch-editor: NTLMv2 hash disclosure via UNC path handling on Windows"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "hono",
+            "severity": "low",
+            "direct": false,
+            "via": [
+              "Hono: Proxy Helper does not remove response headers listed in the `Connection` header"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          }
+        ],
+        "totals": {
+          "info": 0,
+          "low": 1,
+          "moderate": 10,
+          "high": 8,
+          "critical": 1
+        }
+      }
+    },
+    "mcp": {
+      "dir": "mcp",
+      "name": "@devdigest/mcp",
+      "manager": "npm",
+      "installed": true,
+      "direct": {
+        "prod": [
+          "@modelcontextprotocol/server",
+          "zod"
+        ],
+        "dev": [
+          "@modelcontextprotocol/client",
+          "@types/node",
+          "js-tiktoken",
+          "tsx",
+          "typescript",
+          "vitest"
+        ],
+        "peer": []
+      },
+      "direct_counts": {
+        "prod": 2,
+        "dev": 6,
+        "peer": 0
+      },
+      "declared_ranges": {
+        "@modelcontextprotocol/server": "^2.0.0",
+        "zod": "^4.2.0",
+        "@modelcontextprotocol/client": "^2.0.0",
+        "@types/node": "^22.10.0",
+        "js-tiktoken": "^1.0.21",
+        "tsx": "^4.19.2",
+        "typescript": "^5.7.2",
+        "vitest": "^2.1.8"
+      },
+      "tsconfig_links": [],
+      "internal_graph": {
+        "available": false,
+        "reason": "no .dependency-cruiser.cjs in this package"
+      },
+      "notes": [],
+      "installed_count": 64,
+      "node_modules_kb": 105300,
+      "sizes_trustworthy": true,
+      "installed_versions": {
+        "@modelcontextprotocol/client": "2.0.0",
+        "@modelcontextprotocol/server": "2.0.0",
+        "@types/node": "22.20.1",
+        "js-tiktoken": "1.0.21",
+        "tsx": "4.23.12",
+        "typescript": "5.9.3",
+        "vitest": "2.1.9",
+        "zod": "4.4.3"
+      },
+      "direct_sizes": {
+        "vitest": 1896,
+        "typescript": 23388,
+        "js-tiktoken": 22008,
+        "tsx": 668,
+        "@modelcontextprotocol/client": 6652,
+        "zod": 6404,
+        "@modelcontextprotocol/server": 6368,
+        "@types/node": 2544
+      },
+      "packages": [
+        {
+          "name": "vitest",
+          "type": "dev",
+          "shared_with": [],
+          "own_kb": 1896,
+          "exclusive_kb": 34512,
+          "transitive_count": 105,
+          "exclusive_count": 81,
+          "version": "2.1.9"
+        },
+        {
+          "name": "typescript",
+          "type": "dev",
+          "shared_with": [],
+          "own_kb": 23388,
+          "exclusive_kb": 23388,
+          "transitive_count": 0,
+          "exclusive_count": 1,
+          "version": "5.9.3"
+        },
+        {
+          "name": "js-tiktoken",
+          "type": "dev",
+          "shared_with": [],
+          "own_kb": 22008,
+          "exclusive_kb": 22032,
+          "transitive_count": 1,
+          "exclusive_count": 2,
+          "version": "1.0.21"
+        },
+        {
+          "name": "tsx",
+          "type": "dev",
+          "shared_with": [],
+          "own_kb": 668,
+          "exclusive_kb": 11164,
+          "transitive_count": 28,
+          "exclusive_count": 6,
+          "version": "4.23.12"
+        },
+        {
+          "name": "@modelcontextprotocol/client",
+          "type": "dev",
+          "shared_with": [],
+          "own_kb": 6652,
+          "exclusive_kb": 7640,
+          "transitive_count": 12,
+          "exclusive_count": 11,
+          "version": "2.0.0"
+        },
+        {
+          "name": "zod",
+          "type": "prod",
+          "shared_with": [
+            "@modelcontextprotocol/client",
+            "@modelcontextprotocol/server"
+          ],
+          "own_kb": 6404,
+          "exclusive_kb": 0,
+          "transitive_count": 0,
+          "exclusive_count": 0,
+          "version": "4.4.3"
+        },
+        {
+          "name": "@modelcontextprotocol/server",
+          "type": "prod",
+          "shared_with": [],
+          "own_kb": 6368,
+          "exclusive_kb": 6368,
+          "transitive_count": 2,
+          "exclusive_count": 1,
+          "version": "2.0.0"
+        },
+        {
+          "name": "@types/node",
+          "type": "dev",
+          "shared_with": [
+            "vitest"
+          ],
+          "own_kb": 2544,
+          "exclusive_kb": 0,
+          "transitive_count": 1,
+          "exclusive_count": 0,
+          "version": "22.20.1"
+        }
+      ],
+      "packages_all_count": 8,
+      "unused_candidates": [],
+      "outdated": [
+        {
+          "name": "@types/node",
+          "current": "22.20.1",
+          "wanted": "22.20.1",
+          "latest": "26.4.0",
+          "majors_behind": 4
+        },
+        {
+          "name": "typescript",
+          "current": "5.9.3",
+          "wanted": "5.9.3",
+          "latest": "7.0.2",
+          "majors_behind": 2
+        },
+        {
+          "name": "vitest",
+          "current": "2.1.9",
+          "wanted": "2.1.9",
+          "latest": "4.1.11",
+          "majors_behind": 2
+        }
+      ],
+      "audit": {
+        "findings": [
+          {
+            "name": "vitest",
+            "severity": "critical",
+            "direct": true,
+            "via": [
+              "@vitest/mocker",
+              "When Vitest UI server is listening, arbitrary file can be read and executed",
+              "vite",
+              "vite-node"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "vite",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "Vite Vulnerable to Path Traversal in Optimized Deps `.map` Handling",
+              "launch-editor: NTLMv2 hash disclosure via UNC path handling on Windows",
+              "vite: `server.fs.deny` bypass on Windows alternate paths",
+              "esbuild"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "@vitest/mocker",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "vite"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "esbuild",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "esbuild enables any website to send any requests to the development server and read the response"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "vite-node",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "vite"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          }
+        ],
+        "totals": {
+          "info": 0,
+          "low": 0,
+          "moderate": 3,
+          "high": 1,
+          "critical": 1,
+          "total": 5
+        }
+      }
+    },
+    "reviewer-core": {
+      "dir": "reviewer-core",
+      "name": "@devdigest/reviewer-core",
+      "manager": "npm",
+      "installed": true,
+      "direct": {
+        "prod": [
+          "openai",
+          "zod"
+        ],
+        "dev": [
+          "@types/node",
+          "tsx",
+          "typescript",
+          "vitest"
+        ],
+        "peer": []
+      },
+      "direct_counts": {
+        "prod": 2,
+        "dev": 4,
+        "peer": 0
+      },
+      "declared_ranges": {
+        "openai": "^4.77.0",
+        "zod": "^3.24.1",
+        "@types/node": "^22.10.0",
+        "tsx": "^4.19.2",
+        "typescript": "^5.7.2",
+        "vitest": "^2.1.8"
+      },
+      "tsconfig_links": [
+        {
+          "alias": "@devdigest/shared",
+          "target": "../server/src/vendor/shared/index.ts"
+        },
+        {
+          "alias": "@devdigest/shared/*",
+          "target": "../server/src/vendor/shared/*"
+        }
+      ],
+      "internal_graph": {
+        "available": true,
+        "mermaid": "flowchart LR\n\nsubgraph 0[\"..\"]\nsubgraph 1[\"server\"]\n2[\" \"]\nend\nend\nsubgraph 3[\"src\"]\n4[\"grounding.ts\"]\n5[\"index.ts\"]\nsubgraph 6[\"llm\"]\n7[\" \"]\nend\nsubgraph 8[\"output\"]\n9[\" \"]\nend\nA[\"prompt-log.ts\"]\nB[\"prompt.ts\"]\nsubgraph C[\"review\"]\nD[\" \"]\nend\nend\n4-->2\n5-->4\n5-->7\n5-->9\n5-->A\n5-->B\n5-->D\n7-->2\n9-->4\n9-->2\nA-->2\nB-->2\nD-->2\nD-->4\nD-->A\nD-->B",
+        "reason": null
+      },
+      "notes": [],
+      "installed_count": 83,
+      "node_modules_kb": 79820,
+      "sizes_trustworthy": true,
+      "installed_versions": {
+        "@types/node": "22.19.20",
+        "openai": "4.104.0",
+        "tsx": "4.22.4",
+        "typescript": "5.9.3",
+        "vitest": "2.1.9",
+        "zod": "3.25.76"
+      },
+      "direct_sizes": {
+        "vitest": 1896,
+        "typescript": 23388,
+        "openai": 9876,
+        "tsx": 664,
+        "zod": 5136,
+        "@types/node": 2536
+      },
+      "packages": [
+        {
+          "name": "vitest",
+          "type": "dev",
+          "shared_with": [],
+          "own_kb": 1896,
+          "exclusive_kb": 34372,
+          "transitive_count": 104,
+          "exclusive_count": 79,
+          "version": "2.1.9"
+        },
+        {
+          "name": "typescript",
+          "type": "dev",
+          "shared_with": [],
+          "own_kb": 23388,
+          "exclusive_kb": 23388,
+          "transitive_count": 0,
+          "exclusive_count": 1,
+          "version": "5.9.3"
+        },
+        {
+          "name": "openai",
+          "type": "prod",
+          "shared_with": [],
+          "own_kb": 9876,
+          "exclusive_kb": 16016,
+          "transitive_count": 41,
+          "exclusive_count": 38,
+          "version": "4.104.0"
+        },
+        {
+          "name": "tsx",
+          "type": "dev",
+          "shared_with": [],
+          "own_kb": 664,
+          "exclusive_kb": 11112,
+          "transitive_count": 28,
+          "exclusive_count": 6,
+          "version": "4.22.4"
+        },
+        {
+          "name": "zod",
+          "type": "prod",
+          "shared_with": [
+            "openai"
+          ],
+          "own_kb": 5136,
+          "exclusive_kb": 0,
+          "transitive_count": 0,
+          "exclusive_count": 0,
+          "version": "3.25.76"
+        },
+        {
+          "name": "@types/node",
+          "type": "dev",
+          "shared_with": [
+            "openai",
+            "vitest"
+          ],
+          "own_kb": 2536,
+          "exclusive_kb": 0,
+          "transitive_count": 1,
+          "exclusive_count": 0,
+          "version": "22.19.20"
+        }
+      ],
+      "packages_all_count": 6,
+      "unused_candidates": [
+        "tsx"
+      ],
+      "outdated": [
+        {
+          "name": "@types/node",
+          "current": "22.19.20",
+          "wanted": "22.20.1",
+          "latest": "26.4.0",
+          "majors_behind": 4
+        },
+        {
+          "name": "openai",
+          "current": "4.104.0",
+          "wanted": "4.104.0",
+          "latest": "7.8.0",
+          "majors_behind": 3
+        },
+        {
+          "name": "typescript",
+          "current": "5.9.3",
+          "wanted": "5.9.3",
+          "latest": "7.0.2",
+          "majors_behind": 2
+        },
+        {
+          "name": "vitest",
+          "current": "2.1.9",
+          "wanted": "2.1.9",
+          "latest": "4.1.11",
+          "majors_behind": 2
+        },
+        {
+          "name": "zod",
+          "current": "3.25.76",
+          "wanted": "3.25.76",
+          "latest": "4.4.3",
+          "majors_behind": 1
+        },
+        {
+          "name": "tsx",
+          "current": "4.22.4",
+          "wanted": "4.23.12",
+          "latest": "4.23.12",
+          "majors_behind": 0
+        }
+      ],
+      "audit": {
+        "findings": [
+          {
+            "name": "vitest",
+            "severity": "critical",
+            "direct": true,
+            "via": [
+              "@vitest/mocker",
+              "When Vitest UI server is listening, arbitrary file can be read and executed",
+              "vite",
+              "vite-node"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "form-data",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "form-data: CRLF injection in form-data via unescaped multipart field names and filenames"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "nanoid",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "nanoid: non-secure generators can loop indefinitely with negative size",
+              "nanoid: custom generators can loop indefinitely when size is zero"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "postcss",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "PostCSS: incomplete fix of GHSA-6g55-p6wh-862q \u2014 attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset",
+              "PostCSS: Path Traversal in Previous Source Map Auto-Loading (sourceMappingURL) leads to Arbitrary .map File Disclosure"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "vite",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "Vite Vulnerable to Path Traversal in Optimized Deps `.map` Handling",
+              "launch-editor: NTLMv2 hash disclosure via UNC path handling on Windows",
+              "vite: `server.fs.deny` bypass on Windows alternate paths",
+              "esbuild"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "@vitest/mocker",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "vite"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "esbuild",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "esbuild enables any website to send any requests to the development server and read the response",
+              "esbuild allows arbitrary file read when running the development server on Windows"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "vite-node",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "vite"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          }
+        ],
+        "totals": {
+          "info": 0,
+          "low": 0,
+          "moderate": 3,
+          "high": 4,
+          "critical": 1,
+          "total": 8
+        }
+      }
+    },
+    "server": {
+      "dir": "server",
+      "name": "@devdigest/api",
+      "manager": "pnpm",
+      "installed": true,
+      "direct": {
+        "prod": [
+          "@anthropic-ai/sdk",
+          "@ast-grep/napi",
+          "@fastify/autoload",
+          "@fastify/cors",
+          "@fastify/helmet",
+          "@fastify/multipart",
+          "@fastify/rate-limit",
+          "@vscode/ripgrep",
+          "dependency-cruiser",
+          "dotenv",
+          "drizzle-orm",
+          "fastify",
+          "fastify-sse-v2",
+          "fastify-type-provider-zod",
+          "graphology",
+          "graphology-metrics",
+          "js-tiktoken",
+          "jszip",
+          "octokit",
+          "openai",
+          "p-queue",
+          "postgres",
+          "simple-git",
+          "zod"
+        ],
+        "dev": [
+          "@testcontainers/postgresql",
+          "@types/node",
+          "drizzle-kit",
+          "pino-pretty",
+          "testcontainers",
+          "tsx",
+          "typescript",
+          "vitest"
+        ],
+        "peer": []
+      },
+      "direct_counts": {
+        "prod": 24,
+        "dev": 8,
+        "peer": 0
+      },
+      "declared_ranges": {
+        "@anthropic-ai/sdk": "^0.33.1",
+        "@ast-grep/napi": "0.43.0",
+        "@fastify/autoload": "^6.0.3",
+        "@fastify/cors": "^10.0.2",
+        "@fastify/helmet": "^13.0.2",
+        "@fastify/multipart": "^10.1.0",
+        "@fastify/rate-limit": "^11.0.0",
+        "@vscode/ripgrep": "^1.15.9",
+        "dependency-cruiser": "^17.4.3",
+        "dotenv": "^16.4.7",
+        "drizzle-orm": "^0.38.3",
+        "fastify": "^5.2.0",
+        "fastify-sse-v2": "^4.2.1",
+        "fastify-type-provider-zod": "^4.0.2",
+        "graphology": "^0.26.0",
+        "graphology-metrics": "^2.4.0",
+        "js-tiktoken": "^1.0.21",
+        "jszip": "^3.10.1",
+        "octokit": "^4.0.3",
+        "openai": "^4.77.0",
+        "p-queue": "^8.0.1",
+        "postgres": "^3.4.5",
+        "simple-git": "^3.27.0",
+        "zod": "^3.24.1",
+        "@testcontainers/postgresql": "^10.16.0",
+        "@types/node": "^22.10.0",
+        "drizzle-kit": "^0.30.1",
+        "pino-pretty": "^13.0.0",
+        "testcontainers": "^10.16.0",
+        "tsx": "^4.19.2",
+        "typescript": "^5.7.2",
+        "vitest": "^2.1.8"
+      },
+      "tsconfig_links": [
+        {
+          "alias": "@devdigest/reviewer-core",
+          "target": "../reviewer-core/src/index.ts"
+        },
+        {
+          "alias": "@devdigest/reviewer-core/*",
+          "target": "../reviewer-core/src/*"
+        }
+      ],
+      "internal_graph": {
+        "available": true,
+        "mermaid": "flowchart LR\n\nsubgraph 0[\"..\"]\nsubgraph 1[\"reviewer-core\"]\n2[\" \"]\nend\nend\nsubgraph 3[\"src\"]\nsubgraph 4[\"adapters\"]\n5[\" \"]\nend\n6[\"app.ts\"]\nsubgraph 7[\"db\"]\n8[\" \"]\nend\nsubgraph 9[\"modules\"]\nA[\" \"]\nend\nsubgraph B[\"platform\"]\nC[\" \"]\nend\nD[\"server.ts\"]\nsubgraph E[\"vendor\"]\nF[\" \"]\nend\nend\n2-->F\n5-->A\n5-->8\n5-->F\n5-->C\n6-->8\n6-->A\n6-->C\n8-->F\nA-->C\nA-->F\nA-->8\nA-->5\nA-->2\nC-->2\nC-->5\nC-->8\nC-->A\nC-->F\nD-->6\nD-->C",
+        "reason": null
+      },
+      "notes": [],
+      "installed_count": 403,
+      "node_modules_kb": 246616,
+      "sizes_trustworthy": true,
+      "installed_versions": {
+        "@fastify/autoload": "6.3.1",
+        "dotenv": "16.6.1",
+        "postgres": "3.4.9",
+        "zod": "3.25.76",
+        "@ast-grep/napi": "0.43.0",
+        "@fastify/helmet": "13.0.2",
+        "@fastify/multipart": "10.1.0",
+        "@fastify/rate-limit": "11.0.0",
+        "@vscode/ripgrep": "1.18.0",
+        "drizzle-orm": "0.38.4",
+        "graphology": "0.26.0",
+        "js-tiktoken": "1.0.21",
+        "openai": "4.104.0",
+        "p-queue": "8.1.1",
+        "@fastify/cors": "10.1.0",
+        "fastify-type-provider-zod": "4.0.2",
+        "jszip": "3.10.1",
+        "simple-git": "3.36.0",
+        "fastify-sse-v2": "4.2.2",
+        "graphology-metrics": "2.4.0",
+        "dependency-cruiser": "17.4.3",
+        "fastify": "5.8.5",
+        "@anthropic-ai/sdk": "0.33.1",
+        "octokit": "4.1.4",
+        "@types/node": "22.19.19",
+        "testcontainers": "10.28.0",
+        "typescript": "5.9.3",
+        "pino-pretty": "13.1.3",
+        "tsx": "4.22.4",
+        "drizzle-kit": "0.30.6",
+        "vitest": "2.1.9",
+        "@testcontainers/postgresql": "10.28.0"
+      },
+      "direct_sizes": {
+        "drizzle-kit": 7604,
+        "vitest": 1896,
+        "tsx": 11124,
+        "typescript": 23388,
+        "js-tiktoken": 22008,
+        "drizzle-orm": 13484,
+        "octokit": 88,
+        "openai": 9708,
+        "@ast-grep/napi": 392,
+        "dependency-cruiser": 1552,
+        "zod": 5136,
+        "@vscode/ripgrep": 20,
+        "@anthropic-ai/sdk": 4056,
+        "fastify": 3544,
+        "@types/node": 2732,
+        "graphology": 2724,
+        "jszip": 1056,
+        "simple-git": 1316,
+        "graphology-metrics": 304,
+        "@fastify/cors": 804,
+        "@fastify/autoload": 1216,
+        "testcontainers": 1212,
+        "pino-pretty": 448,
+        "fastify-type-provider-zod": 56,
+        "@fastify/multipart": 408,
+        "fastify-sse-v2": 184,
+        "postgres": 380,
+        "@fastify/rate-limit": 276,
+        "@fastify/helmet": 108,
+        "p-queue": 80,
+        "dotenv": 108,
+        "@testcontainers/postgresql": 40
+      },
+      "packages": [
+        {
+          "name": "drizzle-kit",
+          "type": "dev",
+          "shared_with": [],
+          "own_kb": 7604,
+          "exclusive_kb": 49276,
+          "transitive_count": 65,
+          "exclusive_count": 63,
+          "version": "0.30.6"
+        },
+        {
+          "name": "vitest",
+          "type": "dev",
+          "shared_with": [],
+          "own_kb": 1896,
+          "exclusive_kb": 42860,
+          "transitive_count": 91,
+          "exclusive_count": 87,
+          "version": "2.1.9"
+        },
+        {
+          "name": "tsx",
+          "type": "dev",
+          "shared_with": [],
+          "own_kb": 11124,
+          "exclusive_kb": 30108,
+          "transitive_count": 28,
+          "exclusive_count": 28,
+          "version": "4.22.4"
+        },
+        {
+          "name": "typescript",
+          "type": "dev",
+          "shared_with": [],
+          "own_kb": 23388,
+          "exclusive_kb": 23388,
+          "transitive_count": 0,
+          "exclusive_count": 1,
+          "version": "5.9.3"
+        },
+        {
+          "name": "js-tiktoken",
+          "type": "prod",
+          "shared_with": [],
+          "own_kb": 22008,
+          "exclusive_kb": 22008,
+          "transitive_count": 1,
+          "exclusive_count": 1,
+          "version": "1.0.21"
+        },
+        {
+          "name": "drizzle-orm",
+          "type": "prod",
+          "shared_with": [],
+          "own_kb": 13484,
+          "exclusive_kb": 13484,
+          "transitive_count": 1,
+          "exclusive_count": 1,
+          "version": "0.38.4"
+        },
+        {
+          "name": "octokit",
+          "type": "prod",
+          "shared_with": [],
+          "own_kb": 88,
+          "exclusive_kb": 12940,
+          "transitive_count": 32,
+          "exclusive_count": 32,
+          "version": "4.1.4"
+        },
+        {
+          "name": "openai",
+          "type": "prod",
+          "shared_with": [],
+          "own_kb": 9708,
+          "exclusive_kb": 9708,
+          "transitive_count": 39,
+          "exclusive_count": 1,
+          "version": "4.104.0"
+        },
+        {
+          "name": "@ast-grep/napi",
+          "type": "prod",
+          "shared_with": [],
+          "own_kb": 392,
+          "exclusive_kb": 7292,
+          "transitive_count": 9,
+          "exclusive_count": 10,
+          "version": "0.43.0"
+        },
+        {
+          "name": "dependency-cruiser",
+          "type": "prod",
+          "shared_with": [],
+          "own_kb": 1552,
+          "exclusive_kb": 6316,
+          "transitive_count": 42,
+          "exclusive_count": 34,
+          "version": "17.4.3"
+        },
+        {
+          "name": "zod",
+          "type": "prod",
+          "shared_with": [
+            "fastify-type-provider-zod",
+            "openai"
+          ],
+          "own_kb": 5136,
+          "exclusive_kb": 0,
+          "transitive_count": 0,
+          "exclusive_count": 0,
+          "version": "3.25.76"
+        },
+        {
+          "name": "@vscode/ripgrep",
+          "type": "prod",
+          "shared_with": [],
+          "own_kb": 20,
+          "exclusive_kb": 4456,
+          "transitive_count": 12,
+          "exclusive_count": 13,
+          "version": "1.18.0"
+        },
+        {
+          "name": "@anthropic-ai/sdk",
+          "type": "prod",
+          "shared_with": [],
+          "own_kb": 4056,
+          "exclusive_kb": 4056,
+          "transitive_count": 38,
+          "exclusive_count": 1,
+          "version": "0.33.1"
+        },
+        {
+          "name": "fastify",
+          "type": "prod",
+          "shared_with": [
+            "fastify-sse-v2",
+            "fastify-type-provider-zod"
+          ],
+          "own_kb": 3544,
+          "exclusive_kb": 0,
+          "transitive_count": 47,
+          "exclusive_count": 0,
+          "version": "5.8.5"
+        },
+        {
+          "name": "@types/node",
+          "type": "dev",
+          "shared_with": [
+            "@anthropic-ai/sdk",
+            "@testcontainers/postgresql",
+            "openai",
+            "testcontainers",
+            "vitest"
+          ],
+          "own_kb": 2732,
+          "exclusive_kb": 0,
+          "transitive_count": 1,
+          "exclusive_count": 0,
+          "version": "22.19.19"
+        },
+        {
+          "name": "graphology",
+          "type": "prod",
+          "shared_with": [],
+          "own_kb": 2724,
+          "exclusive_kb": 2724,
+          "transitive_count": 2,
+          "exclusive_count": 1,
+          "version": "0.26.0"
+        },
+        {
+          "name": "jszip",
+          "type": "prod",
+          "shared_with": [],
+          "own_kb": 1056,
+          "exclusive_kb": 2020,
+          "transitive_count": 12,
+          "exclusive_count": 5,
+          "version": "3.10.1"
+        },
+        {
+          "name": "simple-git",
+          "type": "prod",
+          "shared_with": [],
+          "own_kb": 1316,
+          "exclusive_kb": 1604,
+          "transitive_count": 6,
+          "exclusive_count": 5,
+          "version": "3.36.0"
+        },
+        {
+          "name": "graphology-metrics",
+          "type": "prod",
+          "shared_with": [],
+          "own_kb": 304,
+          "exclusive_kb": 1544,
+          "transitive_count": 8,
+          "exclusive_count": 7,
+          "version": "2.4.0"
+        },
+        {
+          "name": "@fastify/cors",
+          "type": "prod",
+          "shared_with": [],
+          "own_kb": 804,
+          "exclusive_kb": 1436,
+          "transitive_count": 3,
+          "exclusive_count": 2,
+          "version": "10.1.0"
+        },
+        {
+          "name": "@fastify/autoload",
+          "type": "prod",
+          "shared_with": [],
+          "own_kb": 1216,
+          "exclusive_kb": 1216,
+          "transitive_count": 0,
+          "exclusive_count": 1,
+          "version": "6.3.1"
+        },
+        {
+          "name": "testcontainers",
+          "type": "dev",
+          "shared_with": [
+            "@testcontainers/postgresql"
+          ],
+          "own_kb": 1212,
+          "exclusive_kb": 0,
+          "transitive_count": 159,
+          "exclusive_count": 0,
+          "version": "10.28.0"
+        },
+        {
+          "name": "pino-pretty",
+          "type": "dev",
+          "shared_with": [],
+          "own_kb": 448,
+          "exclusive_kb": 900,
+          "transitive_count": 18,
+          "exclusive_count": 8,
+          "version": "13.1.3"
+        },
+        {
+          "name": "fastify-type-provider-zod",
+          "type": "prod",
+          "shared_with": [],
+          "own_kb": 56,
+          "exclusive_kb": 676,
+          "transitive_count": 50,
+          "exclusive_count": 2,
+          "version": "4.0.2"
+        },
+        {
+          "name": "@fastify/multipart",
+          "type": "prod",
+          "shared_with": [],
+          "own_kb": 408,
+          "exclusive_kb": 672,
+          "transitive_count": 5,
+          "exclusive_count": 4,
+          "version": "10.1.0"
+        }
+      ],
+      "packages_all_count": 32,
+      "unused_candidates": [
+        "@fastify/autoload",
+        "testcontainers"
+      ],
+      "outdated": [
+        {
+          "name": "@types/node",
+          "current": "22.19.19",
+          "wanted": "22.19.19",
+          "latest": "26.4.0",
+          "majors_behind": 4
+        },
+        {
+          "name": "fastify-type-provider-zod",
+          "current": "4.0.2",
+          "wanted": "4.0.2",
+          "latest": "7.0.0",
+          "majors_behind": 3
+        },
+        {
+          "name": "openai",
+          "current": "4.104.0",
+          "wanted": "4.104.0",
+          "latest": "7.8.0",
+          "majors_behind": 3
+        },
+        {
+          "name": "@testcontainers/postgresql",
+          "current": "10.28.0",
+          "wanted": "10.28.0",
+          "latest": "12.1.0",
+          "majors_behind": 2
+        },
+        {
+          "name": "testcontainers",
+          "current": "10.28.0",
+          "wanted": "10.28.0",
+          "latest": "12.1.0",
+          "majors_behind": 2
+        },
+        {
+          "name": "typescript",
+          "current": "5.9.3",
+          "wanted": "5.9.3",
+          "latest": "7.0.2",
+          "majors_behind": 2
+        },
+        {
+          "name": "vitest",
+          "current": "2.1.9",
+          "wanted": "2.1.9",
+          "latest": "4.1.11",
+          "majors_behind": 2
+        },
+        {
+          "name": "@fastify/cors",
+          "current": "10.1.0",
+          "wanted": "10.1.0",
+          "latest": "11.3.0",
+          "majors_behind": 1
+        },
+        {
+          "name": "dependency-cruiser",
+          "current": "17.4.3",
+          "wanted": "17.4.3",
+          "latest": "18.2.0",
+          "majors_behind": 1
+        },
+        {
+          "name": "dotenv",
+          "current": "16.6.1",
+          "wanted": "16.6.1",
+          "latest": "17.4.2",
+          "majors_behind": 1
+        },
+        {
+          "name": "octokit",
+          "current": "4.1.4",
+          "wanted": "4.1.4",
+          "latest": "5.0.5",
+          "majors_behind": 1
+        },
+        {
+          "name": "p-queue",
+          "current": "8.1.1",
+          "wanted": "8.1.1",
+          "latest": "9.3.3",
+          "majors_behind": 1
+        },
+        {
+          "name": "zod",
+          "current": "3.25.76",
+          "wanted": "3.25.76",
+          "latest": "4.4.3",
+          "majors_behind": 1
+        },
+        {
+          "name": "@anthropic-ai/sdk",
+          "current": "0.33.1",
+          "wanted": "0.33.1",
+          "latest": "0.121.0",
+          "majors_behind": 0
+        },
+        {
+          "name": "@ast-grep/napi",
+          "current": "0.43.0",
+          "wanted": "0.43.0",
+          "latest": "0.45.2",
+          "majors_behind": 0
+        },
+        {
+          "name": "@fastify/autoload",
+          "current": "6.3.1",
+          "wanted": "6.3.1",
+          "latest": "6.5.0",
+          "majors_behind": 0
+        },
+        {
+          "name": "@fastify/helmet",
+          "current": "13.0.2",
+          "wanted": "13.0.2",
+          "latest": "13.1.1",
+          "majors_behind": 0
+        },
+        {
+          "name": "@fastify/multipart",
+          "current": "10.1.0",
+          "wanted": "10.1.0",
+          "latest": "10.1.1",
+          "majors_behind": 0
+        },
+        {
+          "name": "@fastify/rate-limit",
+          "current": "11.0.0",
+          "wanted": "11.0.0",
+          "latest": "11.2.0",
+          "majors_behind": 0
+        },
+        {
+          "name": "drizzle-kit",
+          "current": "0.30.6",
+          "wanted": "0.30.6",
+          "latest": "0.31.10",
+          "majors_behind": 0
+        },
+        {
+          "name": "drizzle-orm",
+          "current": "0.38.4",
+          "wanted": "0.38.4",
+          "latest": "0.45.2",
+          "majors_behind": 0
+        },
+        {
+          "name": "fastify",
+          "current": "5.8.5",
+          "wanted": "5.8.5",
+          "latest": "5.12.1",
+          "majors_behind": 0
+        },
+        {
+          "name": "tsx",
+          "current": "4.22.4",
+          "wanted": "4.22.4",
+          "latest": "4.23.12",
+          "majors_behind": 0
+        }
+      ],
+      "audit": {
+        "findings": [
+          {
+            "name": "vitest",
+            "severity": "critical",
+            "direct": false,
+            "via": [
+              "When Vitest UI server is listening, arbitrary file can be read and executed"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "brace-expansion",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "brace-expansion: DoS via exponential-time expansion of consecutive non-expanding {} groups"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "brace-expansion",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "brace-expansion: DoS via unbounded expansion length causing an out-of-memory process crash"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "brace-expansion",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "brace-expansion: DoS via unbounded intermediate arrays, bypassing the CVE-2026-14257 mitigation"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "drizzle-orm",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "Drizzle ORM has SQL injection via improperly escaped SQL identifiers"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "fast-uri",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "fast-uri vulnerable to host confusion via literal backslash authority delimiter"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "fast-uri",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "fast-uri vulnerable to host confusion via backslash authority introducer"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "fast-uri",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "fast-uri vulnerable to host confusion via failed IDN canonicalization"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "find-my-way",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "find-my-way: DDoS with HTTP2"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "form-data",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "form-data: CRLF injection in form-data via unescaped multipart field names and filenames"
+            ],
+            "fix_available": true,
+            "scope": "prod"
+          },
+          {
+            "name": "nanoid",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "nanoid: non-secure generators can loop indefinitely with negative size"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "nanoid",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "nanoid: custom generators can loop indefinitely when size is zero"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "postcss",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "PostCSS: Path Traversal in Previous Source Map Auto-Loading (sourceMappingURL) leads to Arbitrary .map File Disclosure"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "shell-quote",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "shell-quote: Quadratic-complexity Denial of Service in `parse()` (CWE-407)"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "undici",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "Undici has Unbounded Memory Consumption in WebSocket permessage-deflate Decompression"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "undici",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "Undici has Unhandled Exception in WebSocket Client Due to Invalid server_max_window_bits Validation"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "undici",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "undici WebSocket client vulnerable to denial of service via fragment count bypass"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "vite",
+            "severity": "high",
+            "direct": false,
+            "via": [
+              "vite: `server.fs.deny` bypass on Windows alternate paths"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "esbuild",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "esbuild enables any website to send any requests to the development server and read the response"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "postcss",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "PostCSS: incomplete fix of GHSA-6g55-p6wh-862q \u2014 attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "protobufjs",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "protobufjs : Schema-derived names can shadow runtime-significant properties"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "protobufjs",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "protobufjs: Denial of Service via infinite loop in .proto option parsing"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "undici",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "Undici has an unbounded decompression chain in HTTP responses on Node.js Fetch API via Content-Encoding leads to resource exhaustion"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "undici",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "Undici has an HTTP Request/Response Smuggling issue"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "undici",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "Undici has CRLF Injection in undici via `upgrade` option"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "undici",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "undici vulnerable to HTTP header injection via Set-Cookie percent-decoding"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "undici",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "undici vulnerable to downstream response desynchronization via retry interceptor"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "undici",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "undici vulnerable to CRLF Injection via blob-like body 'type' property"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "undici",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "undici vulnerable to cookie attribute injection via unsanitized domain and unparsed setCookie fields"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "uuid",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "vite",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "Vite Vulnerable to Path Traversal in Optimized Deps `.map` Handling"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "vite",
+            "severity": "moderate",
+            "direct": false,
+            "via": [
+              "launch-editor: NTLMv2 hash disclosure via UNC path handling on Windows"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "esbuild",
+            "severity": "low",
+            "direct": false,
+            "via": [
+              "esbuild allows arbitrary file read when running the development server on Windows"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "undici",
+            "severity": "low",
+            "direct": false,
+            "via": [
+              "undici vulnerable to Set-Cookie SameSite attribute downgrade via permissive substring matching"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          },
+          {
+            "name": "undici",
+            "severity": "low",
+            "direct": false,
+            "via": [
+              "undici vulnerable to HTTP response queue poisoning via keep-alive socket reuse"
+            ],
+            "fix_available": true,
+            "scope": "dev"
+          }
+        ],
+        "totals": {
+          "info": 0,
+          "low": 3,
+          "moderate": 16,
+          "high": 17,
+          "critical": 1
+        }
+      }
+    }
+  },
+  "limits": [
+    "e2e: node_modules is not installed \u2014 sizes, versions, outdated and audit are unavailable for this package (not zero, unmeasured)",
+    "evals: 100% of node_modules entries are symlinks \u2014 du measures the link, not the package. Every size for this package is unusable; re-run with node-linker=hoisted or drop the weight section.",
+    "unused_candidates is a heuristic over imports, config files and scripts \u2014 it is a list to check, not a verdict",
+    "sizes are on-disk node_modules bytes, which include sourcemaps, types and dual CJS/ESM builds \u2014 they are not bundle sizes"
+  ],
+  "totals": {
+    "packages_analysed": 6,
+    "node_modules_kb": 1406216,
+    "not_installed": [
+      "e2e"
+    ]
+  },
+  "duplicates": [
+    {
+      "name": "@types/node",
+      "versions": {
+        "22.19.19": [
+          "client",
+          "server"
+        ],
+        "22.20.0": [
+          "evals"
+        ],
+        "22.20.1": [
+          "mcp"
+        ],
+        "22.19.20": [
+          "reviewer-core"
+        ]
+      },
+      "same_version": false,
+      "installed_in": [
+        "client",
+        "mcp",
+        "reviewer-core",
+        "server"
+      ],
+      "disk_kb": 10348,
+      "redundant_kb": 7616
+    },
+    {
+      "name": "js-tiktoken",
+      "versions": {
+        "1.0.21": [
+          "mcp",
+          "server"
+        ]
+      },
+      "same_version": true,
+      "installed_in": [
+        "mcp",
+        "server"
+      ],
+      "disk_kb": 44016,
+      "redundant_kb": 22008
+    },
+    {
+      "name": "openai",
+      "versions": {
+        "4.104.0": [
+          "evals",
+          "reviewer-core",
+          "server"
+        ]
+      },
+      "same_version": true,
+      "installed_in": [
+        "reviewer-core",
+        "server"
+      ],
+      "disk_kb": 19584,
+      "redundant_kb": 9708
+    },
+    {
+      "name": "tsx",
+      "versions": {
+        "4.22.4": [
+          "evals",
+          "reviewer-core",
+          "server"
+        ],
+        "4.23.12": [
+          "mcp"
+        ]
+      },
+      "same_version": false,
+      "installed_in": [
+        "mcp",
+        "reviewer-core",
+        "server"
+      ],
+      "disk_kb": 12456,
+      "redundant_kb": 1332
+    },
+    {
+      "name": "typescript",
+      "versions": {
+        "5.9.3": [
+          "client",
+          "evals",
+          "mcp",
+          "reviewer-core",
+          "server"
+        ]
+      },
+      "same_version": true,
+      "installed_in": [
+        "client",
+        "mcp",
+        "reviewer-core",
+        "server"
+      ],
+      "disk_kb": 93552,
+      "redundant_kb": 70164
+    },
+    {
+      "name": "vitest",
+      "versions": {
+        "2.1.9": [
+          "client",
+          "evals",
+          "mcp",
+          "reviewer-core",
+          "server"
+        ]
+      },
+      "same_version": true,
+      "installed_in": [
+        "client",
+        "mcp",
+        "reviewer-core",
+        "server"
+      ],
+      "disk_kb": 7640,
+      "redundant_kb": 5688
+    },
+    {
+      "name": "zod",
+      "versions": {
+        "3.25.76": [
+          "client",
+          "reviewer-core",
+          "server"
+        ],
+        "4.4.3": [
+          "mcp"
+        ]
+      },
+      "same_version": false,
+      "installed_in": [
+        "client",
+        "mcp",
+        "reviewer-core",
+        "server"
+      ],
+      "disk_kb": 21812,
+      "redundant_kb": 15408
+    }
+  ],
+  "totals_redundant_kb": 131924
+}

@@ -98,6 +98,7 @@ flowchart TB
 | `REPO_INTEL_ENABLED` | `true` | repo skeleton + callers in the prompt; `false` → ripgrep-only |
 | `DEVDIGEST_CLONE_DIR` | `./clones` | imported-repo checkouts (git-ignored) |
 | `LOG_LEVEL` | `info` (`silent` in test) | pino level |
+| `DEVDIGEST_PROMPT_LOG` | `summary` | prompt-assembly log: `off` / `summary` / `verbose`. Logs section name, source, length, model, correlation id — never bodies. `verbose` (sha256 fingerprints) is ignored in production |
 | `NODE_ENV` | `development` | `test` → silent logs + global rate-limit disabled |
 
 Secrets (API keys, `GITHUB_TOKEN`) are **not** part of `AppConfig` — they go

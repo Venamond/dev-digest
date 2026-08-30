@@ -17,5 +17,13 @@
     "title": "No repo selected",
     "body": "This repository isn't in your workspace — it may have been removed, or the link is stale. Add a repo or pick another from the switcher to get started.",
     "cta": "Add repository"
+  },
+  "errors": {
+    "title": "Something went wrong",
+    "body": "An unexpected error occurred in the studio.",
+    "notFoundTitle": "Page not found",
+    "notFoundBody": "That route does not exist in the studio. Pick a repo, open Agents, or go home.",
+    "notFoundCta": "Back to home"
   }
 }
+
