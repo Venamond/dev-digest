@@ -8,7 +8,7 @@ module.exports = {
         'Ring 0 (domain) must have no I/O. It defines port interfaces; ' +
         'ring 2 implements them. See .claude/skills/onion-architecture/rules/layers.md',
       from: {
-        path: '^(src/vendor/shared|src/platform/grounding\\.ts|src/modules/pulls/status\\.ts|src/modules/smart-diff/pure/)',
+        path: '^(src/vendor/shared|src/platform/grounding\\.ts|src/modules/pulls/status\\.ts|src/modules/smart-diff/pure/|src/modules/eval/pure/)',
       },
       to: {
         path: '^(node_modules/\\.pnpm/[^/]+/node_modules/(fastify|drizzle-orm|octokit|postgres|simple-git|@fastify)|node_modules/(fastify|drizzle-orm|octokit|postgres|simple-git|@fastify)|octokit$|src/db/)',
@@ -19,7 +19,7 @@ module.exports = {
       severity: 'error',
       comment: 'Ring 0 must not touch Node builtins (fs, child_process, …).',
       from: {
-        path: '^(src/vendor/shared|src/platform/grounding\\.ts|src/modules/pulls/status\\.ts|src/modules/smart-diff/pure/)',
+        path: '^(src/vendor/shared|src/platform/grounding\\.ts|src/modules/pulls/status\\.ts|src/modules/smart-diff/pure/|src/modules/eval/pure/)',
       },
       to: { dependencyTypes: ['core'] },
     },
@@ -58,7 +58,7 @@ module.exports = {
         // deps/gather/documents/budget/prompt, none of which is a listed
         // basename. A directory alternative also covers whatever that module
         // grows next, which a basename list does not.
-        path: '^src/modules/[^/]+/(service|helpers|walk|resolve|facade|run-executor|diff-loader|feature-models)\\.ts$|^src/modules/repo-intel/pipeline/|^src/modules/reviews/intent/|^src/modules/smart-diff/pure/|^src/modules/blast/(constants|shape|summary)\\.ts$|^src/modules/_shared/|^src/modules/brief/',
+        path: '^src/modules/[^/]+/(service|helpers|walk|resolve|facade|run-executor|diff-loader|feature-models)\\.ts$|^src/modules/repo-intel/pipeline/|^src/modules/reviews/intent/|^src/modules/smart-diff/pure/|^src/modules/blast/(constants|shape|summary)\\.ts$|^src/modules/_shared/|^src/modules/brief/|^src/modules/eval/',
         // A module's own repository IS the data layer and is supposed to
         // import db/schema — the basename alternatives never named one, but a
         // directory alternative would sweep it in. Excluding it here keeps

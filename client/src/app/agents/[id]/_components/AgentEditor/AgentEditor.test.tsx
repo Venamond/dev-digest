@@ -1,9 +1,22 @@
-import { describe, it, expect, afterEach, vi } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
+import { render, screen, cleanup, fireEvent, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Agent } from "@devdigest/shared";
 import messages from "../../../../../../messages/en/agents.json";
+import evalMessages from "../../../../../../messages/en/eval.json";
 import { ToastProvider } from "../../../../../lib/toast";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useParams: () => ({ id: "ag1" }),
+  usePathname: () => "/agents/ag1",
+  useSearchParams: () => new URLSearchParams(),
+}));
+
+vi.mock("@/lib/hooks/reviews", () => ({
+  useRunEvents: () => ({ events: [], running: false }),
+}));
 
 const { agentsHooksMock } = vi.hoisted(() => {
   // Stable references — SkillsTab's useEffect depends on `data` identity.
@@ -71,6 +84,20 @@ import { AgentEditor } from "./AgentEditor";
 
 afterEach(cleanup);
 
+/* The Evals tab adds query hooks to a component this test already mounts, so
+   the URL chain has to answer them here — an unmatched URL yields `{}`, which a
+   nullish coalesce would pass straight into `.map`. */
+beforeEach(() => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      const body = url.includes("/eval-cases") || url.includes("/eval-runs") ? [] : {};
+      return { ok: true, status: 200, json: async () => body };
+    }),
+  );
+});
+
 const AGENT: Agent = {
   id: "ag1",
   name: "Security Reviewer",
@@ -87,10 +114,15 @@ const AGENT: Agent = {
 };
 
 function renderWithIntl(ui: React.ReactElement) {
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
   return render(
-    <NextIntlClientProvider locale="en" messages={{ agents: messages }}>
-      <ToastProvider>{ui}</ToastProvider>
-    </NextIntlClientProvider>,
+    <QueryClientProvider client={qc}>
+      <NextIntlClientProvider locale="en" messages={{ agents: messages, eval: evalMessages }}>
+        <ToastProvider>{ui}</ToastProvider>
+      </NextIntlClientProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -114,5 +146,37 @@ describe("A2 Agent Editor (smoke)", () => {
     renderWithIntl(<AgentEditor agent={AGENT} tab="stats" onTab={() => {}} />);
     expect(screen.getByText("Stats")).toBeInTheDocument();
     expect(screen.getByText("No runs yet")).toBeInTheDocument();
+  });
+});
+
+describe("A2 Agent Editor — the six-tab bar (AC-58, AC-60)", () => {
+  it("renders six tabs in the mockup's order", () => {
+    renderWithIntl(<AgentEditor agent={AGENT} tab="config" onTab={() => {}} />);
+    const labels = within(screen.getByTestId("agent-editor-tabs"))
+      .getAllByRole("button")
+      .map((b) => b.textContent);
+    expect(labels).toEqual(["Config", "Skills", "Context", "Evals", "Stats", "CI"]);
+  });
+
+  it("draws CI disabled with a stated reason and does not switch the panel", () => {
+    const onTab = vi.fn();
+    renderWithIntl(<AgentEditor agent={AGENT} tab="config" onTab={onTab} />);
+    const ci = screen.getByRole("button", { name: "CI" });
+    expect(ci).toBeDisabled();
+    expect(ci.getAttribute("title")).toBeTruthy();
+    fireEvent.click(ci);
+    expect(onTab).not.toHaveBeenCalled();
+    expect(screen.getByText("Configuration")).toBeInTheDocument();
+  });
+
+  it("selects the Evals tab and renders it", () => {
+    const onTab = vi.fn();
+    renderWithIntl(<AgentEditor agent={AGENT} tab="config" onTab={onTab} />);
+    fireEvent.click(screen.getByRole("button", { name: "Evals" }));
+    expect(onTab).toHaveBeenCalledWith("evals");
+
+    cleanup();
+    renderWithIntl(<AgentEditor agent={AGENT} tab="evals" onTab={onTab} />);
+    expect(screen.getByText("Eval cases")).toBeInTheDocument();
   });
 });

@@ -9,7 +9,20 @@
     "replyToAuthor": "Reply to author",
     "replyPlaceholder": "Reply to the author about this finding…",
     "sendReply": "Send reply",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "learnDisabled": "Teaching an agent from a finding is a separate feature — not part of the eval pipeline.",
+    "turnIntoEvalCase": "Turn into eval case",
+    "evalTitleUndecided": "Accept or dismiss this finding first — an eval case seeded from a finding nobody has judged would treat unverified output as ground truth.",
+    "evalTitleDismissed": "Create a 'must NOT comment' eval case from this dismissal",
+    "evalTitleDefault": "Create a 'must find' eval case from this finding",
+    "replyDisabled": "Replying to the pull-request author is a separate feature — not part of the eval pipeline.",
+    "evalCaseExists": "eval case",
+    "evalCaseExistsTitle": "An eval case has already been seeded from this finding.",
+    "evalCaseExistsNotice": "This finding already has an eval case. Creating another makes a second case with a colliding name.",
+    "evalCreateAnyway": "Create another",
+    "evalNoticeCancel": "Cancel",
+    "undo": "Undo",
+    "undoTitle": "Clear the decision — the finding goes back to undecided"
   },
   "trifecta": {
     "lethal": "LETHAL TRIFECTA — ALL 3 PRESENT",

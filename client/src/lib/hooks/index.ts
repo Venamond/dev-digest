@@ -9,3 +9,4 @@ export * from "./conventions";
 export * from "./reviews";
 export * from "./trace";
 export * from "./repo-intel";
+export * from "./eval";

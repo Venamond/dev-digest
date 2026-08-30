@@ -48,6 +48,7 @@
     "createFromScratch": "Create from scratch",
     "disabled": "disabled",
     "runOnPr": "Run on a PR…",
+    "ciDisabledReason": "Exporting an agent to CI is a separate feature — not part of the eval pipeline.",
     "tabs": {
       "config": "Config",
       "skills": "Skills",

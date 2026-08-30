@@ -233,8 +233,16 @@ export function useFindingAction() {
         `/findings/${findingId}/${action}`,
         reply ? { reply } : undefined,
       ),
-    onSuccess: (_d, { prId }) => {
+    onSuccess: (_d, { prId, findingId }) => {
       if (prId) qc.invalidateQueries({ queryKey: queryKeys.reviews(prId) });
+      /* The eval seed is derived from the finding's disposition — `accepted`
+         gives a `must_find` case, `dismissed` a `must_not_flag` one — and it
+         was fetched when the card expanded, i.e. while the finding was still
+         undecided. Without this the editor opens on a stale seed and writes a
+         case of the WRONG KIND: measured 2026-08-30, a dismissed finding
+         produced `must-find-no-test-for-workspace-isolation` with
+         `seeded_from.disposition: 'open'`. */
+      qc.invalidateQueries({ queryKey: queryKeys.findingEvalSeed(findingId) });
     },
   });
 }

@@ -69,7 +69,8 @@
       "preview": "Preview",
       "versions": "Versions",
       "stats": "Stats",
-      "context": "Context"
+      "context": "Context",
+      "evals": "Evals"
     }
   },
   "editor": {

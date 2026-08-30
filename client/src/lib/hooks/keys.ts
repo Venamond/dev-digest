@@ -19,6 +19,23 @@ export const queryKeys = {
   agentContext: (id: string | null | undefined, repoId: string | null | undefined) =>
     ["agent-context", id, repoId] as const,
 
+  /* Eval pipeline (L06) — the agent's case set, its run history and the
+     dashboards. Batches are keyed by run id, not by agent, because the compare
+     modal reads two of them side by side. */
+  evalCases: (agentId: string | null | undefined) => ["eval-cases", agentId] as const,
+  evalRuns: (agentId: string | null | undefined) => ["eval-runs", agentId] as const,
+  evalRun: (runId: string | null | undefined) => ["eval-run", runId] as const,
+  evalDashboard: ["eval-dashboard"] as const,
+  agentEvalDashboard: (id: string | null | undefined) => ["agent-eval-dashboard", id] as const,
+  findingEvalSeed: (findingId: string | null | undefined) =>
+    ["finding-eval-seed", findingId] as const,
+
+  /* Skill evals (track F) — the same case run twice against one diff, with and
+     without the skill's body. Keyed by SKILL id, not agent id: the resolved
+     agent is a property of the row, not of the query. */
+  skillEvalCases: (skillId: string | null | undefined) => ["skill-eval-cases", skillId] as const,
+  skillEvalCase: (caseId: string | null | undefined) => ["skill-eval-case", caseId] as const,
+
   skills: ["skills"] as const,
   skill: (id: string | null | undefined) => ["skill", id] as const,
   skillVersions: (id: string | null | undefined) => ["skill-versions", id] as const,

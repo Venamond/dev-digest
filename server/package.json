@@ -15,7 +15,8 @@
     "arch:check": "depcruise src --config .dependency-cruiser.cjs --ignore-known",
     "arch:baseline": "depcruise src --config .dependency-cruiser.cjs --output-type baseline > .dependency-cruiser-known-violations.json",
     "arch:check:core": "depcruise ../reviewer-core/src --config ../reviewer-core/.dependency-cruiser.cjs",
-    "verify:l03": "vitest run src/modules/smart-diff/pure"
+    "verify:l03": "vitest run src/modules/smart-diff/pure",
+    "verify:l06": "vitest run src/modules/eval/pure"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.33.1",

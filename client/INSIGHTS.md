@@ -11,6 +11,121 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## What Doesn't Work
 
+- **One message serving two modes is a bug when the modes invert what its
+  numbers mean — and it type-checks, renders, and passes tests.** The eval case
+  row and the editor's result strip both filled
+  `expected {expected} finding, got {actual}` for every case. On a `must_find`
+  case those are "findings owed" and "of them produced". On a `must_not_flag`
+  case `expected` counts **forbidden locations** and `actual` counts everything
+  the agent produced anywhere in the diff, most of it irrelevant — so a
+  correctly-failing negative case rendered **"expected 1 finding, got 3"**,
+  which reads as "should have found one, found three", the opposite of what
+  happened. Reported by the human on 2026-08-30 as "у меня всё нормально
+  отрабатывает".
+  **Why nothing catches it:** both modes supply the same two integers, so the
+  placeholder always fills. The string is grammatical, the numbers are real, and
+  a test asserting the row shows counts passes for both. Only a test that
+  compares the TWO wordings against each other fails on the shared version.
+  **Do:** when a component renders one sentence for a discriminated union, check
+  each variant's meaning for every placeholder, not just its type. A shared
+  string is safe when the variants differ in *degree* and wrong when they differ
+  in *direction* — `must_find` wants the number high, `must_not_flag` wants it
+  zero. Split the key, and comment each site with the other's path, because the
+  copy lives in two files (`EvalsTab/EvalCaseRow.tsx` and
+  `components/eval-case-editor/`) that no test mounts together.
+
+- **A formatter copied out of a mockup inherits the mockup's fixture, and a
+  round fixture hides that the field has no formatter at all.** The design's
+  `CompareMetric` formats a non-percentage value as `` `${v}` `` — correct-looking
+  on its `cost: 0.21` fixture, and we ported it verbatim. Real eval runs cost
+  `0.0009258000000000001`, which the card printed in full, with a delta of
+  `Math.abs(d).toFixed(2)` = **`0.00`** — a display that actively claimed
+  nothing had changed between the two runs being compared. Reported by the human
+  on 2026-08-29; typecheck and 545 tests were green, because every fixture in
+  them was as round as the mockup's.
+  **Do:** when porting a design component, treat every field it renders *raw*
+  as an unwritten formatter, and check it against a real value from the database
+  before believing the port. Distinct from the `CostBadge` entry below: there the
+  values changed scale under a working formatter; here there was never one.
+  **A badge rule is not automatically the right rule for a comparison surface,
+  and the unit is part of the rule.** `formatUsd`'s `< $0.001` is right for a
+  badge and wrong for the run-compare card — it collapses `$0.000868` and
+  `$0.000811` to one token and erases the only thing that card exists to show.
+  Six decimals fixed that and were rejected as unreadable, correctly: dollars
+  cannot state a sub-cent difference in the width the design draws. **Cents
+  can** — `0.09¢ → 0.08¢ ▼ 0.01¢` is the same width as the design's
+  `0.21 → 0.23`. Hence `formatUsdCompact` beside `formatUsd`: one authority,
+  two ranges, switching unit only below $0.01.
+  **A "did anything change" epsilon is unit-bound too, and it fails silently.**
+  The design's single `Math.abs(d) > 0.0001` is a percentage-point epsilon; on a
+  cost of $0.0009 it swallows every real delta, so a run that got 6% cheaper drew
+  no arrow at all — not a wrong number, an absent one. Any shared threshold
+  needs one value per unit, at the point where that unit's own formatter still
+  prints something.
+
+- **A component forked from a sibling keeps the sibling's PRE-FIX shape, and the
+  fix rounds land on one of them only.** `SkillEvalCaseEditor` was written from
+  the same design as `EvalCaseEditor`. The agent editor's `Actual output` panel
+  then took several rounds of human-reported corrections — full-height instead of
+  a 190px strip, an inner `--code-bg` box instead of bare text under the heading,
+  a label matching `Expected output` instead of an uppercase micro-caption. None
+  of them reached the skill editor, so on 2026-08-29 the human reported the same
+  defect a second time, in the second editor, after the first was signed off.
+  Nothing catches this: both files typecheck, both have colocated tests, and each
+  test asserts its own component renders *something*.
+  **Do:** when a visual fix lands on a component that has a twin, grep for the
+  twin in the same edit (`grep -rl <styleKey> src`) and fix both, then leave a
+  comment in each style block naming the other and saying they change together.
+  A shared style object would be better still where the two are meant to be
+  identical — a pointer comment is the cheap version, not the right one.
+  **The drift runs BOTH ways, so neither twin is the canonical one.** Hours
+  later the same pair produced the mirror defect: `SkillEvalCaseEditor` had an
+  `Expectation` picker and `EvalCaseEditor` did not, because the agent editor
+  computed the value — `evalCase?.expectation ?? seed?.expectation ??
+  'must_find'` — instead of holding it in state. The server had accepted
+  `expectation` on create and update the whole time; a hand-authored agent case
+  simply could not be a `must_not_flag` one, which is a whole capability
+  missing, not a style difference.
+  **A derived value is a silently removed control**, and no gate can see it: a
+  test can assert a control renders, but nothing asserts a control that was
+  never designed *should* exist. Both editors typechecked, 546 tests passed,
+  and the absence surfaced only by comparing the two editors side by side.
+  When one twin holds something in `useState` and the
+  other derives the same field, that asymmetry is the bug — check it directly:
+  `grep -n "useState" ` both files and diff the lists.
+  **Converting a derived value into a control leaves a second bug behind: every
+  element gated on where the value USED to come from.** `EvalCaseEditor`'s
+  kind banner rendered under `{seed && …}` because the kind could only come
+  from a seed. Making it choosable did not change that guard, so the one screen
+  where the kind is now picked — a hand-authored case — showed nothing
+  confirming the choice. **Do:** after moving a field into state, grep for its
+  old source (`seed`, `evalCase?.`) and re-read every conditional that mentions
+  it; the ones that meant "we know the kind" now mean the wrong thing.
+
+- **A comment citing an acceptance criterion is not evidence it read it, and an
+  over-applied one silently disables the criteria it did not cite.** The agent
+  case editor's input pane carried `/* Read-only: the stored input is what the
+  case ran against (AC-53). */` above the `Diff`, `Files` and `PR meta` tabs.
+  AC-53 names **only** `Files` and `PR meta`. Making the diff read-only too
+  meant `New eval case` — AC-7, "a case can be authored without a finding to
+  start from" — could only ever save an empty `input_diff`, and AC-8's
+  hand-written benign and fabrication-pressure cases were unreachable. Three
+  criteria, one comment, and the two that broke are not mentioned anywhere near
+  the code that broke them. Reported by the human on 2026-08-29 as "не понятно
+  куда вставлять" — they were looking for a field that did not exist.
+  **The tell was an orphaned message key.** `caseEditor.diffPlaceholder`
+  (`"--- a/src/config.ts"`) sat in `messages/en/eval.json` used by nothing: a
+  placeholder exists only for an input, so an unused one is the fingerprint of a
+  control that was designed and never built. The check is one line per suspect
+  key: `grep -rn '<key>' src --include='*.tsx' | grep -v messages` returning
+  nothing means the string is defined and never rendered.
+  **Do:** when a comment cites an AC to justify a restriction, open the AC and
+  compare its list to what the code restricts — the citation makes the code look
+  reviewed and is exactly why nobody re-reads it. And treat an unused
+  `*Placeholder`, `*Label` or `*Hint` message as a missing control until proven
+  otherwise. Sibling of the twin-drift entry above: both are capabilities that
+  no test can miss, because nothing asserts a control that was never designed.
+
 - **A formatter's precision is a promise about the range of values it will be
   given, and changing the system's scale can silently break it.** `CostBadge`
   had rounded to three decimals since it was written, which was right while a
@@ -60,6 +175,183 @@ ground truth — wrap-ups can mischaracterize a session.
   (2026-08-07)
 
 ## Codebase Patterns
+
+- **A `maxWidth` copied out of a mockup is a property of the ARTBOARD, not of
+  the design — and it surfaces as several unrelated-looking bugs.** The Evals
+  tab carried `maxWidth: 720` because `screen_agents.jsx` draws it on a 720px
+  artboard. On a real screen that produced three separate reports: the case
+  name wrapped to two lines, the `MUST NOT FLAG` badge broke mid-phrase into a
+  two-line box, and the row's actions bunched in the middle of an otherwise
+  empty pane. Each was chased on its own before the shared cause was found.
+  **Do:** when porting a mockup, treat fixed widths and heights as suspect —
+  the artboard has a size, the design usually does not. And when three
+  complaints arrive about one component's layout, look for one container before
+  fixing three children; `whiteSpace: nowrap` on a badge is a real fix only
+  after the width is right. (2026-08-29)
+
+- **When two controls produce results that land in different places, the empty
+  state has to say which one feeds the number on screen.** The agent Evals tab
+  computes its metric strip from **set runs** (`eval_run_batches`), while the
+  per-row `Play` writes a single-case trial with `batch_id NULL` that
+  deliberately never enters run history (AC-62). So a user who ran four cases
+  individually sees four passing rows above four em dashes, and reports the
+  metrics as broken — correctly, from what the screen told them. Reported
+  2026-08-29.
+  **Do:** an empty state that is *right* is still a defect when it is silent.
+  Where a value has one source and the screen offers another action that looks
+  like it should fill it, name the difference in place ("these come from a run
+  of the whole set"). The em dash alone says "no data" when the truth is "not
+  measured this way yet". (2026-08-29)
+
+- **A create-or-update form that acts before saving must ADOPT the row it just
+  created, or every further press creates another one.** `EvalCaseEditor`
+  decides between create and update from its `evalCase` prop. When `Run case`
+  was made to work on an unsaved seeded case — save first, then run — the
+  create path never fed the new row back into that decision, so the form stayed
+  "unsaved" and each press created a fresh case. Three identical rows reached
+  the set from one finding before anyone noticed, and the duplicate guard did
+  not catch it: that guard reads the seed when the editor OPENS, not on each
+  action inside it.
+  **Do:** any "save then do X" path holds the created entity in state and every
+  later action reads `props.entity ?? created`. Test it by pressing the action
+  twice and asserting exactly **one** create request — asserting that the
+  action worked passes either way. (2026-08-29)
+
+- **To check whether a component reached the build, grep the message KEY, not
+  the copy.** User-facing strings live in `messages/<locale>/*.json` and are
+  resolved by `next-intl` at runtime; the compiled chunk carries
+  `t("neverRunYet")`, never the words "Never run yet". So
+  `grep -r "Never run yet" client/.next` returns **0 files for code that is
+  perfectly present**, and the opposite trap exists too: a page's SSR payload
+  embeds the whole messages bundle, so grepping the copy across the served HTML
+  matches the dictionary and "proves" a component that was never rendered.
+  Both misfires happened on 2026-08-29, and the second one produced a confident
+  wrong diagnosis ("the dev server is serving a stale build") that cost a
+  restart and a round of the human's time.
+  **Do:** `grep -rl 'neverRunYet' client/.next` — the key. For "is this
+  component rendered", the payload grep is worthless; use a component test for
+  presence and a real browser for visibility. (2026-08-29)
+
+- **Adding a panel under a `flex: 1` sibling makes it vanish, and every jsdom
+  test still passes — the element IS in the DOM, it just has no space.** The
+  eval-case editor's right column is a flex column whose expected-output
+  textarea carries `flex: 1`. A flex child defaults to `min-height: auto`, so
+  it refuses to shrink below its content and eats the column; the new `Actual
+  output` panel below it was pushed past the modal's edge. Reported 2026-08-29
+  as "there is no Actual output" while `getByText("Actual output")` passed.
+  **Fix the CONTAINER first, not the children.** Two rounds were spent adding
+  `minHeight: 0` / `flexShrink: 0` to the textarea and the panel and the screen
+  did not change, because the thing actually growing was the column itself:
+  `body` is a grid with a fixed `height: 480`, and a **grid item also defaults
+  to `min-height: auto`**, so `right` expanded to fit its children and spilled
+  past the modal instead of constraining them. What worked: `minHeight: 0` +
+  `overflow: hidden` on the column, a `minHeight` floor on the flexing
+  textarea, and a `maxHeight` ceiling on the new panel — a height budget, not a
+  shrink hint.
+  **The same default silently disables `overflow: auto`.** The modal's diff
+  pane (`tabBody`) carried `flex: 1` *and* `overflow: "auto"` and still had no
+  scrollbar — it was simply cut off at the modal's edge. `overflow` can only
+  act once something constrains the height, and `min-height: auto` means
+  nothing ever does. `minHeight: 0` is what turns an existing `overflow: auto`
+  from decoration into a scrollbar.
+  **Do:** when something inside a fixed-height container is pushed out, check
+  the container's own `min-height: auto` before touching any child. Prefer
+  `overflow: auto` over `hidden` on such a column: `hidden` turns a layout
+  miscalculation into content the user cannot reach at all, `auto` degrades to
+  a scrollbar. And do not
+  read a passing render test as evidence the thing is visible: jsdom computes
+  no layout, so presence tests cover removal and nothing else. Visibility is a
+  human check, or a real browser. (2026-08-29)
+  **The mirror failure is TWO scrollbars, and it arrives when a read-only pane
+  becomes editable.** `tabBody` is not a wrapper — it is itself the bordered
+  `--code-bg` frame *and* the scroll container, sized for the `<pre>` it was
+  built around. Swapping in a `<textarea>` that carried its own border,
+  background, padding and `overflow` produced a box inside a box: doubled
+  border, two scrollbars, and the focus ring trapped between them
+  (`img/12.png`, 2026-08-29). **A textarea always scrolls itself**, so the two
+  cannot both be scroll containers.
+  **Do:** before styling a control you are dropping into an existing pane, read
+  the pane's own style — in this codebase `tabBody`, `actualBox` and
+  `previewPre` all already supply frame, background, padding and overflow. The
+  control should fill it (`width/height: 100%`, no border, transparent
+  background, its own padding) and the parent should hand scrolling over
+  (`overflow: hidden`). Filling edge to edge also puts the browser's focus ring
+  on the frame's own outline instead of inset inside it, which is what made the
+  first attempt look unfinished. (2026-08-30)
+
+- **`Button`'s `active` prop is read by exactly ONE kind — `tertiary`. Pass it
+  with `secondary`, `ghost`, `primary` or `danger` and it is silently
+  inert.** `src/vendor/ui/primitives/Button.tsx:45-58`: the `kinds` map builds
+  a style per kind, and only `tertiary` (`:52-55`) mentions `active`;
+  `secondary` is a fixed `var(--bg-elevated)` and `ghost` a fixed
+  `transparent`. `FindingCard` passed `active={accepted}` / `active={dismissed}`
+  on a `secondary` and a `ghost` button for weeks — accepting or dismissing a
+  finding changed nothing on either control, and because `secondary` is
+  elevated while `ghost` is flat, `Accept` also *looked* pre-selected before
+  anything was clicked. TypeScript is no help: the prop exists on the component,
+  it is just unused for that variant.
+  **Do:** before relying on a vendored primitive's state prop, open its style
+  map and confirm the variant you pass actually reads it. Where it does not,
+  carry the state in the `kind` itself — `kind={dismissed ? "ghost" : "secondary"}`
+  — which is also how the reference design renders a chosen action. Test it by
+  comparing the two buttons' rendered `style.background` across states and
+  asserting they are **equal while undecided**; asserting a button "is in the
+  document" passes with the broken version. (2026-08-29)
+
+- **`Modal` (`src/vendor/ui/kit/Modal.tsx:23`) is `position: fixed` but does
+  NOT portal, so mounting one inside a card that dims itself paints the whole
+  dialog translucent.** `FindingCard` sets `opacity: 0.6` while the finding is
+  accepted or dismissed (`FindingCard/styles.ts:21`) and `overflow: hidden`
+  (`:19`); the eval-case editor was rendered as a child of that card, so it
+  inherited the opacity, and — because any opacity below 1 creates a stacking
+  context — its `position: fixed` resolved against the card instead of the
+  viewport. The user's report was "the form opens with a semi-transparent
+  background". Worse, the common path hit it: a *dismissed* finding is exactly
+  the one that seeds a `must not flag` case.
+  **Do:** render a `Modal` through `createPortal(…, document.body)` whenever
+  any ancestor sets `opacity`, `filter`, `transform` or `contain` — all four
+  create a containing block for `fixed`. Guard with
+  `typeof document !== "undefined"` so SSR does not touch `document`. And write
+  the test as a containment assertion — `expect(card.contains(dialog)).toBe(false)`
+  — because `expect(dialog).toBeInTheDocument()` passes in both layouts and
+  proves nothing. (2026-08-29)
+
+- **A sidebar entry's `key` must be the exact string `activeKeyFor` derives
+  from its route — the plural/singular slip costs two bugs at once, and the
+  obvious test does not catch either.** Adding the Eval Dashboard with
+  `{ key: "evals", href: "/evals" }` (`src/vendor/ui/nav.ts`) broke both
+  consumers of that key: `activeKeyFor` maps `/evals` → `"eval"`
+  (`src/components/app-shell/helpers.ts:35`), so the item never highlighted,
+  and `useShellCommands` looks up `nav.${it.key}` (`hooks/useShellCommands.ts:24`),
+  so `next-intl` threw `MISSING_MESSAGE: Could not resolve shell.nav.evals` on
+  **every** render of every page. `shell.json` already had `nav.eval`, and so
+  did the mockup. Typecheck, 493 unit tests, `arch:check` and both reviewers
+  were green throughout; the only thing that surfaced it was starting the app
+  and reading the dev log.
+  **Do:** when adding a nav entry, grep `activeKeyFor` first and use the key it
+  returns for the href you are adding, then check `messages/en/shell.json` has
+  `nav.<key>`. In its test, **derive** the key —
+  `activeKey: activeKeyFor("/evals")` — instead of typing it; a test that
+  hardcodes the key renders the label happily while both consumers are broken.
+  Assert the active state itself (the row's `fontWeight` is `600`), not just
+  that the link exists. (2026-08-29)
+
+- **Optimistic local state that is never cleared must win on the data's own
+  timestamp, not on being applied last.** `EvalsTab` merges three sources into
+  one result map — the newest batch's rows, the server's `last_run`, then a
+  component-local `trials` map holding results of single-case runs fired in
+  this mount. `trials` is written on each trial and never cleared, so applying
+  it last unconditionally meant a trial fired at 10:00 displaced the server's
+  11:00 set-run result for the same case, forever, in that mount. The screen
+  then reported a *stale* result while the newer one sat in the very query the
+  completion effect had just refetched. Both the bug and its mirror were
+  shipped one fix apart: the first version dropped the server value entirely,
+  the fix for that overwrote it unconditionally.
+  **Do:** when a local map fronts server data, either clear it in the effect
+  that refetches, or compare (`r.ran_at >= held.ran_at`) before overwriting —
+  and write the test as a *precedence* test with a negative assertion ("the
+  older value is NOT shown"), because a presence test passes under both
+  orderings and proves nothing. (2026-08-29)
 
 - **A feature with no page and no server route is still probably not
   greenfield — grep four places before saying so.** (2026-08-23) Scoping the
@@ -371,6 +663,27 @@ ground truth — wrap-ups can mischaracterize a session.
   Fixed 2026-08-04: every key / invalidation goes through
   `src/lib/hooks/keys.ts` (`queryKeys`). When adding a new query, extend that
   factory — do not introduce a bare string-array `queryKey`.
+  **Adding the key is half the job — the other half is every mutation that
+  changes what the new query DERIVES from, and those live in files the new
+  feature never touches.** Invalidation lists are written per-mutation, so a
+  query added by a later track is orphaned by construction: nothing fails, the
+  cache simply keeps answering. Measured 2026-08-30 on `findingEvalSeed`, which
+  the server computes from a finding's disposition (`accepted` → a `must_find`
+  case, `dismissed` → `must_not_flag`) and from whether a case already exists.
+  It is fetched once when the finding card expands — i.e. while the finding is
+  still undecided — and `useFindingAction` invalidated only
+  `queryKeys.reviews(prId)`. Pressing Dismiss then `Turn into eval case`
+  produced a case of the **wrong kind**, named `must-find-…` for a dismissed
+  finding, with `seeded_from.disposition: 'open'` written into the row. The
+  same stale field carries `existing_case_id`, so the duplicate guard did not
+  fire either and a twin case reached the set.
+  **Do:** for each new query, write down what its response is computed from,
+  then `grep -rn "useMutation" src/lib/hooks` and add the key to every mutation
+  that writes one of those inputs. Test it on the CACHE, not on requests —
+  `qc.setQueryData(key, …)`, run the mutation, assert
+  `qc.getQueryState(key)?.isInvalidated`; a request-count assertion passes
+  against the broken version. Confirm the test fails with the invalidation
+  removed before believing it. (2026-08-30)
 
 - `FindingsPanel` keyboard shortcuts (`j`/`k` focus, `a`/`d` accept/dismiss)
   used to listen on `window` whenever the Findings tab was mounted, so typing
@@ -643,6 +956,18 @@ ground truth — wrap-ups can mischaracterize a session.
   rendered text with a test when the string exists precisely to show a format.
   Found 2026-08-23 writing the skill Context tab's caption, which had to
   describe a `<untrusted source="…">` wrapper. (2026-08-23, Project Context S13)
+
+- **Asserting a token colour in jsdom: read `element.style.color`, not
+  `toHaveStyle`.** jsdom computes no cascade, so a CSS custom property resolves
+  to the UA default — `expect(el).toHaveStyle({ color: "var(--warn)" })` fails
+  with `+ color: canvastext`, which reads like the component lost its colour
+  when the inline style is in fact exactly right. The inline value is on the
+  element: `expect(screen.getByText("Negative case").style.color).toBe("var(--warn)")`
+  passes and pins the token by name. Cost one cycle on 2026-08-30 pinning the
+  eval case editor's kind banner.
+  **Pin BOTH branches when a colour distinguishes two states** — an assertion
+  that the negative banner is amber passes just as well on a version that
+  painted both kinds amber. (2026-08-30)
 
 - **Mermaid: style nodes with literal hex, never `var(--token)`, and expect
   silence when the chart is wrong.** `classDef`/`class` values are written into

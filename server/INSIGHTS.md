@@ -11,6 +11,233 @@ ground truth — wrap-ups can mischaracterize a session.
 
 ## What Doesn't Work
 
+- **An eval set whose expectations all sit in one block of one file cannot
+  measure a prompt at all — `recall` pins at 1.00 for any prompt.** A finding
+  counts when the file matches and the line ranges *overlap*
+  (`modules/eval/pure/scoring.ts`), so wide, mutually-overlapping expectations
+  turn "said anything about this region" into a true positive. Measured
+  2026-08-30 on `Test Quality Reviewer`: five `must_find` cases all seeded from
+  one pull request whose findings live in `routes.ts:159-188`, `165-172`,
+  `176-188`, `176-188`. Two batch runs, same cases, same model:
+
+  | `agent_version` | `system_prompt` length | recall | precision |
+  |---|---|---|---|
+  | v5 | 3787 chars (the real prompt) | **1.00** | 0.31 |
+  | v6 | **26** chars (`you are test quality agent`) | **1.00** | 0.29 |
+
+  Wiping the system prompt to six words moved recall by zero. The stripped agent
+  still says *something* about that block, and something is all an overlapping
+  range requires. `precision` could not move either — it was already floored by
+  `must_not_flag` cases whose forbidden ranges sit in the same block, so every
+  run scored the same false positives.
+  **Do:** before treating a metric as evidence about a prompt, check the spread
+  of the set's expectations —
+  `SELECT expected_output->0->>'file', expected_output->0->>'start_line' FROM
+  eval_cases WHERE owner_id = ...`. Distinct files with narrow ranges are what
+  makes recall movable; a set seeded entirely from one PR's findings usually is
+  not, because reviewers cluster on the one risky block. This is a property of
+  the SET, not of the agent: a green 1.00 there means "cannot fail", not "is
+  good".
+  **Spreading the expectations is necessary and not sufficient — at 11 cases the
+  run-to-run spread swamps the prompt.** Same day, same agent and model, four
+  expectations added across four distinct files, then five batch runs, one per
+  prompt:
+
+  | System prompt | chars | recall | precision | pass |
+  |---|---|---|---|---|
+  | the real one | 3787 | 0.50 | 0.36 | 5/11 |
+  | wiped to six words | 26 | **1.00** | 0.47 | **9/11** |
+  | narrowed to security only | 191 | 0.50 | 0.50 | 5/11 |
+  | "at most one finding" | 181 | 0.75 | 0.75 | 7/11 |
+  | "always return an empty list" | 143 | 0.50 | 0.40 | 6/11 |
+
+  **No degradation lowered anything, and the wiped prompt scored best.** Two
+  mechanisms: overlap matching rewards volume, so a verbose agent hits more
+  expectations, while the real prompt's findings-discipline rule ("never pad the
+  list toward a number") makes it terse; and the model ignored an explicit
+  instruction to return nothing. The 0.50 → 1.00 swing sits between two runs, so
+  it is spread, not signal.
+  **The mechanism, from the two runs' `actual_output`:** the disciplined agent
+  reported **19** findings across the batch — the same three per case, worded
+  identically (`Missing test coverage for /reviews/:id/share`, `Unhandled fetch
+  failure`, `Happy-path-only`). The wiped agent reported **30**: the same
+  defects fragmented into four or five overlapping "coverage gap" items each,
+  plus guesses about code not in the diff. Fragmentation wins because
+  `scoreCase` has **no duplicate penalty** — an expectation matched by several
+  actual findings is one true positive, and an extra finding moves neither `tp`
+  nor `fp` (AC-16). So splitting one defect into five costs nothing and raises
+  the chance of overlapping some expectation.
+  **This is the scorer's designed blind spot, worth stating out loud rather than
+  reading a 1.00 as success:** it measures whether the right LOCATIONS were
+  touched, never whether the wording is one clean finding or five. Judging a
+  prompt on it therefore inverts the thing the prompt is for — the
+  findings-discipline rule that makes output usable is exactly what costs recall
+  here.
+  **The noise floor, measured directly:** the *same* narrowed prompt run twice
+  over the same 7-case set returned `recall 0.75, pass 5/7` and `recall 0.00,
+  pass 3/7`. Two runs, one prompt, the full range of the metric. Any single
+  before/after pair on a set this size is therefore uninterpretable.
+  **Do:** run the SAME prompt twice before comparing any two prompts — the gap
+  between those two runs is the noise floor, and a difference smaller than it is
+  not evidence. Without that baseline a before/after pair on a set this size says
+  nothing, in either direction. When a metric moves the wrong way, read
+  `eval_runs.actual_output` before believing the number. (2026-08-30)
+
+- **"The latest row" and "the latest row with numbers in it" are different
+  queries, and a record inserted when work STARTS makes them diverge exactly
+  when the user is watching.** `eval_run_batches` gets its row at the start of
+  a run, in state `running` with every metric null. Both dashboards read
+  `batches[0]`, so pressing `Run all evals` blanked the whole metric strip —
+  the numbers disappeared at the moment of the click and came back minutes
+  later. Reported 2026-08-29 as "the metrics vanish when I run".
+  **Do:** when a table carries rows for work in progress, any read that feeds a
+  display must filter them out (`latestScored` / `previousScored`,
+  `modules/eval/pure/latest-scored.ts`) — the in-flight row is represented by a
+  progress indicator, never by a null-valued metric. The tell: a screen that is
+  correct until an action starts and correct again after it finishes.
+
+- **Read a just-written row back by its ID, never by "the latest row for this
+  key".** `EvalService.runSkillCase` executed a case and then called
+  `latestRunPerCase([caseId])` to return the result, discarding the `runId` the
+  runner had already handed it. "Latest" is whatever finished last, so anything
+  else touching that case in the meantime — a trial from another tab, a set run
+  reaching the same case — returns a stranger's row as this request's answer,
+  with no error anywhere. Found 2026-08-29 by review; the runner had returned
+  the id all along.
+  **Do:** if a write path gives you the identifier, use it (`getCaseRun(id)`).
+  A recency-ordered read-back is only correct when nothing else can write the
+  same key, which is exactly the assumption a background runner breaks.
+
+- **A mutual-exclusion guard keyed to an artifact that one of the paths
+  deliberately does NOT create is silently one-directional.**
+  `EvalService.assertNoRunInFlight` asks `runningBatchForAgent` — "is there an
+  `eval_run_batches` row in state `running` for this agent". A skill-eval run
+  creates no batch **by design** (a recorded decision: one `eval_runs` row with
+  `batch_id NULL`). So the guard blocks a skill run while a set run is live,
+  and lets a set run start while a skill run is live — plus two concurrent
+  skill runs on the same agent. Three call sites share the helper and only one
+  of the three directions is actually covered. Found 2026-08-29 by review; the
+  plan's own risk table recorded the hazard as *covered by the shipped guard*,
+  which is how it survived.
+  **Do:** when two paths must exclude each other, key the guard on something
+  BOTH of them write — a claim row, a lock, a state column on the shared
+  parent — never on a record only one path produces. And when a design decision
+  removes an artifact ("skill runs create no batch"), grep for every predicate
+  that tests for that artifact; each one silently loses half its meaning.
+
+- **A `catch` that PERSISTS can throw the same failure again and escape the
+  guard it is part of.** `EvalRunner.executeOneCase` wraps a case in
+  try/catch, and the catch records the failure with `insertCaseRun`. When the
+  cause of the failure was the row itself — a case deleted while its batch was
+  in flight — that insert hit
+  `eval_runs_case_id_eval_cases_id_fk` a second time, the throw left
+  `executeOneCase` entirely, and the outer handler failed the **whole batch**.
+  Five healthy cases were lost to one deleted row on 2026-08-29, and the
+  comment above the loop said "a thrown case never aborts the batch" while it
+  did exactly that.
+  **Do:** when a per-item guard writes to the same store the item lives in,
+  wrap the guarded call AGAIN at the loop level, and let that outer arm record
+  the item in memory only. The loop must survive an item failing to record its
+  own failure. Read any "X can never abort Y" comment as a claim to test, not a
+  fact — this one was written in good faith and was false.
+
+- **The LLM timeouts MULTIPLY, so "there is a timeout" is not the same as
+  "there is a bound".** For an OpenRouter agent the stack is: 90s per HTTP
+  request (`reviewer-core/src/llm/openrouter.ts` — `timeout: 90_000`), times
+  `maxRetries: 2` in the SDK, times `req.maxRetries ?? 2` in
+  `completeStructured`'s own invalid-structure loop. Each layer is reasonable
+  alone; together one engine call can legitimately run a quarter of an hour,
+  and nothing above imposed a ceiling — `EvalRunner.executeBatch` simply
+  `await`ed each case in a `for` loop. Reported 2026-08-29: a single eval case
+  sat "running" for ~5 minutes with no way to tell a slow model from a hang.
+  **And a cap that lands between attempt 1 and its retry is worse than none.**
+  Measured 2026-08-29 with `CASE_TIMEOUT_MS = 120_000` against the SDK's 90s:
+  successful calls returned in 20–50s, but any call that missed the first 90s
+  window had 30s for its retry and never made it — four of six runs recorded
+  `errored` at exactly 120002ms. Pick the cap against the layer below's whole
+  budget (attempt + retries), not against how long a healthy call takes, or set
+  it deliberately below one attempt so a stumble fails fast instead of
+  half-retrying.
+  **Do:** give any background job that calls the engine its OWN wall-clock cap
+  (`CASE_TIMEOUT_MS`, `withCaseTimeout` in `modules/eval/runner.ts`) rather
+  than trusting the layers below — and count the retry multipliers before
+  believing a per-request timeout bounds anything. Cap the smallest unit that
+  can fail on its own: a skill case makes two engine calls, so each SIDE gets
+  its own budget, otherwise a slow side consumes the other's and the report
+  blames the wrong half.
+
+- **A `select()` with no `orderBy` reads as "order doesn't matter here" and is
+  actually "the list reshuffles whenever a row is updated".** `getReviews`
+  (`modules/reviews/repository/review.repo.ts`) fetched findings with
+  `db.select().from(t.findings).where(inArray(...))` and no ordering. Postgres
+  returns heap order, and an `UPDATE` writes a **new tuple version** rather
+  than editing in place — so accepting or dismissing a finding moves that row's
+  physical position, and the refetch right after the mutation hands the client
+  a different order. Reported 2026-08-29 as a UI bug — *"pressing accept jumps
+  to another finding"* — and it is: the list reorders under the cursor and the
+  reviewer is left looking at a finding they did not judge. Confirmed by
+  selecting `ctid` alongside the rows: they come back in physical order.
+  **Do:** give any query whose result a user sees a deterministic `orderBy`,
+  even when the caller re-sorts. `id` is enough — the client's own sort is
+  stable, so a stable base order is what stops equal-severity rows swapping.
+  The tell for this class: a list that is fine on load and wrong only **after a
+  mutation**, with no client code that could have reordered it. Grep
+  `db.select()` without `orderBy` in any repository whose rows reach a list
+  screen.
+
+- **A trailing newline on a unified diff silently shifts every line number
+  after it, because `parseUnifiedDiff` treats any unrecognised line as
+  CONTEXT.** `adapters/git/diff-parser.ts:62-69` dispatches on the first
+  character: `+` is an addition, `-` a deletion, and **everything else — an
+  empty string included — is context, which advances `newLineCursor`**. So a
+  diff ending in `\n` contributes one phantom context line and the file's
+  `newLineNumbers` gain an entry that does not exist. Nothing throws; the
+  parse succeeds and is wrong by one.
+  **Why it bites here specifically:** the eval scorer matches a finding to an
+  expectation by file **and overlapping line range**
+  (`modules/eval/pure/scoring.ts`). An off-by-one in the parsed line numbers
+  therefore turns into a wrong metric, not a crash — a case that should match
+  scores as a miss, and the screen reports a regression that never happened.
+  Found 2026-08-29 by the round-trip test on the new Before/After diff builder
+  (`modules/eval/pure/diff-builder.ts`), which is why that test exists.
+  **Do:** any code that BUILDS a diff must `trimEnd()` before handing it to
+  `parseUnifiedDiff`, and must have a test that parses its own output and
+  asserts the line numbers — building and parsing in separate test files hides
+  exactly this. The shipped `EvalService.seedFromFinding`
+  (`modules/eval/service.ts`) joins `pr_files.patch` bodies and is exposed to
+  the same class of bug; it is safe **only because** all 372 stored patches
+  happen to carry no trailing newline (verified against the dev database on
+  2026-08-29). That is a property of today's data, not a guarantee — the first
+  patch that ends in a newline breaks seeded cases silently.
+
+- **`agent_versions` has no v1 row for a SEEDED agent, because `db/seed.ts`
+  writes the `agents` row with plain Drizzle and bypasses the repository that
+  owns the snapshot.** `AgentsRepository.insert` does snapshot version 1
+  (`modules/agents/repository.ts:106` — `await this.snapshotVersion(row!,
+  INITIAL_AGENT_VERSION)`), so an agent created through the API has a complete
+  history. `db/seed.ts:246` — `if (!existing) await
+  db.insert(t.agents).values(a)` — does not, so every built-in agent starts
+  with none. Confirmed against the dev DB on 2026-08-29: `Security Reviewer`
+  sits at `version 1` with **zero** `agent_versions` rows, and `API Contract
+  Reviewer` is at v12 with `min(version) = 2` — seeded at v1 unsnapshotted,
+  then snapshotted from its first edit onward. `GET /agents/:id/versions`
+  therefore returns a complete history for an API-created agent and a history
+  missing v1 for a seeded one, with nothing on the response distinguishing the
+  two.
+  **Do:** never assume `agent_versions` can answer "what was this agent's
+  original prompt" — it can for some agents and not for others, and which is
+  which depends on how the row was born. A feature needing the prompt a past
+  run actually used should snapshot it onto that run's own row; that also
+  survives an edit made while the run is in flight, which a version join never
+  does. If you fix the gap instead, route the seed through
+  `AgentsRepository.insert` rather than adding a second snapshot call, and
+  remember existing rows stay missing v1 until back-filled.
+  **Watch for the same shape elsewhere:** any invariant a repository method
+  maintains is void for a table `seed.ts` writes to directly. Surfaced while
+  specifying the L06 eval pipeline (`specs/2026-08-29-eval-pipeline.md`); the
+  first version of this entry blamed the update path and was wrong — the
+  observable gap was real, the cause was not.
+
 - **A grounding check that whitelists exact strings against model output will
   reject correct answers, and it fails CLOSED — the feature looks broken, not
   lenient.** `modules/blast/summary.ts` rejects a summary naming anything
@@ -203,6 +430,56 @@ ground truth — wrap-ups can mischaracterize a session.
   `SELECT s.name, rs.skill_version FROM run_skills rs JOIN skills s ON
   s.id=rs.skill_id WHERE rs.run_id='<run>'` (empty ⇒ none were injected;
   `agent_runs.cost_usd` also rises visibly when they are). (2026-08-08)
+
+- **The MODEL does change the finding count, on the same prompt and the same
+  diff — by a factor of four.** Sibling of the entry above, and the variable
+  people actually change. Measured 2026-08-29 on PR #3 with `Test Quality
+  Reviewer`, one agent, one unedited system prompt, one diff:
+
+  | Model | Findings | `tokens_out` | Wall clock | Cost | `grounding` |
+  |---|---|---|---|---|---|
+  | `google/gemini-3.7-flash` | **0** | 0 | 1.3s | — | run `failed` |
+  | `openai/gpt-4o-mini` | **1** | 215 | 2.6s | $0.0009 | `1/1 passed` |
+  | `openai/gpt-4.1-mini` | 2 | 425 | 6.0s | $0.0030 | `2/2 passed` |
+  | `anthropic/claude-haiku-4.5` | **4** | 1143 | 11.5s | $0.0140 | `4/4 passed` |
+  | `deepseek/deepseek-v4-flash` | 4 | 3663 | **83s** | — | `4/4 passed` |
+
+  The grounding column is the part that matters diagnostically: **nothing was
+  dropped**. It is not the citation gate, not a parse failure, not a truncated
+  response — the model returned one finding. The cause is the same
+  findings-discipline rule quoted above ("never pad the list toward a number");
+  a terser model obeys it harder, and `gpt-4o-mini` writes ~215 output tokens
+  where deepseek writes ~900 per finding.
+  **Why this bites:** the model is the one knob changed for speed — deepseek
+  takes 20-50s per case against gpt-4o-mini's ~3s, so anything that runs a set
+  of cases pushes you onto the fast model, and the eval baseline it produces is
+  a different agent than the one whose findings seeded the cases. A `must_find`
+  case seeded from a deepseek finding can therefore be unreachable on
+  gpt-4o-mini for no reason visible on screen.
+  **Do:** read `agent_runs.grounding` before blaming the pipeline —
+  `SELECT model, findings_count, grounding, tokens_out FROM agent_runs WHERE
+  agent_id = ... ORDER BY ran_at DESC` separates "the gate ate them" from "the
+  model never produced them" in one query. Seed eval cases with the model the
+  evals will run on: a case seeded from one model's finding can be unreachable
+  on another, with nothing on screen saying why.
+  **Diff size does NOT move the count — the discipline rule dominates.** Same
+  agent and model on two pull requests of the same repository, measured
+  2026-08-30: a 3-file / +60-line diff returned **4** findings, and a 65-file /
+  +6161-line diff returned **4** as well (15.0s, $0.069 against 11.5s,
+  $0.014 — cost and latency scale with the diff, the finding count does not).
+  So a small finding count is not evidence that the diff was too small to
+  review, and enlarging the input is not a way to get more findings.
+  **The count is not monotonic in price or speed, so measure — do not reason
+  about it.** `gemini-3.7-flash` returned zero and the run came back `failed`
+  with `tokens_out: 0`, which on the PR page is indistinguishable from "clean
+  diff, nothing found"; `claude-haiku-4.5` matched deepseek's four findings in
+  **11.5s against 83s**, i.e. the thorough/fast trade-off people assume is real
+  did not hold here. The whole sweep is one loop — `PUT /agents/:id
+  {"model":…}`, `POST /pulls/:id/review {agentId}`, then read the newest
+  `agent_runs` row — and costs cents; a 15× price difference per run is still
+  under a dollar across a five-model sweep, so there is no reason to pick a
+  model by argument. **Note each `PUT` versions the agent config**, so a
+  four-model sweep leaves four versions behind before any real work starts.
 
 - **To manually test a reviewer agent against a chosen diff without a real
   GitHub PR: insert `pull_requests` + `pr_files` rows directly (with a real
@@ -759,6 +1036,24 @@ ground truth — wrap-ups can mischaracterize a session.
   chain to a fresh Postgres, which is the only cheap proof it actually runs.
   (2026-08-07, conventions extractor review)
 
+  **It recurred, and the repair above is not durable — 2026-08-29.** `0015`
+  fixed the baseline, then `0016_pr_intent_layer`, `0017_project_context_
+  attachments` and `0018_pr_brief_cache` were hand-written without snapshots,
+  so `meta/` again jumps `0010 → 0015` and stops. The very next `db:generate`
+  (adding `eval_run_batches`) re-emitted all of `0016`, `0017` and `0018` —
+  four tables and eighteen columns the change never touched — and without the
+  `IF NOT EXISTS` those hand-written files used, so it would have died on
+  `column "head_sha" of relation "pr_brief" already exists`.
+  **Do:** treat the snapshot as part of a hand-written migration, not as
+  cleanup. Immediately after hand-writing one, run `db:generate`, keep the
+  produced `meta/NNNN_snapshot.json`, replace its `.sql` with `SELECT 1;`, and
+  confirm with a second `db:generate`. Skipping it does not fail now — it fails
+  for whoever adds the next table, in a file that looks plausible.
+  **And do not apply that repair blindly when the generation carries a real
+  change**: blanking the `.sql` to `SELECT 1;` would record the genuinely-new
+  table as migrated while creating nothing. Baseline first as its own
+  migration, then generate the real one.
+
 - **A per-workspace batch aggregate returned as `Map<id, Stats>` has no entry
   for an entity with zero activity — `map.get(id)` is `undefined`, not a
   zero-valued `Stats`.** Piping that straight into a DTO field written as
@@ -780,6 +1075,19 @@ ground truth — wrap-ups can mischaracterize a session.
   all. (2026-08-08, Agents Lab card-stats fix)
 
 ## Recurring Errors & Fixes
+
+- **Five `.it.test.ts` suites failing at once, in modules a change never
+  touched, is Docker — not the change.** The tell is in the stack, not the
+  assertion: `Error: Expected Reaper to map exposed port 8080` at
+  `testcontainers/src/reaper/reaper.ts`, or `Error: No host port found for host
+  IP`. Both come from testcontainers' Ryuk helper, before any test body runs.
+  Seen 2026-08-29 after a long session that had started and stopped many
+  containers.
+  **Do:** `docker ps -a | grep ryuk` and remove that container, then
+  `docker container prune -f` (it removes only *exited* containers — the dev
+  `devdigest-postgres` keeps running). The suite passed 673/673 immediately
+  afterwards. Do not start bisecting a change over this: an unrelated blast /
+  brief / agents suite failing together is the signature.
 
 - **The integration suite can report "8 passed | 12 skipped" while Docker is
   running perfectly, and that line reads as green at a glance.** The gate is

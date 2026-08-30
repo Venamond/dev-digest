@@ -3,6 +3,8 @@ import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import type { FindingRecord } from "@devdigest/shared";
 import messages from "../../../../../../../../messages/en/prReview.json";
+import evalMessages from "../../../../../../../../messages/en/eval.json";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const mutate = vi.fn();
 
@@ -58,11 +60,18 @@ const FINDINGS: FindingRecord[] = [
   },
 ];
 
+/* FindingCard reads the eval seed of an expanded finding (`Turn into eval
+   case`), so every renderer of one needs a QueryClient in scope. */
 function renderWithIntl(ui: React.ReactElement) {
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
   return render(
-    <NextIntlClientProvider locale="en" messages={{ prReview: messages }}>
-      {ui}
-    </NextIntlClientProvider>,
+    <QueryClientProvider client={qc}>
+      <NextIntlClientProvider locale="en" messages={{ prReview: messages, eval: evalMessages }}>
+        {ui}
+      </NextIntlClientProvider>
+    </QueryClientProvider>,
   );
 }
 

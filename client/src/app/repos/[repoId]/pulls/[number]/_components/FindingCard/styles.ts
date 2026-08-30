@@ -44,6 +44,15 @@ export const s = {
     textDecoration: dismissed ? "line-through" : "none",
   }),
   acceptedTag: { fontSize: 12, fontWeight: 600, color: "var(--ok)" } satisfies CSSProperties,
+  /* The chosen disposition, marked green on the button itself. The vendored
+     Button applies an incoming `style` LAST (vendor/ui/primitives/Button.tsx),
+     so this wins over the kind's own colours without touching that file — and
+     its `active` prop cannot do this job, since only `tertiary` reads it. */
+  chosenAction: {
+    background: "var(--ok-bg)",
+    borderColor: "var(--ok)",
+    color: "var(--ok)",
+  } satisfies CSSProperties,
   dismissedTag: {
     fontSize: 12,
     fontWeight: 600,
@@ -84,6 +93,26 @@ export const s = {
     marginTop: 14,
     flexWrap: "wrap",
   } satisfies CSSProperties,
+  evalCaseTag: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 5,
+    fontSize: 12,
+    fontWeight: 600,
+    color: "var(--accent-text)",
+  } satisfies CSSProperties,
+  evalNotice: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 10,
+    padding: "8px 10px",
+    borderRadius: 7,
+    border: "1px solid var(--border-strong)",
+    background: "var(--warn-bg)",
+    flexWrap: "wrap",
+  } satisfies CSSProperties,
+  evalNoticeText: { fontSize: 12.5, color: "var(--text-secondary)" } satisfies CSSProperties,
   composer: {
     marginTop: 12,
     display: "flex",

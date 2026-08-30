@@ -1,9 +1,10 @@
-import { describe, it, expect, afterEach, vi } from "vitest";
+import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Skill } from "@devdigest/shared";
 import messages from "../../../../../../messages/en/skills.json";
+import evalMessages from "../../../../../../messages/en/eval.json";
 import { ToastProvider } from "../../../../../lib/toast";
 
 vi.mock("next/navigation", () => ({
@@ -63,11 +64,26 @@ const SKILL: Skill = {
   version: 1,
 };
 
+/* The Evals tab reaches the API through a hook, so this file now stubs
+   `fetch`. Extending the chain in the same change is the rule of
+   `client/INSIGHTS.md:388`: an unmatched URL answers `{}`, which a
+   `?? []` would pass straight into `.map`. */
+beforeEach(() => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      const data = url.includes("/eval-cases") ? [] : {};
+      return { ok: true, status: 200, json: async () => data };
+    }),
+  );
+});
+
 function renderWithIntl(ui: React.ReactElement) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
-      <NextIntlClientProvider locale="en" messages={{ skills: messages }}>
+      <NextIntlClientProvider locale="en" messages={{ skills: messages, eval: evalMessages }}>
         <ToastProvider>{ui}</ToastProvider>
       </NextIntlClientProvider>
     </QueryClientProvider>,
@@ -75,17 +91,29 @@ function renderWithIntl(ui: React.ReactElement) {
 }
 
 describe("SkillEditor", () => {
-  it("renders four tabs and header version chip", () => {
+  it("renders six tabs in order with Evals last, and the header version chip", () => {
     renderWithIntl(<SkillEditor skill={SKILL} tab="config" onTab={() => {}} />);
-    expect(screen.getByText("Config")).toBeInTheDocument();
-    expect(screen.getByText("Preview")).toBeInTheDocument();
-    expect(screen.getByText("Stats")).toBeInTheDocument();
-    expect(screen.getByText("Versions")).toBeInTheDocument();
-    expect(screen.queryByText("Evals")).not.toBeInTheDocument();
-    expect(screen.queryByText(/Run on evals/i)).not.toBeInTheDocument();
+    // Read the bar itself rather than the page: `Evals` is appended to the
+    // five shipped tabs without reordering them.
+    const bar = screen.getByText("Config").closest("div");
+    expect(Array.from(bar?.children ?? []).map((c) => c.textContent)).toEqual([
+      "Config",
+      "Preview",
+      "Context",
+      "Stats",
+      "Versions",
+      "Evals",
+    ]);
     expect(screen.getAllByText("v1").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Configuration")).toBeInTheDocument();
     expect(screen.getByText("Save skill")).toBeInTheDocument();
+  });
+
+  it("mounts the Evals tab when it is the active one", async () => {
+    renderWithIntl(<SkillEditor skill={SKILL} tab="evals" onTab={() => {}} />);
+    expect(await screen.findByRole("heading", { name: "Eval cases" })).toBeInTheDocument();
+    // The skill Evals tab has no metric strip — the reference draws none.
+    expect(screen.queryByText("RECALL")).not.toBeInTheDocument();
   });
 
   it("renders Preview markdown body", () => {

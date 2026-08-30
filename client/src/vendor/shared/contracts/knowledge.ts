@@ -70,15 +70,32 @@ export type EvalRun = z.infer<typeof EvalRun>;
 export const EvalOwnerKind = z.enum(['skill', 'agent']);
 export type EvalOwnerKind = z.infer<typeof EvalOwnerKind>;
 
+/**
+ * What a case asserts about the review it triggers: `must_find` — every
+ * expected finding has to appear; `must_not_flag` — the forbidden range has to
+ * stay unflagged. Compared by code only; it never reaches a prompt.
+ */
+export const EvalExpectation = z.enum(['must_find', 'must_not_flag']);
+export type EvalExpectation = z.infer<typeof EvalExpectation>;
+
+/** Provenance of a case seeded from a real finding (`Turn into eval case`). */
+export const EvalCaseSeededFrom = z.object({
+  finding_id: z.string(),
+  disposition: z.enum(['accepted', 'dismissed', 'open']),
+});
+export type EvalCaseSeededFrom = z.infer<typeof EvalCaseSeededFrom>;
+
 export const EvalCase = z.object({
   id: z.string(),
   owner_kind: EvalOwnerKind,
   owner_id: z.string(),
   name: z.string(),
+  expectation: EvalExpectation,
   input_diff: z.string(),
   input_files: z.unknown(),
   input_meta: z.unknown(),
   expected_output: z.unknown(),
+  seeded_from: EvalCaseSeededFrom.nullish(),
   notes: z.string().nullish(),
 });
 export type EvalCase = z.infer<typeof EvalCase>;

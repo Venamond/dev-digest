@@ -44,6 +44,10 @@ export const NAV: NavGroup[] = [
         href: "/repos/:repoId/conventions",
         gKey: "c",
       },
+      // Key is `eval`, not `evals`: `activeKeyFor` maps `/evals` to `eval`
+      // (app-shell/helpers.ts) and `shell.json` translates `nav.eval`. The href
+      // is the plural route.
+      { key: "eval", label: "Eval Dashboard", icon: "Gauge", href: "/evals", gKey: "e" },
     ],
   },
 ];
@@ -76,6 +80,7 @@ export const SHORTCUTS: ShortcutDef[] = [
   { keys: "g k", label: "Go to Skills", group: "Navigation" },
   { keys: "g c", label: "Go to Conventions", group: "Navigation" },
   { keys: "g x", label: "Go to Project Context", group: "Navigation" },
+  { keys: "g e", label: "Go to Eval Dashboard", group: "Navigation" },
   { keys: "j / k", label: "Next / previous finding", group: "Findings" },
   { keys: "a", label: "Accept finding", group: "Findings" },
   { keys: "d", label: "Dismiss finding", group: "Findings" },

@@ -1,4 +1,4 @@
-/* SkillEditor — Config / Preview / Context / Stats / Versions (no Evals). */
+/* SkillEditor — Config / Preview / Context / Stats / Versions / Evals. */
 "use client";
 
 import React from "react";
@@ -10,6 +10,7 @@ import { ContextTab } from "./_components/ContextTab/ContextTab";
 import { PreviewTab } from "./_components/PreviewTab/PreviewTab";
 import { VersionsTab } from "./_components/VersionsTab/VersionsTab";
 import { StatsTab } from "./_components/StatsTab/StatsTab";
+import { EvalsTab } from "./_components/EvalsTab/EvalsTab";
 import { TABS } from "./constants";
 import { s } from "./styles";
 
@@ -45,6 +46,7 @@ export function SkillEditor({
         {tab === "context" && <ContextTab skill={skill} />}
         {tab === "stats" && <StatsTab skill={skill} />}
         {tab === "versions" && <VersionsTab skill={skill} />}
+        {tab === "evals" && <EvalsTab skill={skill} />}
       </div>
     </div>
   );

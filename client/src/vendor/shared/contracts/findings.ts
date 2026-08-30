@@ -79,7 +79,7 @@ export const Review = z.object({
 export type Review = z.infer<typeof Review>;
 
 /** Action taken on a finding (accept/dismiss/learn/reply). */
-export const FindingActionKind = z.enum(['accept', 'dismiss', 'learn', 'reply']);
+export const FindingActionKind = z.enum(['accept', 'dismiss', 'undo', 'learn', 'reply']);
 export type FindingActionKind = z.infer<typeof FindingActionKind>;
 
 export const FindingAction = z.object({
